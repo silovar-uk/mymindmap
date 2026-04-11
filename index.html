@@ -6,8 +6,8 @@
 <title>案件マインドマップ</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f3;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:16px;color:#222}
-#app{display:flex;flex-direction:column;width:960px;height:700px;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f3;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;padding:0;color:#222;overflow:hidden}
+#app{display:flex;flex-direction:column;width:100vw;height:100vh;background:#fff;overflow:hidden}
 #tb{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #e8e8e8;flex-shrink:0;flex-wrap:wrap;background:#fff}
 #tb button{font-size:12px;padding:4px 10px;border:1px solid #ccc;border-radius:6px;background:transparent;color:#333;cursor:pointer}
 #tb button:hover:not(:disabled){background:#f0f0f0}
@@ -19,13 +19,28 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 .sp{width:1px;height:20px;background:#e0e0e0;flex-shrink:0}
 #cw{flex:1;position:relative;overflow:hidden}
 svg{width:100%;height:100%;display:block;background:#fafafa}
-#io{display:none;flex-direction:column}
+#io{display:none;flex-direction:column;gap:10px;padding:10px 12px;border-top:1px solid #e8e8e8;background:#fbfbfb}
 #io.open{display:flex}
-#io-row{display:flex}
-#io-row textarea{flex:1;height:108px;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px;border:none;border-right:1px solid #e8e8e8;background:#f8f8f8;color:#333;resize:none;outline:none}
-#io-row textarea:last-child{border-right:none}
-#io-ft{display:flex;gap:8px;padding:6px 12px;border-top:1px solid #e8e8e8;background:#f8f8f8}
-#io-ft button{font-size:12px;padding:4px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#333;cursor:pointer}
+.io-sec{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px}
+.io-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.io-ttl{font-size:13px;font-weight:700;color:#111827;line-height:1.35}
+.io-sub{font-size:11px;color:#6b7280;line-height:1.5;margin-top:2px}
+.io-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.io-tab{font-size:12px;padding:5px 12px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;cursor:pointer}
+.io-tab.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+#j-in,#j-out{width:100%;min-height:190px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:#f8fafc;color:#1f2937;resize:vertical;outline:none;line-height:1.5;white-space:pre}
+#j-in:focus,#j-out:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:#fff}
+#j-out{background:#f8fafc}
+.io-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
+#io-status{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-size:12px;line-height:1.55;color:#475569;white-space:pre-wrap}
+#io-status.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+#io-status.warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+#io-status.err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+@media (max-width:720px){
+  .io-head{flex-direction:column;align-items:stretch}
+  #j-in,#j-out{min-height:150px}
+}
 #cm{position:absolute;background:#fff;border:1px solid #ddd;border-radius:8px;padding:4px 0;display:none;z-index:50;min-width:170px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
 #cm div{padding:7px 14px;font-size:13px;cursor:pointer;color:#333}
 #cm div:hover{background:#f5f5f5}
@@ -81,7 +96,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
     <button id="b-svg">SVG保存</button>
     <button id="b-png">PNG保存</button>
     <div class="sp"></div>
-    <button id="b-io">JSON / TEXT ▾</button>
+    <button id="b-io">データ ▾</button>
     <div class="sp"></div>
     <button id="b-color-depth">階層色</button>
     <button id="b-color-branch">枝色</button>
@@ -165,15 +180,39 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
   </div>
 
   <div id="io">
-    <div id="io-row">
-      <textarea id="j-in" placeholder="JSONをここに貼り付けてインポート..."></textarea>
-      <textarea id="j-out" placeholder="エクスポート結果..." readonly></textarea>
+    <div class="io-sec">
+      <div class="io-head">
+        <div>
+          <div class="io-ttl">書き出し</div>
+          <div class="io-sub">現在のマップを JSON または TEXT で確認・コピーできます。</div>
+        </div>
+        <div class="io-tabs">
+          <button id="b-exp-json" class="io-tab act" type="button">JSON</button>
+          <button id="b-exp-text" class="io-tab" type="button">TEXT</button>
+        </div>
+      </div>
+      <textarea id="j-out" placeholder="出力結果..." readonly></textarea>
+      <div class="io-actions">
+        <button id="b-out-refresh" type="button">更新</button>
+        <button id="b-cpy" type="button">出力をコピー</button>
+      </div>
     </div>
-    <div id="io-ft">
-      <button id="b-imp">JSONインポート</button>
-      <button id="b-exp-json">JSON出力</button>
-      <button id="b-exp-text">TEXT出力</button>
-      <button id="b-cpy">クリップボードにコピー</button>
+    <div class="io-sec">
+      <div class="io-head">
+        <div>
+          <div class="io-ttl">読み込み</div>
+          <div class="io-sub">JSON を貼り付けて内容を確認してから、現在のマップを置き換えて読み込みます。</div>
+        </div>
+      </div>
+      <textarea id="j-in" placeholder="JSONをここに貼り付けてください"></textarea>
+      <div id="io-status" class="warn">未解析です。JSON を貼り付けて「プレビュー」を押してください。</div>
+      <div class="io-actions">
+        <button id="b-fill-current" type="button">現在のJSONを入力欄へ</button>
+        <button id="b-sample" type="button">サンプル</button>
+        <button id="b-preview" type="button">プレビュー</button>
+        <button id="b-in-clear" type="button">クリア</button>
+        <button id="b-imp" class="primary-btn" type="button">置き換えて読み込む</button>
+      </div>
     </div>
   </div>
 </div>
@@ -263,6 +302,7 @@ let cid=null,epid=null,epc=null,eeid=null;
 let undoStack=[],redoStack=[];
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
+let currentExportKind='json';
 
 const sv=document.getElementById('sv');
 const NL=document.getElementById('NL');
@@ -401,27 +441,218 @@ function deleteNodes(ids){
   edges=edges.filter(e=>!idSet.has(e.from)&&!idSet.has(e.to));
   clearSelection();
 }
-function getSiblingInsertPosition(parentId){
-  const parent=nb(parentId);
-  if(!parent) return {x:0,y:0};
-  const children=edges.filter(e=>e.from===parentId).map(e=>nb(e.to)).filter(Boolean);
-  if(!children.length) return {x:parent.x,y:parent.y+Math.max(96,parent.h+28)};
-  const lowest=children.reduce((acc,n)=>((n.y+n.h/2)>(acc.y+acc.h/2)?n:acc), children[0]);
-  return {x:parent.x,y:lowest.y+Math.max(96,lowest.h+24)};
+function getViewportCenterWorld(){
+  return toS(sv.clientWidth/2, sv.clientHeight/2);
+}
+function makeRect(cx,cy,w,h,margin=0){
+  return {left:cx-w/2-margin,right:cx+w/2+margin,top:cy-h/2-margin,bottom:cy+h/2+margin,cx,cy,w,h};
+}
+function rectsOverlapWorld(a,b){
+  return !(a.right<=b.left || b.right<=a.left || a.bottom<=b.top || b.bottom<=a.top);
+}
+function rectDistance(a,b){
+  const dx=Math.max(0,Math.max(a.left-b.right,b.left-a.right));
+  const dy=Math.max(0,Math.max(a.top-b.bottom,b.top-a.bottom));
+  return Math.hypot(dx,dy);
+}
+function pointToRectDistance(px,py,rect){
+  const dx=Math.max(rect.left-px,0,px-rect.right);
+  const dy=Math.max(rect.top-py,0,py-rect.bottom);
+  return Math.hypot(dx,dy);
+}
+function distancePointToSegment(px,py,x1,y1,x2,y2){
+  const dx=x2-x1, dy=y2-y1;
+  if(dx===0 && dy===0) return Math.hypot(px-x1,py-y1);
+  const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/(dx*dx+dy*dy)));
+  const sx=x1+t*dx, sy=y1+t*dy;
+  return Math.hypot(px-sx,py-sy);
+}
+function orientation(ax,ay,bx,by,cx,cy){
+  const v=(by-ay)*(cx-bx)-(bx-ax)*(cy-by);
+  if(Math.abs(v)<1e-6) return 0;
+  return v>0?1:2;
+}
+function onSegment(ax,ay,bx,by,cx,cy){
+  return bx<=Math.max(ax,cx)+1e-6 && bx>=Math.min(ax,cx)-1e-6 && by<=Math.max(ay,cy)+1e-6 && by>=Math.min(ay,cy)-1e-6;
+}
+function segmentsIntersect(a,b,c,d){
+  const o1=orientation(a.x,a.y,b.x,b.y,c.x,c.y);
+  const o2=orientation(a.x,a.y,b.x,b.y,d.x,d.y);
+  const o3=orientation(c.x,c.y,d.x,d.y,a.x,a.y);
+  const o4=orientation(c.x,c.y,d.x,d.y,b.x,b.y);
+  if(o1!==o2 && o3!==o4) return true;
+  if(o1===0 && onSegment(a.x,a.y,c.x,c.y,b.x,b.y)) return true;
+  if(o2===0 && onSegment(a.x,a.y,d.x,d.y,b.x,b.y)) return true;
+  if(o3===0 && onSegment(c.x,c.y,a.x,a.y,d.x,d.y)) return true;
+  if(o4===0 && onSegment(c.x,c.y,b.x,b.y,d.x,d.y)) return true;
+  return false;
+}
+function segmentIntersectsRect(x1,y1,x2,y2,rect){
+  if(pointToRectDistance(x1,y1,rect)===0 || pointToRectDistance(x2,y2,rect)===0) return true;
+  const p1={x:x1,y:y1}, p2={x:x2,y:y2};
+  const corners=[
+    {x:rect.left,y:rect.top},{x:rect.right,y:rect.top},
+    {x:rect.right,y:rect.bottom},{x:rect.left,y:rect.bottom}
+  ];
+  for(let i=0;i<4;i++){
+    if(segmentsIntersect(p1,p2,corners[i],corners[(i+1)%4])) return true;
+  }
+  return false;
+}
+function distanceSegmentToRect(x1,y1,x2,y2,rect){
+  if(segmentIntersectsRect(x1,y1,x2,y2,rect)) return 0;
+  return Math.min(
+    distancePointToSegment(rect.left,rect.top,x1,y1,x2,y2),
+    distancePointToSegment(rect.right,rect.top,x1,y1,x2,y2),
+    distancePointToSegment(rect.right,rect.bottom,x1,y1,x2,y2),
+    distancePointToSegment(rect.left,rect.bottom,x1,y1,x2,y2),
+    pointToRectDistance(x1,y1,rect),
+    pointToRectDistance(x2,y2,rect)
+  );
+}
+function distanceBetweenSegments(a1,a2,b1,b2){
+  if(segmentsIntersect(a1,a2,b1,b2)) return 0;
+  return Math.min(
+    distancePointToSegment(a1.x,a1.y,b1.x,b1.y,b2.x,b2.y),
+    distancePointToSegment(a2.x,a2.y,b1.x,b1.y,b2.x,b2.y),
+    distancePointToSegment(b1.x,b1.y,a1.x,a1.y,a2.x,a2.y),
+    distancePointToSegment(b2.x,b2.y,a1.x,a1.y,a2.x,a2.y)
+  );
+}
+function getGraphCenter(){
+  if(!nodes.length) return {x:0,y:0};
+  const sum=nodes.reduce((acc,n)=>({x:acc.x+n.x,y:acc.y+n.y}),{x:0,y:0});
+  return {x:sum.x/nodes.length,y:sum.y/nodes.length};
+}
+function getInsertDirectionVectors(parentId=null){
+  const mode=meta.layoutMode||'horizontal';
+  if(mode==='vertical') return [{x:0,y:1},{x:1,y:1},{x:-1,y:1},{x:1,y:0},{x:-1,y:0},{x:0,y:-1}];
+  if(mode==='outline') return [{x:1,y:1},{x:1,y:0},{x:1,y:-1},{x:0,y:1},{x:0,y:-1},{x:-1,y:0}];
+  if(mode==='radial' && parentId && nb(parentId)){
+    const parent=nb(parentId);
+    const center=getGraphCenter();
+    let dx=parent.x-center.x, dy=parent.y-center.y;
+    const len=Math.hypot(dx,dy)||1;
+    dx/=len; dy/=len;
+    const r1={x:dx,y:dy};
+    const r2={x:dx*0.82-dy*0.57,y:dy*0.82+dx*0.57};
+    const r3={x:dx*0.82+dy*0.57,y:dy*0.82-dx*0.57};
+    return [r1,r2,r3,{x:-dy,y:dx},{x:dy,y:-dx},{x:-dx,y:-dy}];
+  }
+  return [{x:1,y:0},{x:1,y:1},{x:1,y:-1},{x:0,y:1},{x:0,y:-1},{x:-1,y:0}];
+}
+function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,anchor=null}={}){
+  const rect=makeRect(cx,cy,templateNode.w,templateNode.h,16);
+  let score=2000-directionRank*65;
+  for(const node of nodes){
+    const nodeRect=makeRect(node.x,node.y,node.w,node.h,10);
+    if(rectsOverlapWorld(rect,nodeRect)) return -Infinity;
+    const dist=rectDistance(rect,nodeRect);
+    if(dist<26) score-=(26-dist)*20;
+    else if(dist<80) score-=(80-dist)*1.6;
+  }
+  for(const edge of edges){
+    const from=nb(edge.from), to=nb(edge.to);
+    if(!from || !to) continue;
+    if(parentId && (edge.from===parentId || edge.to===parentId)) continue;
+    const d=distanceSegmentToRect(from.x,from.y,to.x,to.y,rect);
+    if(d<12) score-=(12-d)*80;
+    else if(d<58) score-=(58-d)*2.6;
+  }
+  if(parentId && nb(parentId)){
+    const parent=nb(parentId);
+    const segmentA={x:parent.x,y:parent.y}, segmentB={x:cx,y:cy};
+    const parentRect=makeRect(parent.x,parent.y,parent.w,parent.h,4);
+    score-=Math.hypot(cx-parent.x,cy-parent.y)*0.18;
+    for(const node of nodes){
+      if(node.id===parentId) continue;
+      const nodeRect=makeRect(node.x,node.y,node.w,node.h,8);
+      if(rectsOverlapWorld(nodeRect,parentRect)) continue;
+      const d=distanceSegmentToRect(parent.x,parent.y,cx,cy,nodeRect);
+      if(d===0) score-=1200;
+      else if(d<16) score-=(16-d)*36;
+    }
+    for(const edge of edges){
+      const from=nb(edge.from), to=nb(edge.to);
+      if(!from || !to) continue;
+      if(edge.from===parentId || edge.to===parentId) continue;
+      const d=distanceBetweenSegments(segmentA,segmentB,{x:from.x,y:from.y},{x:to.x,y:to.y});
+      if(d===0) score-=260;
+      else if(d<28) score-=(28-d)*6;
+    }
+  }
+  if(anchor){
+    score-=Math.hypot(cx-anchor.x,cy-anchor.y)*0.08;
+  }
+  return score;
+}
+function findBestInsertPosition({parentId=null,anchor=null,templateNode}){
+  const baseAnchor=anchor || (parentId && nb(parentId) ? {x:nb(parentId).x,y:nb(parentId).y} : getViewportCenterWorld());
+  const dirs=parentId ? getInsertDirectionVectors(parentId) : [
+    {x:0,y:0},{x:1,y:0},{x:0,y:1},{x:-1,y:0},{x:0,y:-1},
+    {x:1,y:1},{x:-1,y:1},{x:-1,y:-1},{x:1,y:-1}
+  ];
+  const stepX=Math.max(170, templateNode.w+82);
+  const stepY=Math.max(120, templateNode.h+72);
+  const radii=parentId ? [1,1.35,1.75,2.15,2.7] : [0,1,1.45,1.95,2.55,3.2];
+  let best=null;
+  radii.forEach((radius,ri)=>{
+    dirs.forEach((dir,di)=>{
+      const x=baseAnchor.x+dir.x*stepX*radius;
+      const y=baseAnchor.y+dir.y*stepY*radius;
+      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank:di+ri*dirs.length,anchor:baseAnchor});
+      if(!best || score>best.score) best={x,y,score};
+    });
+  });
+  if(best && best.score>-Infinity) return {x:best.x,y:best.y};
+  const center=baseAnchor;
+  for(let ring=1; ring<=12; ring++){
+    const radiusX=stepX*ring*0.85;
+    const radiusY=stepY*ring*0.85;
+    for(let i=0;i<18;i++){
+      const ang=(Math.PI*2*i)/18;
+      const x=center.x+Math.cos(ang)*radiusX;
+      const y=center.y+Math.sin(ang)*radiusY;
+      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank:80+ring*18+i,anchor:center});
+      if(score>-Infinity) return {x,y};
+    }
+  }
+  return {x:center.x+stepX,y:center.y+stepY};
+}
+function createNewNodeDraft(options={}){
+  return normalizeNode({
+    id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',status:options.status||'none',collapsed:false,
+    fitMode:options.fitMode||'shrink',x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
+  });
 }
 function createChildNode(parentId, options={}){
   const parent=nb(parentId);
   if(!parent) return null;
-  const pos=getSiblingInsertPosition(parentId);
+  const draft=createNewNodeDraft({
+    label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...parent.color}
+  });
+  const pos=findBestInsertPosition({parentId,templateNode:draft});
   const newId='n'+(nid++);
   const child=normalizeNode({
-    id:newId,label:options.label||'新規案件',subtext:options.subtext||'',status:options.status||'none',collapsed:false,
-    fitMode:options.fitMode||'shrink',x:pos.x,y:pos.y,color:options.color||{...parent.color}
+    id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    fitMode:draft.fitMode,x:pos.x,y:pos.y,color:draft.color
   });
   nodes.push(child);
   edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
   setSingleSelection(newId);
   return child;
+}
+function createStandaloneNode(options={}){
+  const draft=createNewNodeDraft(options);
+  const pos=findBestInsertPosition({anchor:getViewportCenterWorld(),templateNode:draft});
+  const id='n'+(nid++);
+  const node=normalizeNode({
+    id,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    fitMode:draft.fitMode,x:pos.x,y:pos.y,color:draft.color
+  });
+  nodes.push(node);
+  setSingleSelection(id);
+  return node;
 }
 function parseImportData(raw){
   const cleaned=String(raw||'').trim().replace(/^﻿/,'');
@@ -1273,16 +1504,8 @@ document.getElementById('b-add').addEventListener('click',()=>{
   snapshot();
   const parentId=activeNodeId;
   let node=null;
-  if(parentId && nb(parentId)){
-    node=createChildNode(parentId,{status:'none',fitMode:'shrink'});
-  }else{
-    let nx=(sv.clientWidth/2-vx)/vs;
-    let ny=(sv.clientHeight/2-vy)/vs;
-    const id='n'+(nid++);
-    node=normalizeNode({id,label:'新規案件',subtext:'',status:'none',collapsed:false,fitMode:'shrink',x:nx,y:ny,color:{...PRESETS[nodes.length%PRESETS.length]}});
-    nodes.push(node);
-    setSingleSelection(id);
-  }
+  if(parentId && nb(parentId)) node=createChildNode(parentId,{status:'none',fitMode:'shrink'});
+  else node=createStandaloneNode({status:'none',fitMode:'shrink'});
   draw();
   if(node) openEp(node.id);
 });
@@ -1478,31 +1701,105 @@ document.getElementById('confirm-no').addEventListener('click',()=>{
   document.getElementById('confirm-bar').style.display='none';
 });
 
-document.getElementById('b-io').addEventListener('click',()=>{
-  const a=document.getElementById('io');
-  if(a.classList.contains('open')) a.classList.remove('open');
-  else {a.classList.add('open'); doExp('json');}
-});
-function doExp(kind='json'){
-  if(kind==='text'){
-    document.getElementById('j-out').value=buildOutlineText();
-    return;
-  }
-  document.getElementById('j-out').value=JSON.stringify({
+function buildExportObject(){
+  return {
+    schemaVersion:'1.0',
     meta,
     nodes:nodes.map(n=>({
       id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,
       x:Math.round(n.x),y:Math.round(n.y),color:n.color
     })),
     edges:edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
-  },null,2);
+  };
 }
-document.getElementById('b-exp-json').addEventListener('click',()=>doExp('json'));
-document.getElementById('b-exp-text').addEventListener('click',()=>doExp('text'));
+function getExportString(kind=currentExportKind){
+  if(kind==='text') return buildOutlineText();
+  return JSON.stringify(buildExportObject(),null,2);
+}
+function setExportTab(kind='json'){
+  currentExportKind=kind;
+  document.getElementById('b-exp-json').classList.toggle('act',kind==='json');
+  document.getElementById('b-exp-text').classList.toggle('act',kind==='text');
+  document.getElementById('j-out').value=getExportString(kind);
+}
+function setIoStatus(message,tone='warn'){
+  const box=document.getElementById('io-status');
+  box.textContent=message;
+  box.className='';
+  box.id='io-status';
+  box.classList.add(tone);
+}
+function previewImportText(){
+  const raw=document.getElementById('j-in').value;
+  if(!String(raw||'').trim()){
+    setIoStatus('未解析です。JSON を貼り付けて「プレビュー」を押してください。','warn');
+    return null;
+  }
+  try{
+    const cleaned=String(raw||'').trim().replace(/^﻿/,'');
+    const parsed=JSON.parse(cleaned);
+    const d=parseImportData(raw);
+    const nodesSrc=Array.isArray(parsed)?parsed:(Array.isArray(parsed.nodes)?parsed.nodes:(parsed.data&&Array.isArray(parsed.data.nodes)?parsed.data.nodes:[]));
+    const edgesSrc=Array.isArray(parsed)?[]:(Array.isArray(parsed.edges)?parsed.edges:(parsed.data&&Array.isArray(parsed.data.edges)?parsed.data.edges:[]));
+    const duplicateCount=d.nodes.length-new Set(d.nodes.map(n=>n.id)).size;
+    const droppedEdges=Math.max(0,edgesSrc.length-d.edges.length);
+    const zeroPosCount=d.nodes.filter(n=>n.x===0&&n.y===0).length;
+    const lines=[
+      `ノード: ${d.nodes.length}件 / エッジ: ${d.edges.length}件`,
+      `タイトル: ${d.meta.title||'案件マインドマップ'}`,
+      `レイアウト: ${d.meta.layoutMode||'horizontal'}`
+    ];
+    const warns=[];
+    if(duplicateCount>0) warns.push(`重複ノードID: ${duplicateCount}件`);
+    if(droppedEdges>0) warns.push(`存在しないノードを指すエッジを除外: ${droppedEdges}件`);
+    if(zeroPosCount===d.nodes.length && d.nodes.length>1) warns.push('座標がすべて 0,0 です。読み込み後に自動整列推奨。');
+    if(warns.length) lines.push('注意: '+warns.join(' / '));
+    setIoStatus(lines.join('\n'),warns.length?'warn':'ok');
+    return d;
+  }catch(err){
+    setIoStatus('読み込み不可: '+err.message,'err');
+    return null;
+  }
+}
+document.getElementById('b-io').addEventListener('click',()=>{
+  const a=document.getElementById('io');
+  if(a.classList.contains('open')) a.classList.remove('open');
+  else {
+    a.classList.add('open');
+    setExportTab(currentExportKind||'json');
+    previewImportText();
+  }
+});
+document.getElementById('b-exp-json').addEventListener('click',()=>setExportTab('json'));
+document.getElementById('b-exp-text').addEventListener('click',()=>setExportTab('text'));
+document.getElementById('b-out-refresh').addEventListener('click',()=>setExportTab(currentExportKind));
+document.getElementById('b-preview').addEventListener('click',previewImportText);
+document.getElementById('b-fill-current').addEventListener('click',()=>{
+  document.getElementById('j-in').value=getExportString('json');
+  previewImportText();
+});
+document.getElementById('b-sample').addEventListener('click',()=>{
+  const sample={
+    schemaVersion:'1.0',
+    meta:{title:'サンプルマップ',layoutMode:'horizontal'},
+    nodes:[
+      {id:'n1',label:'中心',subtext:'ここから編集',status:'in_progress',collapsed:false,fitMode:'shrink',x:0,y:0,color:{...PRESETS[0]}},
+      {id:'n2',label:'子ノード',subtext:'補足メモ',status:'none',collapsed:false,fitMode:'shrink',x:220,y:90,color:{...PRESETS[1]}}
+    ],
+    edges:[{id:'e1',from:'n1',to:'n2',label:'関係'}]
+  };
+  document.getElementById('j-in').value=JSON.stringify(sample,null,2);
+  previewImportText();
+});
+document.getElementById('b-in-clear').addEventListener('click',()=>{
+  document.getElementById('j-in').value='';
+  setIoStatus('未解析です。JSON を貼り付けて「プレビュー」を押してください。','warn');
+});
 document.getElementById('b-imp').addEventListener('click',()=>{
   try{
+    const d=previewImportText();
+    if(!d) throw new Error('JSON を確認してください');
     snapshot();
-    const d=parseImportData(document.getElementById('j-in').value);
     nodes=d.nodes;
     edges=d.edges;
     meta={title:d.meta.title||'案件マインドマップ',layoutMode:d.meta.layoutMode||'horizontal'};
@@ -1514,19 +1811,23 @@ document.getElementById('b-imp').addEventListener('click',()=>{
       ...edges.map(e=>parseInt(String(e.id).replace('e',''))||0)
     )+1;
     clearSelection();
+    setExportTab(currentExportKind);
     fitV();
   }catch(err){
+    setIoStatus('読み込みに失敗しました: '+err.message,'err');
     alert('インポートできませんでした: '+err.message);
   }
 });
 document.getElementById('b-cpy').addEventListener('click',()=>{
-  doExp();
-  navigator.clipboard.writeText(document.getElementById('j-out').value).then(()=>{
+  const out=document.getElementById('j-out').value;
+  navigator.clipboard.writeText(out).then(()=>{
     const b=document.getElementById('b-cpy');
+    const prev=b.textContent;
     b.textContent='コピー完了 ✓';
-    setTimeout(()=>b.textContent='クリップボードにコピー',1500);
+    setTimeout(()=>b.textContent=prev,1500);
   });
 });
+document.getElementById('j-in').addEventListener('input',()=>setIoStatus('内容が変わりました。必要なら「プレビュー」で確認してください。','warn'));
 
 document.getElementById('map-title').addEventListener('input',e=>{ meta.title=e.target.value||'案件マインドマップ'; });
 document.getElementById('layout-mode').addEventListener('change',e=>{ meta.layoutMode=e.target.value; });
