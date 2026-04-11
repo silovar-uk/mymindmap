@@ -15,7 +15,7 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 #tb button:disabled{opacity:0.35;cursor:not-allowed}
 #tb input[type="text"],#tb select{font-size:12px;padding:5px 9px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#333;min-width:0}
 #tb input[type="text"]{width:220px}
-#tb select{max-width:140px}
+#tb select{max-width:160px}
 .sp{width:1px;height:20px;background:#e0e0e0;flex-shrink:0}
 #main{flex:1;display:flex;min-height:0;overflow:hidden}
 #cw{flex:1;min-width:0;position:relative;overflow:hidden}
@@ -132,10 +132,12 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
     <button id="b-edge">接続モード</button>
     <div class="sp"></div>
     <select id="layout-mode" title="自動整列パターン">
+      <option value="radial">放射</option>
+      <option value="radial_half">片側放射</option>
+      <option value="radial_fan">扇形</option>
       <option value="horizontal">横ツリー</option>
       <option value="vertical">縦ツリー</option>
-      <option value="outline">アウトライナー</option>
-      <option value="radial">放射</option>
+      <option value="outline">アウトライン</option>
     </select>
     <button id="b-auto">自動整列</button>
     <button id="b-fit">全体表示</button>
@@ -338,7 +340,9 @@ const NODE_H_MIN=62;
 const SUBTEXT_MAX_LINES=2;
 const TITLE_WRAP_MAX_LINES=3;
 
-let meta={title:'案件マインドマップ',layoutMode:'horizontal'};
+const LAYOUT_LABELS={radial:'放射',radial_half:'片側放射',radial_fan:'扇形',horizontal:'横ツリー',vertical:'縦ツリー',outline:'アウトライン'};
+
+let meta={title:'案件マインドマップ',layoutMode:'radial'};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -442,7 +446,7 @@ function snapshot(){
 function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'horizontal'};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial'};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   nid=payload.nid||Math.max(
@@ -779,7 +783,7 @@ function parseImportData(raw){
   const edgesNorm=edgesSrc.map((e,i)=>normalizeEdge({id:e.id||('e'+(i+1)),from:e.from,to:e.to,label:e.label||e.text||''})).filter(e=>nodeIdSet.has(e.from)&&nodeIdSet.has(e.to));
   const metaNorm={
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
-    layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'horizontal'
+    layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial'
   };
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm};
 }
@@ -879,49 +883,149 @@ function layoutOutlineVisible(){
   }
   (roots.length?roots:[visibleNodes[0]]).forEach(r=>walk(r.id||r,0));
 }
-function layoutRadialVisible(){
+function buildVisibleTreeForest(){
   const visibleNodes=getVisibleNodes();
   const visibleEdges=getVisibleEdges();
-  if(!visibleNodes.length) return;
+  if(!visibleNodes.length) return {visibleNodes:[],visibleEdges:[],roots:[],treeChildren:{},weights:{},depth:{}};
   const ids=new Set(visibleNodes.map(n=>n.id));
-  const adj={}, indeg={}, depth={};
-  visibleNodes.forEach(n=>{ adj[n.id]=[]; indeg[n.id]=0; updateNodeMetrics(n); });
-  visibleEdges.forEach(e=>{ if(ids.has(e.from)&&ids.has(e.to)){ adj[e.from].push(e.to); indeg[e.to]++; } });
-  const roots=visibleNodes.filter(n=>indeg[n.id]===0);
-  const q=(roots.length?roots:[visibleNodes[0]]).map(n=>({id:n.id,d:0}));
-  const seen=new Set();
-  while(q.length){
-    const {id,d}=q.shift();
-    if(seen.has(id)) continue;
-    seen.add(id); depth[id]=d;
-    (adj[id]||[]).forEach(ch=>q.push({id:ch,d:d+1}));
+  const childMap={}, indeg={};
+  visibleNodes.forEach(n=>{ childMap[n.id]=[]; indeg[n.id]=0; updateNodeMetrics(n); });
+  visibleEdges.forEach(e=>{ if(ids.has(e.from)&&ids.has(e.to)){ childMap[e.from].push(e.to); indeg[e.to]++; } });
+  Object.keys(childMap).forEach(id=>childMap[id].sort((a,b)=>{ const na=nb(a), nb2=nb(b); return (na?.y||0)-(nb2?.y||0) || (na?.x||0)-(nb2?.x||0); }));
+  const orderedVisible=visibleNodes.slice().sort((a,b)=>a.y-b.y||a.x-b.x);
+  const initialRoots=orderedVisible.filter(n=>indeg[n.id]===0).map(n=>n.id);
+  const roots=[];
+  const treeChildren={};
+  const depth={};
+  visibleNodes.forEach(n=>treeChildren[n.id]=[]);
+  const visited=new Set();
+  function assignTree(rootId){
+    const queue=[{id:rootId,d:0}];
+    while(queue.length){
+      const {id,d}=queue.shift();
+      if(visited.has(id)) continue;
+      visited.add(id);
+      depth[id]=d;
+      (childMap[id]||[]).forEach(ch=>{
+        if(!visited.has(ch)){
+          treeChildren[id].push(ch);
+          queue.push({id:ch,d:d+1});
+        }
+      });
+    }
   }
-  visibleNodes.forEach(n=>{ if(depth[n.id]===undefined) depth[n.id]=0; });
-  const groups={};
-  visibleNodes.forEach(n=>{ const d=depth[n.id]; (groups[d]||(groups[d]=[])).push(n.id); });
-  Object.keys(groups).forEach(k=>groups[k].sort((a,b)=>{ const na=nb(a), nb2=nb(b); return (na?.y||0)-(nb2?.y||0) || (na?.x||0)-(nb2?.x||0); }));
-  Object.entries(groups).forEach(([d,ids2])=>{
-    const depthNum=Number(d);
-    const radius=depthNum*180;
-    if(depthNum===0){ const node=nb(ids2[0]); if(node){ node.x=0; node.y=0; } return; }
-    ids2.forEach((id,idx)=>{
-      const angle=(-Math.PI/2)+(Math.PI*2*idx/ids2.length);
-      const node=nb(id); if(!node) return;
-      node.x=Math.cos(angle)*radius;
-      node.y=Math.sin(angle)*radius;
-    });
+  (initialRoots.length?initialRoots:[orderedVisible[0]?.id]).filter(Boolean).forEach(rootId=>{
+    if(!visited.has(rootId)){
+      roots.push(rootId);
+      assignTree(rootId);
+    }
   });
+  orderedVisible.forEach(node=>{
+    if(!visited.has(node.id)){
+      roots.push(node.id);
+      assignTree(node.id);
+    }
+  });
+  const weights={};
+  function calcWeight(id){
+    if(weights[id]!=null) return weights[id];
+    let sum=1;
+    (treeChildren[id]||[]).forEach(ch=>{ sum+=calcWeight(ch); });
+    weights[id]=sum;
+    return sum;
+  }
+  roots.forEach(calcWeight);
+  return {visibleNodes,visibleEdges,roots,treeChildren,weights,depth};
+}
+function layoutRadialVisible(options={}){
+  const {visibleNodes,roots,treeChildren,weights,depth}=buildVisibleTreeForest();
+  if(!visibleNodes.length) return;
+  const angleStart=options.angleStart ?? (-Math.PI/2);
+  const angleEnd=options.angleEnd ?? (Math.PI*1.5);
+  const targetX=options.targetX ?? 220;
+  const targetY=options.targetY ?? 180;
+  const maxNodeSize=Math.max(...visibleNodes.map(n=>Math.max(n.w,n.h)));
+  const radiusStep=options.radiusStep ?? Math.max(180,maxNodeSize+96);
+  const rootRadius=options.rootRadius ?? (roots.length>1 ? Math.max(92,maxNodeSize*0.92) : 0);
+  const totalRootWeight=roots.reduce((sum,id)=>sum+(weights[id]||1),0) || roots.length || 1;
+
+  function placeSubtree(id,depthLevel,startAngle,endAngle,isRoot=false){
+    const node=nb(id); if(!node) return;
+    const angle=(startAngle+endAngle)/2;
+    const radius=(roots.length===1 && isRoot) ? 0 : (rootRadius + depthLevel*radiusStep);
+    node.x=Math.cos(angle)*radius;
+    node.y=Math.sin(angle)*radius;
+    const kids=(treeChildren[id]||[]);
+    if(!kids.length) return;
+    const total=kids.reduce((sum,ch)=>sum+(weights[ch]||1),0) || kids.length;
+    let cursor=startAngle;
+    kids.forEach((ch,idx)=>{
+      const share=(endAngle-startAngle)*((weights[ch]||1)/total);
+      const next=idx===kids.length-1 ? endAngle : cursor+share;
+      placeSubtree(ch,depthLevel+1,cursor,next,false);
+      cursor=next;
+    });
+  }
+
+  if(roots.length===1){
+    const rootId=roots[0];
+    const rootNode=nb(rootId);
+    if(rootNode){ rootNode.x=0; rootNode.y=0; }
+    const kids=treeChildren[rootId]||[];
+    if(kids.length){
+      const total=kids.reduce((sum,id)=>sum+(weights[id]||1),0) || kids.length;
+      let cursor=angleStart;
+      kids.forEach((ch,idx)=>{
+        const share=(angleEnd-angleStart)*((weights[ch]||1)/total);
+        const next=idx===kids.length-1 ? angleEnd : cursor+share;
+        placeSubtree(ch,1,cursor,next,false);
+        cursor=next;
+      });
+    }
+  }else{
+    let cursor=angleStart;
+    roots.forEach((rootId,idx)=>{
+      const share=(angleEnd-angleStart)*((weights[rootId]||1)/totalRootWeight);
+      const next=idx===roots.length-1 ? angleEnd : cursor+share;
+      placeSubtree(rootId,0,cursor,next,true);
+      cursor=next;
+    });
+  }
+
+  const levels={};
+  visibleNodes.forEach(node=>{
+    const d=depth[node.id]||0;
+    (levels[d]||(levels[d]=[])).push(node);
+  });
+  Object.entries(levels).forEach(([level,list])=>{
+    if(Number(level)===0) return;
+    list.sort((a,b)=>Math.atan2(a.y,a.x)-Math.atan2(b.y,b.x));
+    for(let i=1;i<list.length;i++){
+      const prev=list[i-1], cur=list[i];
+      const minGap=(prev.w+cur.w)/2+44;
+      const dist=Math.hypot(cur.x-prev.x,cur.y-prev.y);
+      if(dist<minGap){
+        const bump=minGap-dist;
+        const angle=Math.atan2(cur.y,cur.x);
+        cur.x+=Math.cos(angle)*bump;
+        cur.y+=Math.sin(angle)*bump;
+      }
+    }
+  });
+
   const xs=visibleNodes.map(n=>n.x), ys=visibleNodes.map(n=>n.y);
   const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
   const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
-  visibleNodes.forEach(n=>{ n.x=n.x-cx+200; n.y=n.y-cy+180; });
+  visibleNodes.forEach(n=>{ n.x=n.x-cx+targetX; n.y=n.y-cy+targetY; });
 }
 function applyAutoLayout(mode){
-  meta.layoutMode=mode||meta.layoutMode||'horizontal';
+  meta.layoutMode=mode||meta.layoutMode||'radial';
   document.getElementById('layout-mode').value=meta.layoutMode;
   if(meta.layoutMode==='vertical') layoutTreeVisible('vertical');
   else if(meta.layoutMode==='outline') layoutOutlineVisible();
-  else if(meta.layoutMode==='radial') layoutRadialVisible();
+  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:150,targetY:180});
+  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:120,targetY:180});
+  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:220,targetY:180});
   else layoutTreeVisible('horizontal');
 }
 function getNodeTitleLayout(n){
@@ -1031,6 +1135,9 @@ function getEdgeSummary(edgeId){
   const from=nb(edge.from)?.label||edge.from;
   const to=nb(edge.to)?.label||edge.to;
   return `${shortenText(from,10)} → ${shortenText(to,10)}`;
+}
+function getLayoutLabel(mode){
+  return LAYOUT_LABELS[mode]||mode||'放射';
 }
 function updateHint(){
   if(!hintEl) return;
@@ -1844,7 +1951,7 @@ document.getElementById('b-auto').addEventListener('click',()=>{
   snapshot();
   applyAutoLayout(document.getElementById('layout-mode').value);
   fitV();
-  showToast('自動整列しました');
+  showToast(getLayoutLabel(meta.layoutMode)+'で自動整列しました');
 });
 function fitV(){
   const visibleNodes=getVisibleNodes();
@@ -2076,7 +2183,7 @@ function previewImportText(){
     const lines=[
       `ノード: ${d.nodes.length}件 / エッジ: ${d.edges.length}件`,
       `タイトル: ${d.meta.title||'案件マインドマップ'}`,
-      `レイアウト: ${d.meta.layoutMode||'horizontal'}`
+      `レイアウト: ${getLayoutLabel(d.meta.layoutMode||'radial')}`
     ];
     const warns=[];
     if(duplicateCount>0) warns.push(`重複ノードID: ${duplicateCount}件`);
@@ -2190,7 +2297,7 @@ document.getElementById('b-imp').addEventListener('click',()=>{
     snapshot();
     nodes=d.nodes;
     edges=d.edges;
-    meta={title:d.meta.title||'案件マインドマップ',layoutMode:d.meta.layoutMode||'horizontal'};
+    meta={title:d.meta.title||'案件マインドマップ',layoutMode:d.meta.layoutMode||'radial'};
     document.getElementById('map-title').value=meta.title;
     document.getElementById('layout-mode').value=meta.layoutMode;
     nid=Math.max(
