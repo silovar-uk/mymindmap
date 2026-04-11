@@ -1193,8 +1193,10 @@ function openEep(id, clientX, clientY){
   eep.style.display='block';
   setTimeout(()=>{eepl.focus();eepl.select();},30);
 }
-function commitNodeEdit(){
-  const n=nb(epid); if(!n) return;
+function tryCommitNodeEdit(){
+  if(ep.style.display!=='block' || !epid) return true;
+  const n=nb(epid);
+  if(!n){ closeEp(); return true; }
   snapshot();
   n.label=epl.value.trim()||'新規案件';
   n.subtext=eps.value.trim();
@@ -1214,18 +1216,24 @@ function commitNodeEdit(){
   }
   closeEp();
   draw();
+  return true;
 }
-function commitEdgeEdit(){
-  const e=eb(eeid); if(!e) return;
+function commitNodeEdit(){
+  return tryCommitNodeEdit();
+}
+function tryCommitEdgeEdit(){
+  if(eep.style.display!=='block' || !eeid) return true;
+  const e=eb(eeid);
+  if(!e){ closeEep(); return true; }
   const nextFrom=eepFrom.value;
   const nextTo=eepTo.value;
   if(!nextFrom || !nextTo){
     alert('始点と終点を選択してください。');
-    return;
+    return false;
   }
   if(nextFrom===nextTo){
     alert('始点と終点は別のノードを選択してください。');
-    return;
+    return false;
   }
   snapshot();
   e.label=eepl.value.trim();
@@ -1233,9 +1241,27 @@ function commitEdgeEdit(){
   e.to=nextTo;
   closeEep();
   draw();
+  return true;
+}
+function commitEdgeEdit(){
+  return tryCommitEdgeEdit();
+}
+function flushOpenEditors(target){
+  if(ep.style.display==='block' && !ep.contains(target)){
+    if(!tryCommitNodeEdit()) return false;
+  }
+  if(eep.style.display==='block' && !eep.contains(target)){
+    if(!tryCommitEdgeEdit()) return false;
+  }
+  return true;
 }
 
 NL.addEventListener('mousedown',e=>{
+  if(!flushOpenEditors(e.target)){
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   const toggle=e.target.closest('[data-action="toggle-collapse"]');
   if(toggle){
     e.stopPropagation();
@@ -1302,6 +1328,11 @@ NL.addEventListener('mousemove',e=>{
 NL.addEventListener('mouseleave',hideTooltip);
 
 NL.addEventListener('contextmenu',e=>{
+  if(!flushOpenEditors(e.target)){
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   const g=e.target.closest('[data-id]');
   if(!g) return;
   e.preventDefault(); e.stopPropagation();
@@ -1318,6 +1349,11 @@ NL.addEventListener('contextmenu',e=>{
 });
 
 EL.addEventListener('mousedown',e=>{
+  if(!flushOpenEditors(e.target)){
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   const g=e.target.closest('[data-eid]');
   if(!g) return;
   e.stopPropagation();
@@ -1337,6 +1373,11 @@ EL.addEventListener('mousedown',e=>{
   draw();
 });
 EL.addEventListener('contextmenu',e=>{
+  if(!flushOpenEditors(e.target)){
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   const g=e.target.closest('[data-eid]');
   if(!g) return;
   e.preventDefault();
@@ -1349,6 +1390,11 @@ EL.addEventListener('contextmenu',e=>{
 });
 
 sv.addEventListener('mousedown',e=>{
+  if(!flushOpenEditors(e.target)){
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   if(e.button!==0) return;
   const isBlank=!e.target.closest('[data-id]') && !e.target.closest('[data-eid]');
   if(!isBlank) return;
@@ -1443,9 +1489,8 @@ sv.addEventListener('wheel',e=>{
   applyT();
 },{passive:false});
 document.addEventListener('mousedown',e=>{
+  if(!flushOpenEditors(e.target)) return;
   if(!cm.contains(e.target)) cm.style.display='none';
-  if(ep.style.display==='block' && !ep.contains(e.target) && e.target.closest('[data-id]')==null && !e.target.closest('#c-edit')) closeEp();
-  if(eep.style.display==='block' && !eep.contains(e.target) && e.target.closest('[data-eid]')==null) closeEep();
 });
 
 document.getElementById('c-edit').addEventListener('mousedown',e=>{
