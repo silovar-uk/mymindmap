@@ -8,15 +8,35 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f3;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;padding:0;color:#222;overflow:hidden}
 #app{display:flex;flex-direction:column;width:100vw;height:100vh;background:#fff;overflow:hidden}
-#tb{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #e8e8e8;flex-shrink:0;flex-wrap:wrap;background:#fff}
-#tb button{font-size:12px;padding:4px 10px;border:1px solid #ccc;border-radius:6px;background:transparent;color:#333;cursor:pointer}
-#tb button:hover:not(:disabled){background:#f0f0f0}
-#tb button.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+#tb{display:flex;align-items:flex-end;gap:12px;padding:10px 14px;border-bottom:1px solid #e8e8e8;flex-shrink:0;flex-wrap:wrap;background:#fff}
+#tb button{font-size:12px;padding:6px 11px;border:1px solid #d0d7e2;border-radius:10px;background:#fff;color:#334155;cursor:pointer;line-height:1.25;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease}
+#tb button:hover:not(:disabled){background:#f8fafc;border-color:#c2cbd8}
+#tb button.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
 #tb button:disabled{opacity:0.35;cursor:not-allowed}
-#tb input[type="text"],#tb select{font-size:12px;padding:5px 9px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#333;min-width:0}
-#tb input[type="text"]{width:220px}
-#tb select{max-width:160px}
-.sp{width:1px;height:20px;background:#e0e0e0;flex-shrink:0}
+#tb input[type="text"],#tb select{font-size:12px;padding:7px 10px;border:1px solid #d0d7e2;border-radius:10px;background:#fff;color:#0f172a;min-width:0;line-height:1.2}
+#tb input[type="text"]{width:260px;font-weight:600}
+#tb select{min-width:188px;max-width:188px}
+.tb-group{display:flex;flex-direction:column;gap:5px;padding-right:12px;border-right:1px solid #eef2f7;min-height:52px;justify-content:flex-end}
+.tb-group:last-child{border-right:none;padding-right:0}
+.tb-group-title{min-width:270px}
+.tb-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tb-stack{display:flex;flex-direction:column;gap:5px}
+.tb-label{font-size:11px;font-weight:700;color:#64748b;line-height:1.1;letter-spacing:.01em}
+#tb button.primary-action{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;font-weight:700}
+#tb button.secondary-action{background:#f8fafc}
+#tb button.danger-action{color:#dc2626;border-color:#fca5a5;background:#fff7f7}
+@media (max-width:1100px){
+  #tb{gap:10px;padding:10px 12px}
+  .tb-group{border-right:none;padding-right:0;min-height:auto}
+  .tb-group-title{flex:1 1 280px}
+  .tb-group:not(.tb-group-title){flex:1 1 320px}
+  #tb select{min-width:170px;max-width:100%}
+}
+@media (max-width:720px){
+  #tb{padding:10px}
+  #tb input[type="text"]{width:100%}
+  .tb-group,.tb-group-title{flex:1 1 100%}
+}
 #main{flex:1;display:flex;min-height:0;overflow:hidden}
 #cw{flex:1;min-width:0;position:relative;overflow:hidden}
 svg{width:100%;height:100%;display:block;background:#fafafa}
@@ -121,41 +141,69 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 <body>
 <div id="app">
   <div id="tb">
-    <button id="b-undo">↩ 戻る</button>
-    <button id="b-redo">↪ やり直し</button>
-    <div class="sp"></div>
-    <input id="map-title" type="text" placeholder="マインドマップタイトル"/>
-    <div class="sp"></div>
-    <button id="b-add">＋ ノード追加</button>
-    <div class="sp"></div>
-    <button id="b-sel" class="act">選択モード</button>
-    <button id="b-edge">接続モード</button>
-    <div class="sp"></div>
-    <select id="layout-mode" title="自動整列パターン">
-      <option value="radial">放射</option>
-      <option value="radial_half">片側放射</option>
-      <option value="radial_fan">扇形</option>
-      <option value="horizontal">横ツリー</option>
-      <option value="vertical">縦ツリー</option>
-      <option value="outline">アウトライン</option>
-    </select>
-    <button id="b-auto">自動整列</button>
-    <button id="b-fit">全体表示</button>
-    <div class="sp"></div>
-    <button id="b-svg">SVG保存</button>
-    <button id="b-png">PNG保存</button>
-    <div class="sp"></div>
-    <button id="b-io">データ ▸</button>
-    <div class="sp"></div>
-    <button id="b-color-depth">階層色</button>
-    <button id="b-color-branch">枝色</button>
-    <button id="b-help">？ 使い方</button>
-    <button id="b-clear" style="color:#dc2626;border-color:#fca5a5">全削除</button>
+    <div class="tb-group tb-group-title">
+      <div class="tb-stack">
+        <label class="tb-label" for="map-title">マップ名</label>
+        <input id="map-title" type="text" placeholder="例：春施策の整理"/>
+      </div>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">作る・つなぐ</span>
+      <div class="tb-row">
+        <button id="b-add" class="primary-action">＋ ノードを追加</button>
+        <button id="b-sel" class="act">選ぶ</button>
+        <button id="b-edge">線をつなぐ</button>
+      </div>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">並びを整える</span>
+      <div class="tb-row">
+        <select id="layout-mode" title="並び方を選ぶ">
+          <option value="radial">放射に広げる</option>
+          <option value="radial_half">右に広げる</option>
+          <option value="radial_fan">扇形に広げる</option>
+          <option value="horizontal">横に並べる</option>
+          <option value="vertical">縦に並べる</option>
+          <option value="outline">リストっぽく並べる</option>
+        </select>
+        <button id="b-auto" class="primary-action">整える</button>
+        <button id="b-fit">全体に戻す</button>
+      </div>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">確認・共有</span>
+      <div class="tb-row">
+        <button id="b-undo">戻す</button>
+        <button id="b-redo">やり直す</button>
+        <button id="b-io" class="secondary-action">データ</button>
+        <button id="b-help" class="secondary-action">使い方</button>
+      </div>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">見た目・保存</span>
+      <div class="tb-row">
+        <button id="b-color-depth">ノードを色分け</button>
+        <button id="b-color-branch">線を色分け</button>
+        <button id="b-svg">SVGで保存</button>
+        <button id="b-png">PNGで保存</button>
+      </div>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">危険な操作</span>
+      <div class="tb-row">
+        <button id="b-clear" class="danger-action">全部消す</button>
+      </div>
+    </div>
   </div>
 
   <div id="confirm-bar" style="display:none;align-items:center;gap:10px;padding:6px 14px;background:#fff3f3;border-bottom:1px solid #fca5a5;font-size:13px;color:#dc2626;flex-shrink:0">
-    本当にすべて削除してサンプル1件に戻しますか？
-    <button id="confirm-yes" style="font-size:12px;padding:3px 12px;border:1px solid #dc2626;border-radius:6px;background:#fee2e2;color:#dc2626;cursor:pointer">削除する</button>
+    全部消しますか？ 今のマップは消えて、サンプル1件に戻ります。
+    <button id="confirm-yes" style="font-size:12px;padding:3px 12px;border:1px solid #dc2626;border-radius:6px;background:#fee2e2;color:#dc2626;cursor:pointer">全部消す</button>
     <button id="confirm-no" style="font-size:12px;padding:3px 12px;border:1px solid #ccc;border-radius:6px;background:transparent;cursor:pointer">キャンセル</button>
   </div>
 
@@ -175,53 +223,53 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       <div id="c-child">子ノードを追加</div>
       <div id="c-toggle">折りたたみ / 展開</div>
       <hr>
-      <div id="c-del" style="color:#dc2626">削除</div>
+      <div id="c-del" style="color:#dc2626" >消す</div>
     </div>
 
     <div id="ep" class="panel">
-      <label>タイトル</label>
+      <label>名前</label>
       <input id="ep-lbl" type="text" autocomplete="off" spellcheck="false"/>
-      <label>サブテキスト</label>
-      <textarea id="ep-sub" placeholder="1〜2行の補足メモ"></textarea>
-      <label>ステータス</label>
+      <label>補足</label>
+      <textarea id="ep-sub" placeholder="補足を入力"></textarea>
+      <label>状態</label>
       <select id="ep-status">
-        <option value="none">なし</option>
+        <option value="none">設定しない</option>
         <option value="in_progress">進行中</option>
         <option value="done">完了</option>
-        <option value="paused">停止</option>
+        <option value="paused">保留</option>
       </select>
-      <label>文字の収め方</label>
+      <label>文字の表示</label>
       <select id="ep-fitmode">
-        <option value="shrink">小さくして収める</option>
-        <option value="wrap">折り返して収める</option>
+        <option value="shrink">小さくして表示</option>
+        <option value="wrap">折り返して表示</option>
       </select>
-      <label>プリセット色</label>
+      <label>色</label>
       <div class="swr" id="ep-sw"></div>
       <div class="cr">
-        <label style="margin:0;flex-shrink:0">カスタム色</label>
+        <label style="margin:0;flex-shrink:0">好きな色</label>
         <input id="ep-pick" type="color"/>
         <span id="ep-hex"></span>
       </div>
-      <div class="mini-note">複数選択中は、色とステータスをまとめて反映します。</div>
+      <div class="mini-note">複数選択中は、色と状態をまとめて変えます。</div>
       <div class="epft">
         <button id="ep-cn">キャンセル</button>
-        <button id="ep-ok" class="primary-btn">確定</button>
+        <button id="ep-ok" class="primary-btn" >保存</button>
       </div>
     </div>
 
     <div id="eep" class="panel" style="width:270px">
-      <label>エッジラベル</label>
+      <label>線の名前</label>
       <input id="eep-lbl" type="text" autocomplete="off" spellcheck="false" placeholder="例: 発注 / 承認待ち"/>
-      <label>始点ノード</label>
+      <label>どこから</label>
       <select id="eep-from"></select>
-      <label>終点ノード</label>
+      <label>どこへ</label>
       <select id="eep-to"></select>
-      <div class="mini-note">iframe内などでダブルクリックが安定しない場合は、矢印を右クリックして編集できます。接続モードでは、先にクリックしたノード→後にクリックしたノードの向きになります。</div>
+      <div class="mini-note">iframe内などでダブルクリックが安定しない場合は、矢印を右クリックして編集できます。「線をつなぐ」では、先にクリックしたノード→後にクリックしたノードの向きになります。</div>
       <div class="epft">
-        <button id="eep-rev">向きを反転</button>
-        <button id="eep-clear">クリア</button>
+        <button id="eep-rev">向きを入れ替える</button>
+        <button id="eep-clear">空にする</button>
         <button id="eep-cn">キャンセル</button>
-        <button id="eep-ok" class="primary-btn">確定</button>
+        <button id="eep-ok" class="primary-btn" >保存</button>
       </div>
     </div>
 
@@ -229,33 +277,33 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
     <div id="sel-box"></div>
 
     <div id="hud">
-      <div id="mode-chip" class="hud-chip select"><span class="dot"></span><strong>選択モード</strong><span>ノードを選択・移動できます</span></div>
-      <div id="selection-chip" class="hud-chip"><strong>ズーム 100%</strong><span>未選択</span></div>
+      <div id="mode-chip" class="hud-chip select"><span class="dot"></span><strong>選ぶ</strong><span>ノードを選んだり動かしたりできます</span></div>
+      <div id="selection-chip" class="hud-chip"><strong>表示 100%</strong><span>何も選んでいません</span></div>
     </div>
     <div id="quickbar" aria-hidden="true">
       <button id="qb-edit" class="primary" type="button">編集</button>
       <button id="qb-child" type="button">子を追加</button>
-      <button id="qb-connect" type="button">接続</button>
-      <button id="qb-fit" type="button">全体表示</button>
-      <button id="qb-delete" class="danger" type="button">削除</button>
+      <button id="qb-connect" type="button" >つなぐ</button>
+      <button id="qb-fit" type="button" >全体に戻す</button>
+      <button id="qb-delete" class="danger" type="button" >消す</button>
     </div>
     <div id="toast" aria-live="polite"></div>
     <div id="help-backdrop" aria-hidden="true">
       <div id="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
-        <h2 id="help-title">案件マインドマップの使い方</h2>
-        <p>最初は「追加 → 編集 → 接続 → 自動整列」の順がいちばん使いやすいです。ノードが増えても、選択状態・モード・ズームを左上で確認できます。</p>
+        <h2 id="help-title">使い方</h2>
+        <p>最初は「追加 → 編集 → 線をつなぐ → 整える」の順がいちばん使いやすいです。左上の表示で、今の状態やズーム率をすぐ確認できます。</p>
         <div class="help-grid">
           <div class="help-card">
-            <h3>まずやること</h3>
+            <h3>最初にやること</h3>
             <ul>
-              <li>「＋ ノード追加」で考えたい要素を置く</li>
+              <li>「＋ ノードを追加」で考えたい要素を置く</li>
               <li>Enter またはダブルクリックで内容を編集する</li>
-              <li>接続モードに切り替えて、始点 → 終点の順にクリックする</li>
-              <li>散らかったら「自動整列」か「全体表示」を使う</li>
+              <li>「線をつなぐ」にして、始点 → 終点の順にクリックする</li>
+              <li>散らかったら「整える」か「全体に戻す」を使う</li>
             </ul>
           </div>
           <div class="help-card">
-            <h3>密集したときのコツ</h3>
+            <h3>見づらくなったときのコツ</h3>
             <ul>
               <li>ズームアウト中は補足やステータスを自動で間引きます</li>
               <li>複数選択は Ctrl+クリック、または Shift+ドラッグ</li>
@@ -265,51 +313,51 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
           </div>
         </div>
         <div class="help-shortcuts">
-          <div><span>新規ノード追加</span><kbd>N</kbd></div>
-          <div><span>接続モード切替</span><kbd>E</kbd></div>
-          <div><span>自動整列</span><kbd>A</kbd></div>
-          <div><span>全体表示</span><kbd>F</kbd></div>
+          <div><span>ノードを追加</span><kbd>N</kbd></div>
+          <div><span>線をつなぐ</span><kbd>E</kbd></div>
+          <div><span>整える</span><kbd>A</kbd></div>
+          <div><span >全体に戻す</span><kbd>F</kbd></div>
           <div><span>編集を開く</span><kbd>Enter</kbd></div>
           <div><span>子ノード追加</span><kbd>Tab</kbd></div>
           <div><span>元に戻す / やり直し</span><kbd>Ctrl/Cmd+Z</kbd></div>
-          <div><span>このヘルプ</span><kbd>?</kbd></div>
+          <div><span>使い方を開く</span><kbd>?</kbd></div>
         </div>
         <div class="epft" style="margin-top:16px">
           <button id="help-close" class="primary-btn" type="button">閉じる</button>
         </div>
       </div>
     </div>
-    <div id="hint">ノード編集はダブルクリック、または右クリック→「ノードを編集」 / Ctrl+クリックで複数選択 / 空白ドラッグで移動 / Shift+ドラッグで矩形選択 / Enterでも編集を開けます<br>矢印の文言は矢印をダブルクリック、または右クリックして設定 / 矢印の向きは接続モードで始点→終点の順にクリック、または矢印編集で始点・終点を選び直すか「向きを反転」で変更</div>
+    <div id="hint">ノードを追加して、名前を入れて、必要なら線でつなぎます。迷ったら「整える」か「全体に戻す」を使ってください。</div>
   </div>
 
   <div id="io-wrap">
-    <button id="b-io-side" type="button" aria-label="データの開閉">データ ▸</button>
+    <button id="b-io-side" type="button" aria-label="データの開閉">データ</button>
     <div id="io">
       <div class="io-panel">
         <div class="io-head">
           <div>
             <div class="io-ttl">データ</div>
-            <div class="io-sub">書き出しと読み込みをこの画面でまとめて扱えます。</div>
+            <div class="io-sub">この画面で、書き出しと読み込みができます。</div>
           </div>
           <div class="io-head-actions">
             <div class="io-tabs">
               <button id="b-exp-json" class="io-tab act" type="button">JSON</button>
-              <button id="b-exp-text" class="io-tab" type="button">TEXT</button>
+              <button id="b-exp-text" class="io-tab" type="button">テキスト</button>
             </div>
             <button id="b-io-inline" class="io-mini" type="button">閉じる</button>
           </div>
         </div>
 
-        <label class="io-label" for="j-io">データ内容</label>
-        <textarea id="j-io" placeholder="JSONをここに貼り付けるか、［更新］で現在の内容を書き出してください"></textarea>
-        <div id="io-status" class="warn">JSON を貼り付けるか、「更新」で現在の内容を表示してください。</div>
+        <label class="io-label" for="j-io">内容</label>
+        <textarea id="j-io" placeholder="JSONを貼り付けるか、［表示］で今の内容を表示します"></textarea>
+        <div id="io-status" class="warn">JSONを貼り付けるか、「表示」で今の内容を確認してください。</div>
         <div class="io-actions">
-          <button id="b-out-refresh" type="button">更新</button>
-          <button id="b-cpy" type="button">表示内容をコピー</button>
-          <button id="b-sample" type="button">サンプル</button>
-          <button id="b-preview" type="button">プレビュー</button>
-          <button id="b-in-clear" type="button">クリア</button>
-          <button id="b-imp" class="primary-btn" type="button">置き換えて読み込む</button>
+          <button id="b-out-refresh" type="button">表示</button>
+          <button id="b-cpy" type="button">コピー</button>
+          <button id="b-sample" type="button">サンプルを入れる</button>
+          <button id="b-preview" type="button">確認</button>
+          <button id="b-in-clear" type="button">空にする</button>
+          <button id="b-imp" class="primary-btn" type="button">今のマップを置き換える</button>
         </div>
       </div>
     </div>
@@ -340,7 +388,7 @@ const NODE_H_MIN=62;
 const SUBTEXT_MAX_LINES=2;
 const TITLE_WRAP_MAX_LINES=3;
 
-const LAYOUT_LABELS={radial:'放射',radial_half:'片側放射',radial_fan:'扇形',horizontal:'横ツリー',vertical:'縦ツリー',outline:'アウトライン'};
+const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
 let meta={title:'案件マインドマップ',layoutMode:'radial'};
 
@@ -944,15 +992,18 @@ function layoutRadialVisible(options={}){
   const angleEnd=options.angleEnd ?? (Math.PI*1.5);
   const targetX=options.targetX ?? 220;
   const targetY=options.targetY ?? 180;
+  const viewW=sv.clientWidth||1200;
+  const viewH=sv.clientHeight||760;
   const maxNodeSize=Math.max(...visibleNodes.map(n=>Math.max(n.w,n.h)));
-  const radiusStep=options.radiusStep ?? Math.max(180,maxNodeSize+96);
-  const rootRadius=options.rootRadius ?? (roots.length>1 ? Math.max(92,maxNodeSize*0.92) : 0);
+  const radiusStep=options.radiusStep ?? Math.max(120,Math.min(176,maxNodeSize+48));
+  const rootRadius=options.rootRadius ?? (roots.length>1 ? Math.max(52,Math.min(92,maxNodeSize*0.72)) : 0);
   const totalRootWeight=roots.reduce((sum,id)=>sum+(weights[id]||1),0) || roots.length || 1;
 
   function placeSubtree(id,depthLevel,startAngle,endAngle,isRoot=false){
     const node=nb(id); if(!node) return;
     const angle=(startAngle+endAngle)/2;
-    const radius=(roots.length===1 && isRoot) ? 0 : (rootRadius + depthLevel*radiusStep);
+    const layer=Math.max(0,depthLevel-(roots.length===1 && isRoot ? 0 : 0));
+    const radius=(roots.length===1 && isRoot) ? 0 : (rootRadius + layer*radiusStep);
     node.x=Math.cos(angle)*radius;
     node.y=Math.sin(angle)*radius;
     const kids=(treeChildren[id]||[]);
@@ -1002,7 +1053,7 @@ function layoutRadialVisible(options={}){
     list.sort((a,b)=>Math.atan2(a.y,a.x)-Math.atan2(b.y,b.x));
     for(let i=1;i<list.length;i++){
       const prev=list[i-1], cur=list[i];
-      const minGap=(prev.w+cur.w)/2+44;
+      const minGap=(prev.w+cur.w)/2+28;
       const dist=Math.hypot(cur.x-prev.x,cur.y-prev.y);
       if(dist<minGap){
         const bump=minGap-dist;
@@ -1015,7 +1066,18 @@ function layoutRadialVisible(options={}){
 
   const xs=visibleNodes.map(n=>n.x), ys=visibleNodes.map(n=>n.y);
   const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
-  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  const actualW=Math.max(1,(maxX-minX)+maxNodeSize+60);
+  const actualH=Math.max(1,(maxY-minY)+maxNodeSize+60);
+  const desiredW=options.maxWidth ?? Math.max(340,viewW*(options.widthRatio ?? 0.58));
+  const desiredH=options.maxHeight ?? Math.max(280,viewH*(options.heightRatio ?? 0.54));
+  const compactScale=Math.min(1,desiredW/actualW,desiredH/actualH) * (options.compactScale ?? 0.94);
+  if(compactScale<0.999){
+    visibleNodes.forEach(n=>{ n.x*=compactScale; n.y*=compactScale; });
+  }
+
+  const xs2=visibleNodes.map(n=>n.x), ys2=visibleNodes.map(n=>n.y);
+  const minX2=Math.min(...xs2), maxX2=Math.max(...xs2), minY2=Math.min(...ys2), maxY2=Math.max(...ys2);
+  const cx=(minX2+maxX2)/2, cy=(minY2+maxY2)/2;
   visibleNodes.forEach(n=>{ n.x=n.x-cx+targetX; n.y=n.y-cy+targetY; });
 }
 function applyAutoLayout(mode){
@@ -1023,9 +1085,9 @@ function applyAutoLayout(mode){
   document.getElementById('layout-mode').value=meta.layoutMode;
   if(meta.layoutMode==='vertical') layoutTreeVisible('vertical');
   else if(meta.layoutMode==='outline') layoutOutlineVisible();
-  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:150,targetY:180});
-  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:120,targetY:180});
-  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:220,targetY:180});
+  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:132,targetY:180,widthRatio:0.5,heightRatio:0.56,compactScale:0.96});
+  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:118,targetY:180,widthRatio:0.48,heightRatio:0.5,compactScale:0.98});
+  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:200,targetY:176,widthRatio:0.56,heightRatio:0.54,compactScale:0.92});
   else layoutTreeVisible('horizontal');
 }
 function getNodeTitleLayout(n){
@@ -1143,19 +1205,19 @@ function updateHint(){
   if(!hintEl) return;
   let html='';
   if(helpBackdrop?.classList.contains('open')){
-    html='使い方を表示中。Esc または閉じるで戻れます。';
+    html='使い方を表示中です。Esc または閉じるで戻れます。';
   }else if(mode==='edge' && efrom && nb(efrom)){
-    html=`接続モード：<b>${escapeHtml(shortenText(nb(efrom).label,16))}</b> を始点に選択済みです。終点ノードをクリックしてください。`;
+    html=`<b>${escapeHtml(shortenText(nb(efrom).label,16))}</b> からつなぎます。次に、つなぐ先をクリック。`;
   }else if(mode==='edge'){
-    html='接続モード：始点ノード → 終点ノードの順にクリックします。Esc または E で選択モードに戻れます。';
+    html='線をつなぐモードです。始点 → 終点の順にクリック。Esc または E で戻れます。';
   }else if(selectedEdgeId){
-    html=`矢印を選択中です。Enter で編集、Delete / Backspace で削除できます。`;
+    html='線を選択中です。Enter で編集、Delete / Backspace で削除できます。';
   }else if(selectedNodeIds.size>1){
-    html=`${selectedNodeIds.size}ノードを選択中です。ドラッグでまとめて移動、Enter で代表ノードを編集、Delete で削除できます。`;
+    html=`${selectedNodeIds.size}個を選択中です。まとめて動かしたり、色や状態をそろえたりできます。`;
   }else if(activeNodeId && nb(activeNodeId)){
-    html=`<b>${escapeHtml(shortenText(nb(activeNodeId).label,18))}</b> を選択中。Enter で編集、Tab で子追加、E で接続、Delete で削除できます。`;
+    html=`<b>${escapeHtml(shortenText(nb(activeNodeId).label,18))}</b> を選択中。Enter: 編集 / Tab: 子を追加 / E: つなぐ`;
   }else{
-    html='N でノード追加、Enter で編集、E で接続、A で自動整列、F で全体表示、? で使い方を開けます。';
+    html='N でノード追加、Enter で編集、E で接続、A で整える、F で全体に戻す、? で使い方を開けます。';
   }
   hintEl.innerHTML=html;
 }
@@ -1164,9 +1226,9 @@ function updateHUD(){
     const isEdge=mode==='edge';
     modeChip.className='hud-chip '+(isEdge?'edge':'select');
     const detail=isEdge
-      ? (efrom && nb(efrom) ? `始点: ${escapeHtml(shortenText(nb(efrom).label,14))}` : '始点をクリック')
-      : '選択・移動できます';
-    modeChip.innerHTML=`<span class="dot"></span><strong>${isEdge?'接続モード':'選択モード'}</strong><span>${detail}</span>`;
+      ? (efrom && nb(efrom) ? `どこから: ${escapeHtml(shortenText(nb(efrom).label,14))}` : 'どこからつなぐかを選ぶ')
+      : '選んだり動かしたりできます';
+    modeChip.innerHTML=`<span class="dot"></span><strong>${isEdge?'線をつなぐ':'選ぶ'}</strong><span>${detail}</span>`;
   }
   if(selectionChip){
     const zoom=`ズーム ${Math.round(vs*100)}%`;
@@ -1951,7 +2013,7 @@ document.getElementById('b-auto').addEventListener('click',()=>{
   snapshot();
   applyAutoLayout(document.getElementById('layout-mode').value);
   fitV();
-  showToast(getLayoutLabel(meta.layoutMode)+'で自動整列しました');
+  showToast(getLayoutLabel(meta.layoutMode)+'で整えるしました');
 });
 function fitV(){
   const visibleNodes=getVisibleNodes();
@@ -1970,7 +2032,7 @@ function fitV(){
   applyT();
   draw();
 }
-document.getElementById('b-fit').addEventListener('click',()=>{fitV();showToast('全体が見える位置に合わせました');});
+document.getElementById('b-fit').addEventListener('click',()=>{fitV();showToast('全体が見える位置に戻しました');});
 
 document.getElementById('b-undo').addEventListener('click',()=>{
   if(!undoStack.length) return;
@@ -2005,7 +2067,7 @@ document.addEventListener('keydown',e=>{
   if(key==='n'){ e.preventDefault(); snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node) openEp(node.id); return; }
   if(key==='e'){ e.preventDefault(); sm(mode==='edge'?'select':'edge'); return; }
   if(key==='a'){ e.preventDefault(); document.getElementById('b-auto').click(); return; }
-  if(key==='f'){ e.preventDefault(); fitV(); showToast('全体表示に合わせました'); return; }
+  if(key==='f'){ e.preventDefault(); fitV(); showToast('全体が見える位置に戻しました'); return; }
 });
 document.addEventListener('keydown',e=>{
   if(ep.style.display==='block' || eep.style.display==='block') return;
@@ -2145,14 +2207,14 @@ function setExportTab(kind='json'){
   const previewBtn=document.getElementById('b-preview');
   if(impBtn) impBtn.disabled=(kind!=='json');
   if(previewBtn) previewBtn.disabled=(kind!=='json');
-  if(kind==='text') setIoStatus('TEXT表示中です。読み込みは JSON タブで行ってください。','warn');
+  if(kind==='text') setIoStatus('テキスト表示中です。読み込みは JSON タブで行ってください。','warn');
 }
 function writeCurrentExportToBox(kind=currentExportKind){
   const ioBox=document.getElementById('j-io');
   if(ioBox) ioBox.value=getExportString(kind);
-  if(kind==='text') setIoStatus('現在のTEXTを書き出しました。','ok');
-  else setIoStatus('現在のJSONを書き出しました。必要ならそのまま編集・読み込みできます。','ok');
-  showToast(kind==='text'?'TEXTを書き出しました':'JSONを書き出しました');
+  if(kind==='text') setIoStatus('今のテキストを表示しました。','ok');
+  else setIoStatus('今のJSONを表示しました。必要ならそのまま編集して読み込めます。','ok');
+  showToast(kind==='text'?'テキストを表示しました':'JSONを表示しました');
 }
 function setIoStatus(message,tone='warn'){
   const box=document.getElementById('io-status');
@@ -2163,12 +2225,12 @@ function setIoStatus(message,tone='warn'){
 }
 function previewImportText(){
   if(currentExportKind!=='json'){
-    setIoStatus('TEXT表示中は読み込みできません。JSON タブに切り替えてください。','warn');
+    setIoStatus('テキスト表示中は読み込めません。JSON タブに切り替えてください。','warn');
     return null;
   }
   const raw=document.getElementById('j-io').value;
   if(!String(raw||'').trim()){
-    setIoStatus('未解析です。JSON を貼り付けて「プレビュー」を押してください。','warn');
+    setIoStatus('未解析です。JSON を貼り付けて「確認」を押してください。','warn');
     return null;
   }
   try{
@@ -2182,13 +2244,13 @@ function previewImportText(){
     const zeroPosCount=d.nodes.filter(n=>n.x===0&&n.y===0).length;
     const lines=[
       `ノード: ${d.nodes.length}件 / エッジ: ${d.edges.length}件`,
-      `タイトル: ${d.meta.title||'案件マインドマップ'}`,
-      `レイアウト: ${getLayoutLabel(d.meta.layoutMode||'radial')}`
+      `マップ名: ${d.meta.title||'案件マインドマップ'}`,
+      `並び方: ${getLayoutLabel(d.meta.layoutMode||'radial')}`
     ];
     const warns=[];
     if(duplicateCount>0) warns.push(`重複ノードID: ${duplicateCount}件`);
     if(droppedEdges>0) warns.push(`存在しないノードを指すエッジを除外: ${droppedEdges}件`);
-    if(zeroPosCount===d.nodes.length && d.nodes.length>1) warns.push('座標がすべて 0,0 です。読み込み後に自動整列推奨。');
+    if(zeroPosCount===d.nodes.length && d.nodes.length>1) warns.push('座標がすべて 0,0 です。読み込み後に整える推奨。');
     if(warns.length) lines.push('注意: '+warns.join(' / '));
     setIoStatus(lines.join('\n'),warns.length?'warn':'ok');
     return d;
@@ -2203,10 +2265,10 @@ function setIoOpen(open){
   const sideBtn=document.getElementById('b-io-side');
   if(topBtn){
     topBtn.classList.toggle('act', !!open);
-    topBtn.textContent=open?'データ ▾':'データ ▸';
+    topBtn.textContent='データ';
   }
   if(sideBtn){
-    sideBtn.textContent=open?'◂':'データ ▸';
+    sideBtn.textContent=open?'閉じる':'データ';
     sideBtn.setAttribute('title', open ? 'データを閉じる' : 'データを開く');
   }
   if(open){
@@ -2248,7 +2310,7 @@ document.getElementById('qb-connect').addEventListener('click',()=>{
   draw();
   showToast('終点ノードをクリックしてください');
 });
-document.getElementById('qb-fit').addEventListener('click',()=>{fitV();showToast('全体表示に合わせました');});
+document.getElementById('qb-fit').addEventListener('click',()=>{fitV();showToast('全体が見える位置に戻しました');});
 document.getElementById('qb-delete').addEventListener('click',()=>{
   if(selectedNodeIds.size){
     snapshot();
@@ -2288,7 +2350,7 @@ document.getElementById('b-sample').addEventListener('click',()=>{
 });
 document.getElementById('b-in-clear').addEventListener('click',()=>{
   document.getElementById('j-io').value='';
-  setIoStatus('未解析です。JSON を貼り付けて「プレビュー」を押してください。','warn');
+  setIoStatus('未解析です。JSON を貼り付けて「確認」を押してください。','warn');
 });
 document.getElementById('b-imp').addEventListener('click',()=>{
   try{
@@ -2321,11 +2383,11 @@ document.getElementById('b-cpy').addEventListener('click',()=>{
     const b=document.getElementById('b-cpy');
     const prev=b.textContent;
     b.textContent='コピー完了 ✓';
-    showToast('表示内容をコピーしました');
+    showToast('内容をコピーしました');
     setTimeout(()=>b.textContent=prev,1500);
   });
 });
-document.getElementById('j-io').addEventListener('input',()=>setIoStatus('内容が変わりました。JSON の場合は必要に応じて「プレビュー」で確認してください。','warn'));
+document.getElementById('j-io').addEventListener('input',()=>setIoStatus('内容が変わりました。JSON の場合は、必要に応じて「確認」を使ってください。','warn'));
 
 document.getElementById('map-title').addEventListener('input',e=>{ meta.title=e.target.value||'案件マインドマップ'; });
 document.getElementById('layout-mode').addEventListener('change',e=>{ meta.layoutMode=e.target.value; });
