@@ -314,13 +314,21 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
         </div>
         <div class="help-shortcuts">
           <div><span>ノードを追加</span><kbd>N</kbd></div>
+          <div><span>選ぶ</span><kbd>S</kbd></div>
           <div><span>線をつなぐ</span><kbd>E</kbd></div>
           <div><span>整える</span><kbd>A</kbd></div>
-          <div><span >全体に戻す</span><kbd>F</kbd></div>
+          <div><span>全体に戻す</span><kbd>F</kbd></div>
+          <div><span>マップ名を編集</span><kbd>M</kbd></div>
+          <div><span>データを開く / 閉じる</span><kbd>D</kbd></div>
+          <div><span>使い方を開く</span><kbd>H</kbd> / <kbd>?</kbd></div>
           <div><span>編集を開く</span><kbd>Enter</kbd></div>
           <div><span>子ノード追加</span><kbd>Tab</kbd></div>
+          <div><span>SVGで保存</span><kbd>V</kbd></div>
+          <div><span>PNGで保存</span><kbd>P</kbd></div>
+          <div><span>並び方 1〜6</span><kbd>1</kbd>〜<kbd>6</kbd></div>
+          <div><span>JSON / テキスト切替</span><kbd>J</kbd> / <kbd>T</kbd></div>
           <div><span>元に戻す / やり直し</span><kbd>Ctrl/Cmd+Z</kbd></div>
-          <div><span>使い方を開く</span><kbd>?</kbd></div>
+          <div><span>Escで閉じる / 選択解除</span><kbd>Esc</kbd></div>
         </div>
         <div class="epft" style="margin-top:16px">
           <button id="help-close" class="primary-btn" type="button">閉じる</button>
@@ -873,20 +881,24 @@ function layoutTreeVisible(direction='horizontal'){
   Object.keys(childMap).forEach(id=>childMap[id].sort((a,b)=>{ const na=nb(a), nb2=nb(b); return (na?.y||0)-(nb2?.y||0) || (na?.x||0)-(nb2?.x||0); }));
   const roots=visibleNodes.filter(n=>indeg[n.id]===0).sort((a,b)=>a.y-b.y||a.x-b.x);
   const rootIds=roots.length?roots.map(n=>n.id):[visibleNodes[0].id];
-  const levelGap=direction==='vertical'?140:260;
-  const siblingGap=direction==='vertical'?48:36;
+  const maxNodeW=Math.max(...visibleNodes.map(n=>n.w));
+  const maxNodeH=Math.max(...visibleNodes.map(n=>n.h));
+  const levelGap=direction==='vertical'
+    ? Math.max(94,maxNodeH+26)
+    : Math.max(148,maxNodeW+34);
+  const siblingGap=direction==='vertical' ? 12 : 10;
+  const rootGap=direction==='vertical' ? maxNodeW+28 : maxNodeH+26;
   const sizeMap={};
   function subtree(id){
     const node=nb(id); if(!node) return 0;
     const kids=childMap[id]||[];
+    const selfSize=(direction==='vertical'?node.w:node.h)+8;
     if(!kids.length){
-      const size=direction==='vertical'?node.w:node.h;
-      sizeMap[id]=Math.max(size, direction==='vertical'?130:90);
+      sizeMap[id]=selfSize;
       return sizeMap[id];
     }
     const total=kids.reduce((sum,ch,idx)=>sum+subtree(ch)+(idx? siblingGap:0),0);
-    const selfSize=direction==='vertical'?node.w:node.h;
-    sizeMap[id]=Math.max(total,selfSize+20);
+    sizeMap[id]=Math.max(total,selfSize);
     return sizeMap[id];
   }
   rootIds.forEach(subtree);
@@ -901,15 +913,15 @@ function layoutTreeVisible(direction='horizontal'){
     if(!kids.length){ cursor+=span+siblingGap; return; }
     const start=cursor;
     kids.forEach((ch,idx)=>{ if(idx) cursor+=siblingGap; place(ch,depth+1); });
-    const end=cursor-siblingGap;
+    const end=Math.max(start,cursor-siblingGap);
     const mid=(start+end)/2;
     if(direction==='vertical') node.x=mid; else node.y=mid;
   }
   cursor=0;
-  rootIds.forEach((rid,idx)=>{ if(idx) cursor+=120; place(rid,0); });
+  rootIds.forEach((rid,idx)=>{ if(idx) cursor+=rootGap; place(rid,0); });
   const xs=visibleNodes.map(n=>n.x), ys=visibleNodes.map(n=>n.y);
   const minX=Math.min(...xs), minY=Math.min(...ys);
-  visibleNodes.forEach(n=>{ n.x=n.x-minX+80; n.y=n.y-minY+80; });
+  visibleNodes.forEach(n=>{ n.x=n.x-minX+72; n.y=n.y-minY+72; });
 }
 function layoutOutlineVisible(){
   const visibleNodes=getVisibleNodes();
@@ -921,11 +933,15 @@ function layoutOutlineVisible(){
   visibleEdges.forEach(e=>{ if(ids.has(e.from)&&ids.has(e.to)){ childMap[e.from].push(e.to); indeg[e.to]++; } });
   Object.keys(childMap).forEach(id=>childMap[id].sort((a,b)=>{ const na=nb(a), nb2=nb(b); return (na?.y||0)-(nb2?.y||0) || (na?.x||0)-(nb2?.x||0); }));
   const roots=visibleNodes.filter(n=>indeg[n.id]===0).sort((a,b)=>a.y-b.y||a.x-b.x);
+  const maxNodeW=Math.max(...visibleNodes.map(n=>n.w));
+  const maxNodeH=Math.max(...visibleNodes.map(n=>n.h));
+  const depthGap=Math.max(168,maxNodeW+22);
+  const rowGap=Math.max(78,maxNodeH+12);
   let row=0;
   function walk(id,depth){
     const node=nb(id); if(!node) return;
-    node.x=depth*230+90;
-    node.y=row*110+80;
+    node.x=depth*depthGap+72;
+    node.y=row*rowGap+72;
     row+=1;
     (childMap[id]||[]).forEach(ch=>walk(ch,depth+1));
   }
@@ -988,24 +1004,44 @@ function buildVisibleTreeForest(){
 function layoutRadialVisible(options={}){
   const {visibleNodes,roots,treeChildren,weights,depth}=buildVisibleTreeForest();
   if(!visibleNodes.length) return;
+
   const angleStart=options.angleStart ?? (-Math.PI/2);
   const angleEnd=options.angleEnd ?? (Math.PI*1.5);
+  const span=Math.max(0.001, angleEnd-angleStart);
+  const isFullCircle=span >= Math.PI*1.9;
+  const optimizeRotation=options.optimizeRotation ?? isFullCircle;
   const targetX=options.targetX ?? 220;
   const targetY=options.targetY ?? 180;
-  const viewW=sv.clientWidth||1200;
-  const viewH=sv.clientHeight||760;
-  const maxNodeSize=Math.max(...visibleNodes.map(n=>Math.max(n.w,n.h)));
-  const radiusStep=options.radiusStep ?? Math.max(120,Math.min(176,maxNodeSize+48));
-  const rootRadius=options.rootRadius ?? (roots.length>1 ? Math.max(52,Math.min(92,maxNodeSize*0.72)) : 0);
+  const baseGap=Math.max(4, options.nodeGap ?? 10);
+  const radiusSeed=Math.max(18, options.radiusStep ?? 72);
+  const angleById={};
+  const rootRadius=options.rootRadius ?? (roots.length>1 ? 18 : 0);
   const totalRootWeight=roots.reduce((sum,id)=>sum+(weights[id]||1),0) || roots.length || 1;
 
-  function placeSubtree(id,depthLevel,startAngle,endAngle,isRoot=false){
+  function normalizeAngle(a){
+    const twopi=Math.PI*2;
+    let v=a%twopi;
+    if(v<0) v+=twopi;
+    return v;
+  }
+  function inflateRect(node,x,y,pad){
+    return {
+      l:x-node.w/2-pad,
+      r:x+node.w/2+pad,
+      t:y-node.h/2-pad,
+      b:y+node.h/2+pad,
+      x,y,
+      id:node.id
+    };
+  }
+  function rectOverlap(a,b){
+    return !(a.l>=b.r || b.l>=a.r || a.t>=b.b || b.t>=a.b);
+  }
+
+  function placeSubtree(id,startAngle,endAngle){
     const node=nb(id); if(!node) return;
     const angle=(startAngle+endAngle)/2;
-    const layer=Math.max(0,depthLevel-(roots.length===1 && isRoot ? 0 : 0));
-    const radius=(roots.length===1 && isRoot) ? 0 : (rootRadius + layer*radiusStep);
-    node.x=Math.cos(angle)*radius;
-    node.y=Math.sin(angle)*radius;
+    angleById[id]=angle;
     const kids=(treeChildren[id]||[]);
     if(!kids.length) return;
     const total=kids.reduce((sum,ch)=>sum+(weights[ch]||1),0) || kids.length;
@@ -1013,32 +1049,31 @@ function layoutRadialVisible(options={}){
     kids.forEach((ch,idx)=>{
       const share=(endAngle-startAngle)*((weights[ch]||1)/total);
       const next=idx===kids.length-1 ? endAngle : cursor+share;
-      placeSubtree(ch,depthLevel+1,cursor,next,false);
+      placeSubtree(ch,cursor,next);
       cursor=next;
     });
   }
 
   if(roots.length===1){
     const rootId=roots[0];
-    const rootNode=nb(rootId);
-    if(rootNode){ rootNode.x=0; rootNode.y=0; }
+    angleById[rootId]=(angleStart+angleEnd)/2;
     const kids=treeChildren[rootId]||[];
     if(kids.length){
       const total=kids.reduce((sum,id)=>sum+(weights[id]||1),0) || kids.length;
       let cursor=angleStart;
       kids.forEach((ch,idx)=>{
-        const share=(angleEnd-angleStart)*((weights[ch]||1)/total);
+        const share=span*((weights[ch]||1)/total);
         const next=idx===kids.length-1 ? angleEnd : cursor+share;
-        placeSubtree(ch,1,cursor,next,false);
+        placeSubtree(ch,cursor,next);
         cursor=next;
       });
     }
   }else{
     let cursor=angleStart;
     roots.forEach((rootId,idx)=>{
-      const share=(angleEnd-angleStart)*((weights[rootId]||1)/totalRootWeight);
+      const share=span*((weights[rootId]||1)/totalRootWeight);
       const next=idx===roots.length-1 ? angleEnd : cursor+share;
-      placeSubtree(rootId,0,cursor,next,true);
+      placeSubtree(rootId,cursor,next);
       cursor=next;
     });
   }
@@ -1048,46 +1083,155 @@ function layoutRadialVisible(options={}){
     const d=depth[node.id]||0;
     (levels[d]||(levels[d]=[])).push(node);
   });
-  Object.entries(levels).forEach(([level,list])=>{
-    if(Number(level)===0) return;
-    list.sort((a,b)=>Math.atan2(a.y,a.x)-Math.atan2(b.y,b.x));
-    for(let i=1;i<list.length;i++){
-      const prev=list[i-1], cur=list[i];
-      const minGap=(prev.w+cur.w)/2+28;
-      const dist=Math.hypot(cur.x-prev.x,cur.y-prev.y);
-      if(dist<minGap){
-        const bump=minGap-dist;
-        const angle=Math.atan2(cur.y,cur.x);
-        cur.x+=Math.cos(angle)*bump;
-        cur.y+=Math.sin(angle)*bump;
+  const levelKeys=Object.keys(levels).map(Number).sort((a,b)=>a-b);
+  levelKeys.forEach(level=>levels[level].sort((a,b)=>(angleById[a.id]||0)-(angleById[b.id]||0)));
+
+  function candidateForLevel(list,radius,offset){
+    const pad=baseGap/2;
+    const rects=[];
+    const positions={};
+    for(const node of list){
+      const angle=(angleById[node.id] ?? 0)+offset;
+      const x=Math.cos(angle)*radius;
+      const y=Math.sin(angle)*radius;
+      positions[node.id]={x,y};
+      rects.push(inflateRect(node,x,y,pad));
+    }
+    for(let i=0;i<rects.length;i++){
+      for(let j=i+1;j<rects.length;j++){
+        if(rectOverlap(rects[i],rects[j])) return {ok:false};
       }
     }
-  });
-
-  const xs=visibleNodes.map(n=>n.x), ys=visibleNodes.map(n=>n.y);
-  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
-  const actualW=Math.max(1,(maxX-minX)+maxNodeSize+60);
-  const actualH=Math.max(1,(maxY-minY)+maxNodeSize+60);
-  const desiredW=options.maxWidth ?? Math.max(340,viewW*(options.widthRatio ?? 0.58));
-  const desiredH=options.maxHeight ?? Math.max(280,viewH*(options.heightRatio ?? 0.54));
-  const compactScale=Math.min(1,desiredW/actualW,desiredH/actualH) * (options.compactScale ?? 0.94);
-  if(compactScale<0.999){
-    visibleNodes.forEach(n=>{ n.x*=compactScale; n.y*=compactScale; });
+    return {ok:true,rects,positions};
   }
 
-  const xs2=visibleNodes.map(n=>n.x), ys2=visibleNodes.map(n=>n.y);
-  const minX2=Math.min(...xs2), maxX2=Math.max(...xs2), minY2=Math.min(...ys2), maxY2=Math.max(...ys2);
-  const cx=(minX2+maxX2)/2, cy=(minY2+maxY2)/2;
-  visibleNodes.forEach(n=>{ n.x=n.x-cx+targetX; n.y=n.y-cy+targetY; });
+  function computeLayout(offset){
+    const placedRects=[];
+    const positions={};
+    const levelRadius={};
+    for(const level of levelKeys){
+      const list=levels[level]||[];
+      if(!list.length) continue;
+      if(level===0 && roots.length===1){
+        const root=list[0];
+        positions[root.id]={x:0,y:0};
+        placedRects.push(inflateRect(root,0,0,baseGap/2));
+        levelRadius[level]=0;
+        continue;
+      }
+      let lo=(level===0 ? 0 : Math.max(0,(levelRadius[level-1]||0)-4));
+      let hi=Math.max(rootRadius, lo+1, radiusSeed, (levelRadius[level-1]||0)+radiusSeed*0.45);
+      let probe=candidateForLevel(list,hi,offset);
+      let guard=0;
+      while(guard<40){
+        if(probe.ok){
+          let bad=false;
+          for(const rect of probe.rects){
+            for(const prev of placedRects){
+              if(rectOverlap(rect,prev)){ bad=true; break; }
+            }
+            if(bad) break;
+          }
+          if(!bad) break;
+        }
+        hi=hi*1.22+10;
+        probe=candidateForLevel(list,hi,offset);
+        guard++;
+      }
+      for(let iter=0;iter<18;iter++){
+        const mid=(lo+hi)/2;
+        const cand=candidateForLevel(list,mid,offset);
+        let ok=cand.ok;
+        if(ok){
+          for(const rect of cand.rects){
+            for(const prev of placedRects){
+              if(rectOverlap(rect,prev)){ ok=false; break; }
+            }
+            if(!ok) break;
+          }
+        }
+        if(ok) hi=mid;
+        else lo=mid;
+      }
+      const final=candidateForLevel(list,hi,offset);
+      if(!final.ok) return null;
+      for(const rect of final.rects){
+        let bad=false;
+        for(const prev of placedRects){
+          if(rectOverlap(rect,prev)){ bad=true; break; }
+        }
+        if(bad) return null;
+      }
+      Object.assign(positions,final.positions);
+      placedRects.push(...final.rects);
+      levelRadius[level]=hi;
+    }
+    const xs=[], ys=[];
+    visibleNodes.forEach(node=>{
+      const pos=positions[node.id]||{x:0,y:0};
+      xs.push(pos.x-node.w/2, pos.x+node.w/2);
+      ys.push(pos.y-node.h/2, pos.y+node.h/2);
+    });
+    const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+    const width=maxX-minX;
+    const height=maxY-minY;
+    return {
+      positions,
+      width,
+      height,
+      area:width*height,
+      minX,maxX,minY,maxY,
+      offset:normalizeAngle(offset)
+    };
+  }
+
+  function scoreLayout(layout){
+    return layout.area + Math.max(layout.width,layout.height)*10 + Math.abs(layout.width-layout.height)*1.5;
+  }
+
+  let bestLayout=null;
+  const tryOffset=off=>{
+    const layout=computeLayout(off);
+    if(!layout) return;
+    if(!bestLayout || scoreLayout(layout) < scoreLayout(bestLayout)) bestLayout=layout;
+  };
+
+  if(optimizeRotation){
+    const coarseCount=Math.min(96,Math.max(32,visibleNodes.length*2));
+    const coarseStep=(Math.PI*2)/coarseCount;
+    for(let i=0;i<coarseCount;i++) tryOffset(i*coarseStep);
+    let step=coarseStep;
+    for(let pass=0;pass<3 && bestLayout;pass++){
+      const center=bestLayout.offset;
+      const samples=[];
+      for(let k=-4;k<=4;k++) samples.push(center + k*(step/4));
+      bestLayout=null;
+      samples.forEach(tryOffset);
+      step/=4;
+    }
+  }else{
+    tryOffset(0);
+  }
+
+  if(!bestLayout) bestLayout=computeLayout(0);
+  if(!bestLayout) return;
+
+  const cx=(bestLayout.minX+bestLayout.maxX)/2;
+  const cy=(bestLayout.minY+bestLayout.maxY)/2;
+  visibleNodes.forEach(node=>{
+    const pos=bestLayout.positions[node.id]||{x:0,y:0};
+    node.x=pos.x-cx+targetX;
+    node.y=pos.y-cy+targetY;
+  });
 }
 function applyAutoLayout(mode){
   meta.layoutMode=mode||meta.layoutMode||'radial';
   document.getElementById('layout-mode').value=meta.layoutMode;
   if(meta.layoutMode==='vertical') layoutTreeVisible('vertical');
   else if(meta.layoutMode==='outline') layoutOutlineVisible();
-  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:132,targetY:180,widthRatio:0.5,heightRatio:0.56,compactScale:0.96});
-  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:118,targetY:180,widthRatio:0.48,heightRatio:0.5,compactScale:0.98});
-  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:200,targetY:176,widthRatio:0.56,heightRatio:0.54,compactScale:0.92});
+  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:128,targetY:180,radiusStep:64,nodeGap:10,optimizeRotation:false});
+  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:120,targetY:182,radiusStep:62,nodeGap:10,optimizeRotation:false});
+  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:196,targetY:176,radiusStep:66,nodeGap:10,optimizeRotation:true});
   else layoutTreeVisible('horizontal');
 }
 function getNodeTitleLayout(n){
@@ -1217,7 +1361,7 @@ function updateHint(){
   }else if(activeNodeId && nb(activeNodeId)){
     html=`<b>${escapeHtml(shortenText(nb(activeNodeId).label,18))}</b> を選択中。Enter: 編集 / Tab: 子を追加 / E: つなぐ`;
   }else{
-    html='N でノード追加、Enter で編集、E で接続、A で整える、F で全体に戻す、? で使い方を開けます。';
+    html='N: 追加 / S: 選ぶ / E: 線をつなぐ / A: 整える / F: 全体に戻す / D: データ / ?: 使い方';
   }
   hintEl.innerHTML=html;
 }
@@ -2049,6 +2193,27 @@ document.getElementById('b-redo').addEventListener('click',()=>{
   draw();
 });
 
+function focusMapTitle(){
+  const input=document.getElementById('map-title');
+  if(!input) return;
+  input.focus();
+  input.select();
+  showToast('マップ名を編集できます');
+}
+function toggleIoWithToast(){
+  const willOpen=!appEl.classList.contains('io-open');
+  setIoOpen(willOpen);
+  showToast(willOpen?'データを開きました':'データを閉じました');
+}
+function applyLayoutShortcut(layoutValue){
+  const select=document.getElementById('layout-mode');
+  if(!select) return;
+  if(!LAYOUT_LABELS[layoutValue]) return;
+  select.value=layoutValue;
+  meta.layoutMode=layoutValue;
+  document.getElementById('b-auto').click();
+}
+
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();document.getElementById('b-undo').click();}
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();document.getElementById('b-redo').click();}
@@ -2056,18 +2221,40 @@ document.addEventListener('keydown',e=>{
 
 document.addEventListener('keydown',e=>{
   if(helpBackdrop?.classList.contains('open')){
-    if(e.key==='Escape' || e.key==='?'){ e.preventDefault(); setHelpOpen(false); }
+    if(e.key==='Escape' || e.key==='?' || (e.key||'').toLowerCase()==='h'){ e.preventDefault(); setHelpOpen(false); }
     return;
   }
   if(ep.style.display==='block' || eep.style.display==='block') return;
   const tag=(document.activeElement?.tagName||'').toUpperCase();
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
   const key=(e.key||'').toLowerCase();
+  const layoutShortcutMap={
+    '1':'radial',
+    '2':'radial_half',
+    '3':'radial_fan',
+    '4':'horizontal',
+    '5':'vertical',
+    '6':'outline'
+  };
   if(e.key==='?'){ e.preventDefault(); setHelpOpen(true); return; }
+  if(e.key==='Escape'){
+    if(appEl.classList.contains('io-open')){ e.preventDefault(); setIoOpen(false); showToast('データを閉じました'); return; }
+    if(mode==='edge' || efrom){ e.preventDefault(); sm('select'); showToast('選ぶに戻しました'); return; }
+    if(selectedNodeIds.size || selectedEdgeId){ e.preventDefault(); clearSelection(); draw(); showToast('選択を解除しました'); return; }
+  }
+  if(key==='h'){ e.preventDefault(); setHelpOpen(true); return; }
+  if(key==='d'){ e.preventDefault(); toggleIoWithToast(); return; }
+  if(key==='m'){ e.preventDefault(); focusMapTitle(); return; }
   if(key==='n'){ e.preventDefault(); snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node) openEp(node.id); return; }
-  if(key==='e'){ e.preventDefault(); sm(mode==='edge'?'select':'edge'); return; }
+  if(key==='s'){ e.preventDefault(); sm('select'); showToast('選ぶモードにしました'); return; }
+  if(key==='e'){ e.preventDefault(); const nextMode=mode==='edge'?'select':'edge'; sm(nextMode); showToast(nextMode==='edge'?'線をつなぐモードにしました':'選ぶモードにしました'); return; }
   if(key==='a'){ e.preventDefault(); document.getElementById('b-auto').click(); return; }
   if(key==='f'){ e.preventDefault(); fitV(); showToast('全体が見える位置に戻しました'); return; }
+  if(key==='v'){ e.preventDefault(); document.getElementById('b-svg').click(); return; }
+  if(key==='p'){ e.preventDefault(); document.getElementById('b-png').click(); return; }
+  if(layoutShortcutMap[key]){ e.preventDefault(); applyLayoutShortcut(layoutShortcutMap[key]); return; }
+  if(appEl.classList.contains('io-open') && key==='j'){ e.preventDefault(); setExportTab('json'); showToast('JSON表示に切り替えました'); return; }
+  if(appEl.classList.contains('io-open') && key==='t'){ e.preventDefault(); setExportTab('text'); showToast('テキスト表示に切り替えました'); return; }
 });
 document.addEventListener('keydown',e=>{
   if(ep.style.display==='block' || eep.style.display==='block') return;
