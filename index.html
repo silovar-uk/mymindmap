@@ -57,8 +57,9 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 .io-tab.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
 .io-mini{font-size:12px;padding:5px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
 #b-io-side{position:absolute;left:-74px;top:14px;min-width:74px;font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;border-right:none;border-radius:10px 0 0 10px;background:#fff;color:#334155;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:20}
-#j-io{width:100%;min-height:220px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:#f8fafc;color:#1f2937;resize:vertical;outline:none;line-height:1.5;white-space:pre;color-scheme:dark}
-#j-io:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:#fff;color-scheme:dark}
+#j-io{width:100%;min-height:220px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:rgba(5,8,12,.78);color:var(--sf-text-0);resize:vertical;outline:none;line-height:1.5;white-space:pre;color-scheme:dark;caret-color:#f7f2eb}
+#j-io:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:rgba(8,12,18,.92);color:var(--sf-text-0);color-scheme:dark}
+#j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
 .io-actions{display:flex;gap:8px;flex-wrap:wrap}
 .io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
 #io-status{padding:9px 11px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-size:12px;line-height:1.55;color:#475569;white-space:pre-wrap}
@@ -1013,8 +1014,6 @@ svg{background:transparent;position:relative;z-index:1}
         <div class="io-actions">
           <button id="b-out-refresh" type="button">更新</button>
           <button id="b-cpy" type="button">コピー</button>
-          <button id="b-sample" type="button">サンプルを入れる</button>
-          <button id="b-preview" type="button">確認</button>
           <button id="b-in-clear" type="button">空にする</button>
           <button id="b-imp" class="primary-btn" type="button">今のマップを置き換える</button>
         </div>
@@ -1178,6 +1177,7 @@ function centerViewAtZoom(targetZoom=vs){
     vx=W/2;
     vy=H/2;
     applyT();
+    syncViewportUi();
     draw();
     return;
   }
@@ -1198,8 +1198,8 @@ const REFINED_BRANCH_HUES=[22,196,258,338,42,148,214,292];
 const NODE_W_MIN=156;
 const NODE_W_MAX=280;
 const NODE_H_MIN=62;
-const SUBTEXT_MAX_LINES=2;
-const TITLE_WRAP_MAX_LINES=3;
+const SUBTEXT_MAX_LINES=99;
+const TITLE_WRAP_MAX_LINES=99;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
@@ -1406,6 +1406,10 @@ function applyT(){
   const t=`translate(${vx},${vy}) scale(${vs})`;
   NL.setAttribute('transform',t);
   EL.setAttribute('transform',t);
+}
+function syncViewportUi(){
+  updateHUD();
+  updateQuickbar();
 }
 function toS(x,y){return{x:(x-vx)/vs,y:(y-vy)/vs}}
 function toW(x,y){return{x:x*vs+vx,y:y*vs+vy}}
@@ -2145,49 +2149,41 @@ function applyAutoLayout(mode){
 }
 function getNodeTitleLayout(n){
   const statusMetrics=getStatusChipMetrics(n.status);
-  const usable=Math.max(56,n.w-24-(statusMetrics?statusMetrics.width+10:0));
-  if(n.fitMode==='wrap'){
-    const maxChars=Math.max(6, Math.floor(usable/7.15));
-    let lines=wrapText(n.label||'',maxChars,TITLE_WRAP_MAX_LINES).filter(Boolean);
-    if(!lines.length) lines=['新規案件'];
-    if(lines.length===TITLE_WRAP_MAX_LINES && [...(n.label||'')].length>lines.join('').length){
-      const last=lines[lines.length-1];
-      lines[lines.length-1]=last.length>1 ? last.slice(0,Math.max(1,last.length-1))+'…' : '…';
-    }
-    return {lines,fontSize:12.2,lineHeight:14,usableWidth:usable};
-  }
+  const usable=Math.max(68,n.w-24-(statusMetrics?statusMetrics.width+10:0));
   const label=String(n.label||'新規案件');
-  const est=Math.max(1,[...label].length)*7.1;
-  const fontSize=Math.max(8.2, Math.min(13, 13*Math.min(1, usable/est)));
-  let safe=label;
-  const maxChars=Math.max(5, Math.floor(usable/(fontSize*0.6)));
-  if([...safe].length>maxChars) safe=[...safe].slice(0,Math.max(1,maxChars-1)).join('')+'…';
-  return {lines:[safe],fontSize,lineHeight:fontSize+1,usableWidth:usable};
+  const baseFont=n.fitMode==='wrap' ? 12.2 : 13;
+  const minFont=n.fitMode==='wrap' ? 11.2 : 8.6;
+  const est=Math.max(1,[...label].length)*(baseFont*0.62);
+  const fontSize=Math.max(minFont, Math.min(baseFont, baseFont*Math.min(1, usable/Math.max(est, usable*0.72))));
+  const maxChars=Math.max(5, Math.floor(usable/Math.max(5.2, fontSize*0.62)));
+  let lines=wrapText(label,maxChars,TITLE_WRAP_MAX_LINES).filter(Boolean);
+  if(!lines.length) lines=['新規案件'];
+  return {
+    lines,
+    fontSize,
+    lineHeight:Math.max(13.4, Math.ceil(fontSize+2.2)),
+    usableWidth:usable
+  };
 }
 function updateNodeMetrics(n){
   const statusMetrics=getStatusChipMetrics(n.status);
   const titleReserve=statusMetrics?statusMetrics.width+10:0;
-  const titleLen=[...String(n.label||'')].length;
-  const subMaxChars=Math.max(10, Math.floor((NODE_W_MAX-24)/7.2));
-  const subLines=wrapText(n.subtext||'',subMaxChars,SUBTEXT_MAX_LINES).filter(Boolean);
-  const maxSubLen=subLines.length ? Math.max(...subLines.map(line=>[...line].length)) : 0;
-  let rawWidth=Math.max(titleLen*8.6+54+titleReserve, maxSubLen*7.1+36, (statusMetrics?statusMetrics.width+36:0), NODE_W_MIN);
-  if(n.fitMode==='wrap') rawWidth=Math.min(rawWidth, 232);
+  let rawWidth=Math.max(
+    (statusMetrics?statusMetrics.width+36:0),
+    NODE_W_MIN,
+    Math.min(NODE_W_MAX, Math.max(168, [...String(n.label||'')].length*8.1+56+titleReserve))
+  );
   n.w=Math.max(NODE_W_MIN, Math.min(NODE_W_MAX, Math.round(rawWidth)));
   const titleLayout=getNodeTitleLayout(n);
   const nodeSubLines=getNodeSubLines(n);
   const titleHeight=titleLayout.lines.length*titleLayout.lineHeight+14;
-  const subHeight=nodeSubLines.length ? nodeSubLines.length*14+8 : 0;
-  n.h=Math.max(NODE_H_MIN, 18 + titleHeight + subHeight + (n.status!=='none'?4:0));
+  const subHeight=nodeSubLines.length ? nodeSubLines.length*14+10 : 0;
+  const statusExtra=n.status!=='none' ? 4 : 0;
+  n.h=Math.max(NODE_H_MIN, 18 + titleHeight + subHeight + statusExtra);
 }
 function getNodeSubLines(n){
-  const maxChars=Math.max(10, Math.floor((n.w-24)/7.15));
-  const lines=wrapText(n.subtext||'',maxChars,SUBTEXT_MAX_LINES).filter(Boolean);
-  if(lines.length===SUBTEXT_MAX_LINES && [...String(n.subtext||'')].length>lines.join('').length){
-    const last=lines[lines.length-1];
-    lines[lines.length-1]=last.length>1 ? last.slice(0,Math.max(1,last.length-1))+'…' : '…';
-  }
-  return lines;
+  const maxChars=Math.max(10, Math.floor((n.w-24)/7.05));
+  return wrapText(n.subtext||'',maxChars,SUBTEXT_MAX_LINES).filter(Boolean);
 }
 function getPathInfo(f,t){
   const mode=meta.layoutMode||'horizontal';
@@ -2760,9 +2756,9 @@ function draw(){
   });
 
   NL.innerHTML='';
-  const showSubtextGlobal=vs>=0.58;
-  const showStatusGlobal=vs>=0.48;
-  const compactTitles=vs<0.38;
+  const showSubtextGlobal=true;
+  const showStatusGlobal=true;
+  const compactTitles=false;
   visibleNodes.forEach(n=>{
     updateNodeMetrics(n);
     const c=n.color;
@@ -2888,7 +2884,7 @@ function draw(){
       title.setAttribute('fill',c.text);
       title.setAttribute('pointer-events','none');
       title.setAttribute('font-family','Noto Sans JP, Rajdhani, sans-serif');
-      title.textContent=compactTitles ? shortenText(line,10) : line;
+      title.textContent=line;
       contentGroup.appendChild(title);
     });
 
@@ -3354,6 +3350,10 @@ sv.addEventListener('mousedown',e=>{
       draw();
     }
   } else {
+    if(selectedNodeIds.size || selectedEdgeId || activeNodeId){
+      clearSelection();
+      draw();
+    }
     pan=true;
     psx=e.clientX-vx;
     psy=e.clientY-vy;
@@ -3400,6 +3400,7 @@ document.addEventListener('mousemove',e=>{
     vx=e.clientX-psx;
     vy=e.clientY-psy;
     applyT();
+    syncViewportUi();
   }
 });
 document.addEventListener('mouseup',()=>{
@@ -3423,6 +3424,7 @@ sv.addEventListener('wheel',e=>{
   vy=my-(my-vy)*(ns/vs);
   vs=ns;
   applyT();
+  syncViewportUi();
 },{passive:false});
 document.addEventListener('mousedown',e=>{
   if(!flushOpenEditors(e.target)) return;
@@ -3613,6 +3615,18 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();document.getElementById('b-undo').click();}
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();document.getElementById('b-redo').click();}
 });
+document.addEventListener('keydown',e=>{
+  const tag=(document.activeElement?.tagName||'').toUpperCase();
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+  if((e.ctrlKey||e.metaKey) && (e.key||'').toLowerCase()==='a'){
+    e.preventDefault();
+    selectedNodeIds=new Set(nodes.map(n=>n.id));
+    activeNodeId=nodes.length ? nodes[nodes.length-1].id : null;
+    selectedEdgeId=null;
+    draw();
+    showToast(nodes.length?`${nodes.length}件のノードを選択しました`:'選べるノードがありません','ok');
+  }
+});
 
 document.addEventListener('keydown',e=>{
   if(helpBackdrop?.classList.contains('open')){
@@ -3654,8 +3668,8 @@ document.addEventListener('keydown',e=>{
   if(key==='v'){ e.preventDefault(); document.getElementById('b-svg').click(); return; }
   if(key==='p'){ e.preventDefault(); document.getElementById('b-png').click(); return; }
   if(layoutShortcutMap[key]){ e.preventDefault(); applyLayoutShortcut(layoutShortcutMap[key]); return; }
-  if(appEl.classList.contains('io-open') && key==='j'){ e.preventDefault(); setExportTab('json'); showToast('JSON表示に切り替えました'); return; }
-  if(appEl.classList.contains('io-open') && key==='t'){ e.preventDefault(); setExportTab('text'); showToast('テキスト表示に切り替えました'); return; }
+  if(appEl.classList.contains('io-open') && key==='j'){ e.preventDefault(); activateExportTab('json'); showToast('JSON表示に切り替えました'); return; }
+  if(appEl.classList.contains('io-open') && key==='t'){ e.preventDefault(); activateExportTab('text',{copy:true}); return; }
 });
 document.addEventListener('keydown',e=>{
   if(ep.style.display==='block' || eep.style.display==='block') return;
@@ -3800,15 +3814,52 @@ function getExportString(kind=currentExportKind){
   if(kind==='md') return buildMarkdownText(onlySelection);
   return JSON.stringify(buildExportObject(),null,2);
 }
+function copyTextToClipboard(value,{successMessage='内容をコピーしました',buttonId='b-cpy'}={}){
+  const textValue=String(value??'');
+  if(!textValue) return Promise.resolve(false);
+  if(navigator.clipboard?.writeText){
+    return navigator.clipboard.writeText(textValue).then(()=>{
+      const b=document.getElementById(buttonId);
+      if(b){
+        const prev=b.textContent;
+        b.textContent='コピー完了 ✓';
+        setTimeout(()=>b.textContent=prev,1500);
+      }
+      showToast(successMessage);
+      return true;
+    }).catch(()=>false);
+  }
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=textValue;
+    ta.setAttribute('readonly','readonly');
+    ta.style.position='fixed';
+    ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    showToast(successMessage);
+    return Promise.resolve(true);
+  }catch(err){
+    return Promise.resolve(false);
+  }
+}
+function activateExportTab(kind,{copy=false}={}){
+  setExportTab(kind);
+  if(copy && (kind==='text' || kind==='md')){
+    const hasSelection=getSelectionExportNodeIds().size>0;
+    const label=kind==='md'?'Markdown':'テキスト';
+    copyTextToClipboard(getExportString(kind),{successMessage:hasSelection?`選択中ノードの${label}をコピーしました`:`${label}をコピーしました`});
+  }
+}
 function setExportTab(kind='json'){
   currentExportKind=kind;
   document.getElementById('b-exp-json').classList.toggle('act',kind==='json');
   document.getElementById('b-exp-text').classList.toggle('act',kind==='text');
   document.getElementById('b-exp-md').classList.toggle('act',kind==='md');
   const impBtn=document.getElementById('b-imp');
-  const previewBtn=document.getElementById('b-preview');
   if(impBtn) impBtn.disabled=(kind!=='json');
-  if(previewBtn) previewBtn.disabled=(kind!=='json');
   writeCurrentExportToBox(kind,{silent:true});
 }
 
@@ -3835,7 +3886,7 @@ function previewImportText(){
   }
   const raw=document.getElementById('j-io').value;
   if(!String(raw||'').trim()){
-    setIoStatus('未解析です。JSON を貼り付けて「確認」を押してください。','warn');
+    setIoStatus('未解析です。JSON を貼り付けて内容を確認してください。','warn');
     return null;
   }
   try{
@@ -3924,23 +3975,18 @@ document.getElementById('es-start-template').addEventListener('click',()=>replac
 document.getElementById('b-io').addEventListener('click',toggleIo);
 document.getElementById('b-io-side').addEventListener('click',toggleIo);
 document.getElementById('b-io-inline').addEventListener('click',()=>setIoOpen(false));
-document.getElementById('b-exp-json').addEventListener('click',()=>setExportTab('json'));
-document.getElementById('b-exp-text').addEventListener('click',()=>setExportTab('text'));
-document.getElementById('b-exp-md').addEventListener('click',()=>setExportTab('md'));
+document.getElementById('b-exp-json').addEventListener('click',()=>activateExportTab('json'));
+document.getElementById('b-exp-text').addEventListener('click',()=>activateExportTab('text',{copy:true}));
+document.getElementById('b-exp-md').addEventListener('click',()=>activateExportTab('md',{copy:true}));
 document.getElementById('b-out-refresh').addEventListener('click',()=>writeCurrentExportToBox(currentExportKind));
-document.getElementById('b-preview').addEventListener('click',previewImportText);
-document.getElementById('b-sample').addEventListener('click',()=>{
-  document.getElementById('j-io').value=JSON.stringify(STARTER_PRESETS.sample,null,2);
-  previewImportText();
-});
 document.getElementById('b-in-clear').addEventListener('click',()=>{
   document.getElementById('j-io').value='';
-  setIoStatus('未解析です。JSON を貼り付けて「確認」を押してください。','warn');
+  setIoStatus('未解析です。JSON を貼り付けると内容を確認できます。','warn');
 });
 document.getElementById('b-imp').addEventListener('click',()=>{
   try{
     const d=previewImportText();
-    if(!d) throw new Error('JSON を確認してください');
+    if(!d) throw new Error('JSON の内容を確認してください');
     replaceMapData(d,{toastMessage:'JSONを読み込みました'});
   }catch(err){
     setIoStatus('読み込みに失敗しました: '+err.message,'err');
@@ -3949,15 +3995,20 @@ document.getElementById('b-imp').addEventListener('click',()=>{
 });
 document.getElementById('b-cpy').addEventListener('click',()=>{
   const out=document.getElementById('j-io').value;
-  navigator.clipboard.writeText(out).then(()=>{
-    const b=document.getElementById('b-cpy');
-    const prev=b.textContent;
-    b.textContent='コピー完了 ✓';
-    showToast('内容をコピーしました');
-    setTimeout(()=>b.textContent=prev,1500);
-  });
+  copyTextToClipboard(out,{successMessage:'内容をコピーしました'});
 });
-document.getElementById('j-io').addEventListener('input',()=>setIoStatus('内容が変わりました。JSON の場合は、必要に応じて「確認」を使ってください。','warn'));
+document.getElementById('j-io').addEventListener('input',()=>{
+  if(currentExportKind==='json'){
+    const raw=document.getElementById('j-io').value;
+    if(!String(raw||'').trim()){
+      setIoStatus('未解析です。JSON を貼り付けると内容を確認できます。','warn');
+      return;
+    }
+    previewImportText();
+    return;
+  }
+  setIoStatus(currentExportKind==='md'?'Markdown を編集しています。必要ならコピーできます。':'テキストを編集しています。必要ならコピーできます。','warn');
+});
 
 document.getElementById('map-title').addEventListener('input',e=>{ meta.title=e.target.value||'案件マインドマップ'; });
 document.getElementById('layout-mode').addEventListener('change',e=>{ meta.layoutMode=e.target.value; });
@@ -4047,12 +4098,9 @@ renderHistory();
 
 setTimeout(()=>{
   centerViewAtZoom(1);
-  if(nodes[0]){
-    setSingleSelection(nodes[0].id);
-    openEp(nodes[0].id);
-  }else{
-    draw();
-  }
+  clearSelection();
+  draw();
+  focusMapTitle();
   updateUndoUI();
   updateHUD();
   updateQuickbar();
