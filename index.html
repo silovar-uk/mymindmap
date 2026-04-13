@@ -147,6 +147,58 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
   .help-grid,.help-shortcuts{grid-template-columns:1fr}
 }
 
+
+#app[data-adaptive-phase="empty"] .tb-group.tb-secondary-group,
+#app[data-adaptive-phase="starter"] .tb-group.tb-secondary-group{opacity:.58}
+#app[data-adaptive-phase="empty"] .tb-group.tb-secondary-group button,
+#app[data-adaptive-phase="starter"] .tb-group.tb-secondary-group button,
+#app[data-adaptive-phase="empty"] .tb-group.tb-secondary-group select,
+#app[data-adaptive-phase="starter"] .tb-group.tb-secondary-group select{box-shadow:none}
+#empty-state{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;z-index:68;background:radial-gradient(circle at top,#f8fbff 0,#ffffff 62%)}
+#empty-state.open{display:flex}
+#empty-state .es-card{width:min(760px,calc(100% - 32px));padding:28px;border:1px solid #dbe3ef;border-radius:24px;background:rgba(255,255,255,.98);box-shadow:0 20px 50px rgba(15,23,42,.12);display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:center}
+#empty-state .es-copy{display:flex;flex-direction:column;gap:12px}
+#empty-state .es-kicker{font-size:12px;font-weight:800;letter-spacing:.08em;color:#2563eb;text-transform:uppercase}
+#empty-state h2{font-size:30px;line-height:1.2;color:#0f172a}
+#empty-state p{font-size:14px;line-height:1.7;color:#475569}
+#empty-state .es-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+#empty-state .es-actions button{font-size:13px;padding:11px 15px;border:1px solid #cbd5e1;border-radius:14px;background:#fff;color:#334155;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+#empty-state .es-actions button:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(15,23,42,.08);border-color:#93c5fd}
+#empty-state .es-actions .primary{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;font-weight:800}
+#empty-state .es-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:2px}
+#empty-state .es-link{font-size:12px;color:#2563eb;background:none;border:none;padding:0;cursor:pointer}
+#empty-state .es-visual{min-height:230px;border-radius:20px;border:1px solid #e2e8f0;background:linear-gradient(180deg,#f8fafc 0,#fefefe 100%);position:relative;overflow:hidden}
+#empty-state .es-dot{position:absolute;width:14px;height:14px;border-radius:999px;background:#93c5fd;opacity:.55}
+#empty-state .es-node{position:absolute;padding:11px 14px;border-radius:16px;border:1.5px solid #dbe3ef;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:12px;font-weight:700;color:#334155}
+#empty-state .es-node small{display:block;font-size:10px;font-weight:600;color:#64748b;margin-top:4px}
+#empty-state .es-node.done{border-color:#86efac;background:#f0fdf4;color:#166534}
+#empty-state .es-line{position:absolute;height:2px;background:linear-gradient(90deg,#cbd5e1,#93c5fd);transform-origin:left center;border-radius:999px;opacity:.9}
+#empty-state .es-line::after{content:'';position:absolute;right:-3px;top:-3px;border-left:6px solid #93c5fd;border-top:4px solid transparent;border-bottom:4px solid transparent}
+#history-backdrop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.36);z-index:89}
+#history-backdrop.open{display:flex}
+#history-panel{width:min(760px,calc(100% - 20px));max-height:min(720px,calc(100% - 20px));overflow:auto;background:#fff;border:1px solid #dbe3ef;border-radius:20px;box-shadow:0 22px 60px rgba(15,23,42,.22);padding:18px 18px 16px}
+#history-panel h2{font-size:19px;line-height:1.35;color:#0f172a;margin-bottom:4px}
+#history-panel p{font-size:13px;line-height:1.7;color:#475569}
+#history-list{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+#history-list .history-item{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fafafa}
+#history-list .history-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+#history-list .history-ver{font-size:14px;font-weight:800;color:#0f172a}
+#history-list .history-date{font-size:11px;color:#64748b;white-space:nowrap}
+#history-list .history-summary{font-size:12px;font-weight:700;color:#334155;line-height:1.5}
+#history-list ul{padding-left:18px;margin-top:8px;font-size:12px;line-height:1.7;color:#475569}
+#history-list code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:1px 5px}
+#empty-state[data-empty-variant="sample"] .es-visual{border-color:#bfdbfe}
+@media (max-width:900px){
+  #empty-state .es-card{grid-template-columns:1fr;gap:18px;padding:22px}
+  #empty-state h2{font-size:25px}
+}
+@media (max-width:720px){
+  #empty-state{padding:14px}
+  #empty-state .es-card{width:100%;padding:18px;border-radius:20px}
+  #empty-state .es-actions{flex-direction:column}
+  #empty-state .es-actions button{width:100%;justify-content:center}
+}
+
 </style>
 </head>
 <body>
@@ -159,7 +211,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       </div>
     </div>
 
-    <div class="tb-group">
+    <div class="tb-group tb-primary-group">
       <span class="tb-label">作る・つなぐ</span>
       <div class="tb-row">
         <button id="b-add" class="primary-action">＋ ノードを追加</button>
@@ -168,7 +220,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       </div>
     </div>
 
-    <div class="tb-group">
+    <div class="tb-group tb-secondary-group tb-layout-group">
       <span class="tb-label">並びを整える</span>
       <div class="tb-row">
         <select id="layout-mode" title="並び方を選ぶ">
@@ -184,17 +236,18 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       </div>
     </div>
 
-    <div class="tb-group">
+    <div class="tb-group tb-secondary-group tb-review-group">
       <span class="tb-label">確認・共有</span>
       <div class="tb-row">
         <button id="b-undo">戻す</button>
         <button id="b-redo">やり直す</button>
         <button id="b-io" class="secondary-action">データ</button>
         <button id="b-help" class="secondary-action">使い方</button>
+        <button id="b-history" class="secondary-action">更新履歴</button>
       </div>
     </div>
 
-    <div class="tb-group">
+    <div class="tb-group tb-secondary-group tb-export-group">
       <span class="tb-label">見た目・保存</span>
       <div class="tb-row">
         <button id="b-color-depth">ノードを色分け</button>
@@ -204,7 +257,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       </div>
     </div>
 
-    <div class="tb-group">
+    <div class="tb-group tb-secondary-group tb-danger-group">
       <span class="tb-label">危険な操作</span>
       <div class="tb-row">
         <button id="b-clear" class="danger-action">全部消す</button>
@@ -299,6 +352,34 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       <button id="qb-delete" class="danger" type="button" >消す</button>
     </div>
     <div id="toast" aria-live="polite"></div>
+    <div id="empty-state" aria-hidden="true" data-empty-variant="default">
+      <div class="es-card">
+        <div class="es-copy">
+          <div class="es-kicker">Adaptive Start</div>
+          <h2>考えを置くと、自然に整理できます</h2>
+          <p>まっさらから始めても、サンプルを触って流れをつかんでも大丈夫です。まずは、いちばんやりやすい始め方を選んでください。</p>
+          <div class="es-actions">
+            <button id="es-start-empty" class="primary" type="button">まっさらから始める</button>
+            <button id="es-start-sample" type="button">サンプルを触って学ぶ</button>
+            <button id="es-start-template" type="button">企画テンプレートから始める</button>
+          </div>
+          <div class="es-links">
+            <button id="es-open-help" class="es-link" type="button">30秒で使い方を見る</button>
+            <button id="es-open-history" class="es-link" type="button">今回のアップデートを見る</button>
+          </div>
+        </div>
+        <div class="es-visual" aria-hidden="true">
+          <div class="es-dot" style="left:12%;top:16%"></div>
+          <div class="es-dot" style="left:76%;top:20%"></div>
+          <div class="es-dot" style="left:64%;top:76%"></div>
+          <div class="es-line" style="left:28%;top:40%;width:34%;transform:rotate(-12deg)"></div>
+          <div class="es-line" style="left:30%;top:56%;width:28%;transform:rotate(18deg)"></div>
+          <div class="es-node" style="left:12%;top:34%">テーマ<small>ここから始める</small></div>
+          <div class="es-node" style="left:58%;top:22%">目的<small>空欄でもOK</small></div>
+          <div class="es-node done" style="left:55%;top:58%">次の一手<small>完了の気持ちよさ</small></div>
+        </div>
+      </div>
+    </div>
     <div id="help-backdrop" aria-hidden="true">
       <div id="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
         <h2 id="help-title">使い方</h2>
@@ -353,6 +434,16 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
         <div id="shortcut-sub" class="sc-sub">よく使うもの</div>
       </div>
       <div id="shortcut-list" class="sc-list"></div>
+    </div>
+    <div id="history-backdrop" aria-hidden="true">
+      <div id="history-panel" role="dialog" aria-modal="true" aria-labelledby="history-title">
+        <h2 id="history-title">HTMLの更新履歴</h2>
+        <p>このHTML自体の改善内容をここに積み上げます。今後の更新時は、下の履歴配列に追記すれば、そのままこの画面に反映されます。</p>
+        <div id="history-list"></div>
+        <div class="epft" style="margin-top:16px">
+          <button id="history-close" class="primary-btn" type="button">閉じる</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -479,6 +570,54 @@ let undoStack=[],redoStack=[];
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
+const APP_VERSION='2.0.0';
+const APP_UPDATED_AT='2026-04-13';
+const APP_CHANGELOG=[
+  {
+    version:'2.0.0',
+    date:'2026-04-13',
+    summary:'Adaptive UI の土台を入れ、空のキャンバスでも始めやすい体験へ更新。',
+    items:[
+      'ノード数と選択状態に応じて <code>hint</code> と <code>quickbar</code> が切り替わるよう改善',
+      '空のキャンバス向けに、3つの始め方を持つ empty state を追加',
+      'HTML自体の変更履歴を確認できる更新履歴モーダルを追加',
+      '上部ツールバーの露出を段階的に弱める adaptive phase を追加'
+    ]
+  },
+  {
+    version:'1.0.0',
+    date:'2026-04-13',
+    summary:'案件マインドマップの初期版。ノード編集、接続、整列、入出力を搭載。',
+    items:[
+      'ノード / 矢印の編集、整列、SVG / PNG 保存、JSON 入出力を実装',
+      'HUD / quickbar / ショートカット / データパネルを用意'
+    ]
+  }
+];
+const STARTER_PRESETS={
+  sample:{
+    schemaVersion:'1.0',
+    meta:{title:'サンプルマップ',layoutMode:'horizontal'},
+    nodes:[
+      {id:'n1',label:'中心',subtext:'ここから編集',status:'in_progress',collapsed:false,fitMode:'shrink',x:0,y:0,color:{...PRESETS[0]}},
+      {id:'n2',label:'子ノード',subtext:'補足メモ',status:'none',collapsed:false,fitMode:'shrink',x:220,y:90,color:{...PRESETS[1]}}
+    ],
+    edges:[{id:'e1',from:'n1',to:'n2',label:'関係'}]
+  },
+  planning:{
+    schemaVersion:'1.0',
+    meta:{title:'企画整理マップ',layoutMode:'horizontal'},
+    nodes:[
+      {id:'n1',label:'新しい企画',subtext:'中心テーマ',status:'in_progress',collapsed:false,fitMode:'shrink',x:0,y:0,color:{...PRESETS[0]}},
+      {id:'n2',label:'目的',subtext:'何を達成したいか',status:'none',collapsed:false,fitMode:'shrink',x:240,y:-110,color:{...PRESETS[1]}},
+      {id:'n3',label:'やること',subtext:'最初のアクション',status:'none',collapsed:false,fitMode:'shrink',x:240,y:110,color:{...PRESETS[2]}}
+    ],
+    edges:[
+      {id:'e1',from:'n1',to:'n2',label:'整理する'},
+      {id:'e2',from:'n1',to:'n3',label:'動く'}
+    ]
+  }
+};
 
 const sv=document.getElementById('sv');
 const NL=document.getElementById('NL');
@@ -505,6 +644,9 @@ const selectionChip=document.getElementById('selection-chip');
 const quickbar=document.getElementById('quickbar');
 const toastEl=document.getElementById('toast');
 const helpBackdrop=document.getElementById('help-backdrop');
+const emptyStateEl=document.getElementById('empty-state');
+const historyBackdrop=document.getElementById('history-backdrop');
+const historyListEl=document.getElementById('history-list');
 const shortcutDock=document.getElementById('shortcut-dock');
 const shortcutListEl=document.getElementById('shortcut-list');
 const shortcutSubEl=document.getElementById('shortcut-sub');
@@ -1371,69 +1513,321 @@ function setShortcutDock(title,items){
   shortcutSubEl.textContent=title||'よく使うもの';
   shortcutListEl.innerHTML=(items||[]).map(item=>`<div class="sc-item"><kbd>${escapeHtml(item.key)}</kbd><span><strong>${escapeHtml(item.label)}</strong>${item.desc?` ${escapeHtml(item.desc)}`:''}</span></div>`).join('');
 }
+function getAdaptivePhase(){
+  const count=nodes.length;
+  if(count===0) return 'empty';
+  if(count<=3) return 'starter';
+  if(count<=10) return 'builder';
+  return 'complex';
+}
+function updateToolbarAdaptive(){
+  if(!appEl) return;
+  appEl.dataset.adaptivePhase=getAdaptivePhase();
+}
+function updateEmptyState(){
+  if(!emptyStateEl) return;
+  const isOpen=!nodes.length;
+  emptyStateEl.classList.toggle('open',isOpen);
+  emptyStateEl.setAttribute('aria-hidden',isOpen?'false':'true');
+  emptyStateEl.dataset.emptyVariant=isOpen?'default':'hidden';
+}
+function renderHistory(){
+  if(!historyListEl) return;
+  historyListEl.innerHTML=APP_CHANGELOG.map(item=>`<div class="history-item"><div class="history-top"><div><div class="history-ver">v${escapeHtml(item.version)}</div><div class="history-summary">${escapeHtml(item.summary)}</div></div><div class="history-date">${escapeHtml(item.date)}</div></div><ul>${(item.items||[]).map(line=>`<li>${line}</li>`).join('')}</ul></div>`).join('');
+}
+function setHistoryOpen(open){
+  if(!historyBackdrop) return;
+  historyBackdrop.classList.toggle('open',!!open);
+  historyBackdrop.setAttribute('aria-hidden',open?'false':'true');
+  if(open){
+    renderHistory();
+    quickbar.style.display='none';
+  }else{
+    updateQuickbar();
+  }
+  updateHint();
+}
+function replaceMapData(d,{toastMessage='マップを読み込みました',skipHistory=false}={}){
+  if(!skipHistory) snapshot();
+  nodes=(d.nodes||[]).map(normalizeNode);
+  edges=(d.edges||[]).map(normalizeEdge);
+  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial'};
+  document.getElementById('map-title').value=meta.title;
+  document.getElementById('layout-mode').value=meta.layoutMode;
+  nid=Math.max(
+    1,
+    ...nodes.map(n=>parseInt(String(n.id).replace('n',''))||0),
+    ...edges.map(e=>parseInt(String(e.id).replace('e',''))||0)
+  )+1;
+  clearSelection();
+  setExportTab(currentExportKind);
+  writeCurrentExportToBox(currentExportKind==='text'?'text':'json');
+  if(nodes.length) fitV();
+  else{ applyT(); draw(); }
+  showToast(toastMessage);
+}
+function markSelectedNodesStatus(status){
+  const ids=[...selectedNodeIds];
+  if(!ids.length) return;
+  snapshot();
+  ids.map(id=>nb(id)).filter(Boolean).forEach(node=>{ node.status=status; });
+  draw();
+  const labels={in_progress:'進行中',done:'完了',paused:'保留',none:'未設定'};
+  showToast(`選択中のノードを${labels[status]||status}にしました`);
+}
+function cycleSingleNodeStatus(){
+  const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
+  if(!node) return;
+  const order=['none','in_progress','done','paused'];
+  const next=order[(order.indexOf(node.status)+1)%order.length];
+  snapshot();
+  node.status=next;
+  draw();
+  const labels={in_progress:'進行中',done:'完了',paused:'保留',none:'未設定'};
+  showToast(`${node.label} を${labels[next]}にしました`);
+}
+function duplicateActiveNode(){
+  const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
+  if(!node) return;
+  snapshot();
+  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,status:node.status,fitMode:node.fitMode,color:{...node.color}});
+  if(copy){
+    copy.x=node.x+Math.max(180,node.w+30);
+    copy.y=node.y+30;
+    draw();
+    showToast('ノードを複製しました');
+  }
+}
+function runQuickbarAction(action){
+  switch(action){
+    case 'add':
+      document.getElementById('b-add').click();
+      break;
+    case 'auto':
+      document.getElementById('b-auto').click();
+      break;
+    case 'fit':
+      fitV(); showToast('全体が見える位置に戻しました');
+      break;
+    case 'edit':
+      if(selectedEdgeId && eb(selectedEdgeId)){
+        const edge=eb(selectedEdgeId);
+        const from=nb(edge.from), to=nb(edge.to);
+        const center=(from&&to)?toW((from.x+to.x)/2,(from.y+to.y)/2):null;
+        openEep(selectedEdgeId,center?.x,center?.y);
+      }else if(activeNodeId && nb(activeNodeId)) openEp(activeNodeId);
+      break;
+    case 'add-child':
+      if(activeNodeId && nb(activeNodeId)){
+        snapshot();
+        const child=createChildNode(activeNodeId,{status:'none',fitMode:'shrink'});
+        draw();
+        if(child) openEp(child.id);
+      }
+      break;
+    case 'connect':
+      if(!(activeNodeId && nb(activeNodeId))) return;
+      mode='edge'; efrom=activeNodeId;
+      document.getElementById('b-sel').classList.toggle('act',false);
+      document.getElementById('b-edge').classList.toggle('act',true);
+      setSingleSelection(activeNodeId);
+      draw();
+      showToast('終点ノードをクリックしてください');
+      break;
+    case 'cycle-status':
+      cycleSingleNodeStatus();
+      break;
+    case 'duplicate':
+      duplicateActiveNode();
+      break;
+    case 'mark-progress':
+      markSelectedNodesStatus('in_progress');
+      break;
+    case 'mark-done':
+      markSelectedNodesStatus('done');
+      break;
+    case 'reverse-edge':
+      if(selectedEdgeId && eb(selectedEdgeId)){
+        snapshot();
+        const edge=eb(selectedEdgeId);
+        const from=edge.from; edge.from=edge.to; edge.to=from;
+        draw();
+        showToast('矢印の向きを入れ替えました');
+      }
+      break;
+    case 'clear-edge-label':
+      if(selectedEdgeId && eb(selectedEdgeId)){
+        snapshot();
+        eb(selectedEdgeId).label='';
+        draw();
+        showToast('矢印の名前を空にしました');
+      }
+      break;
+    case 'delete':
+      if(selectedNodeIds.size){
+        snapshot();
+        deleteNodes([...selectedNodeIds]);
+        draw();
+        showToast('ノードを削除しました','warn');
+      }else if(selectedEdgeId){
+        snapshot();
+        edges=edges.filter(ed=>ed.id!==selectedEdgeId);
+        selectedEdgeId=null;
+        draw();
+        showToast('矢印を削除しました','warn');
+      }
+      break;
+  }
+}
+function getQuickbarConfig(){
+  const phase=getAdaptivePhase();
+  if(selectedEdgeId && eb(selectedEdgeId)){
+    return [
+      {id:'qb-edit',label:'線を編集',action:'edit',tone:'primary'},
+      {id:'qb-child',label:'向きを反転',action:'reverse-edge'},
+      {id:'qb-connect',label:'線名を消す',action:'clear-edge-label'},
+      {id:'qb-fit',label:'全体に戻す',action:'fit'},
+      {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+    ];
+  }
+  if(selectedNodeIds.size>1){
+    return [
+      {id:'qb-edit',label:'整える',action:'auto',tone:'primary'},
+      {id:'qb-child',label:'進行中',action:'mark-progress'},
+      {id:'qb-connect',label:'完了',action:'mark-done'},
+      {id:'qb-fit',label:'全体に戻す',action:'fit'},
+      {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+    ];
+  }
+  if(activeNodeId && nb(activeNodeId)){
+    return [
+      {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
+      {id:'qb-child',label:'子を追加',action:'add-child'},
+      {id:'qb-connect',label:'つなぐ',action:'connect'},
+      {id:'qb-fit',label:phase==='starter'?'状態':'複製',action:phase==='starter'?'cycle-status':'duplicate'},
+      {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+    ];
+  }
+  if(nodes.length){
+    return [
+      {id:'qb-edit',label:'追加',action:'add',tone:'primary'},
+      {id:'qb-child',label:'整える',action:'auto'},
+      {id:'qb-connect',label:'全体に戻す',action:'fit'},
+      {id:'qb-fit',label:'データ',action:'noop',hidden:true},
+      {id:'qb-delete',label:'',action:'noop',hidden:true}
+    ];
+  }
+  return [];
+}
 function updateHint(){
   if(!hintEl) return;
+  const phase=getAdaptivePhase();
   let html='';
+  let dockTitle='よく使うもの';
+  let items=[];
   if(helpBackdrop?.classList.contains('open')){
     html='使い方を表示中です。Esc または閉じるで戻れます。';
-    setShortcutDock('今使えるもの',[
+    dockTitle='今使えるもの';
+    items=[
       {key:'Esc',label:'閉じる'},
       {key:'H',label:'使い方'},
       {key:'?',label:'使い方'}
-    ]);
+    ];
+  }else if(historyBackdrop?.classList.contains('open')){
+    html=`このHTMLの更新履歴を表示中です。現在のバージョンは <b>v${escapeHtml(APP_VERSION)}</b>。`;
+    dockTitle='更新履歴';
+    items=[
+      {key:'Esc',label:'閉じる'},
+      {key:'H',label:'使い方'},
+      {key:'N',label:'追加'}
+    ];
+  }else if(!nodes.length){
+    html='まずは始め方を選びます。空白の不安より、最初の一手の安心を優先します。';
+    dockTitle='最初の一手';
+    items=[
+      {key:'Click',label:'始め方を選ぶ'},
+      {key:'N',label:'まっさら開始'},
+      {key:'H',label:'使い方'},
+      {key:'R',label:'更新履歴'}
+    ];
   }else if(mode==='edge' && efrom && nb(efrom)){
     html=`<b>${escapeHtml(shortenText(nb(efrom).label,16))}</b> からつなぎます。次に、つなぐ先をクリック。`;
-    setShortcutDock('線をつなぐとき',[
+    dockTitle='線をつなぐとき';
+    items=[
       {key:'Click',label:'つなぐ先を選ぶ'},
       {key:'Esc',label:'やめる'},
       {key:'E',label:'選ぶに戻る'}
-    ]);
+    ];
   }else if(mode==='edge'){
     html='線をつなぐモードです。始点 → 終点の順にクリック。Esc または E で戻れます。';
-    setShortcutDock('線をつなぐとき',[
+    dockTitle='線をつなぐとき';
+    items=[
       {key:'Click',label:'始点を選ぶ'},
       {key:'Esc',label:'やめる'},
       {key:'E',label:'選ぶに戻る'}
-    ]);
+    ];
   }else if(selectedEdgeId){
-    html='線を選択中です。Enter で編集、Delete / Backspace で削除できます。';
-    setShortcutDock('線を選んだとき',[
+    html='線を選択中です。名前を付けると関係が伝わります。Enter で編集、Delete で削除。';
+    dockTitle='線を選んだとき';
+    items=[
       {key:'Enter',label:'編集'},
       {key:'Delete',label:'消す'},
       {key:'Esc',label:'選択解除'},
-      {key:'D',label:'データ'}
-    ]);
+      {key:'F',label:'全体に戻す'}
+    ];
   }else if(selectedNodeIds.size>1){
-    html=`${selectedNodeIds.size}個を選択中です。まとめて動かしたり、色や状態をそろえたりできます。`;
-    setShortcutDock('複数選択中',[
-      {key:'Ctrl+Click',label:'追加選択'},
-      {key:'Delete',label:'消す'},
+    html=`${selectedNodeIds.size}個を選択中です。まとめて整えるか、同じ状態をそろえると前に進みやすくなります。`;
+    dockTitle='複数選択中';
+    items=[
       {key:'A',label:'整える'},
-      {key:'Esc',label:'選択解除'}
-    ]);
+      {key:'Delete',label:'消す'},
+      {key:'Esc',label:'選択解除'},
+      {key:'Ctrl+Click',label:'追加選択'}
+    ];
   }else if(activeNodeId && nb(activeNodeId)){
-    html=`<b>${escapeHtml(shortenText(nb(activeNodeId).label,18))}</b> を選択中。Enter: 編集 / Tab: 子を追加 / E: つなぐ`;
-    setShortcutDock('ノードを選んだとき',[
+    const label=escapeHtml(shortenText(nb(activeNodeId).label,18));
+    if(phase==='starter') html=`<b>${label}</b> を選択中。Enter で中身を整える、Tab で枝を増やす、E でつなげます。`;
+    else if(phase==='builder') html=`<b>${label}</b> を選択中。意味を整えるか、枝を増やすか、関係をつけるかの3択です。`;
+    else html=`<b>${label}</b> を選択中。いま触るノードを絞ると、大きいマップでも迷いにくくなります。`;
+    dockTitle='ノードを選んだとき';
+    items=[
       {key:'Enter',label:'編集'},
       {key:'Tab',label:'子を追加'},
       {key:'E',label:'線をつなぐ'},
-      {key:'Delete',label:'消す'},
-      {key:'F',label:'全体に戻す'}
-    ]);
-  }else{
-    html='N: 追加 / S: 選ぶ / E: 線をつなぐ / A: 整える / F: 全体に戻す / D: データ / ?: 使い方';
-    setShortcutDock('よく使うもの',[
+      {key:'Delete',label:'消す'}
+    ];
+  }else if(phase==='starter'){
+    html='まずは1つ置いて、名前を付けて、もう1つ足す。そこまでで十分始まっています。';
+    dockTitle='最初の流れ';
+    items=[
       {key:'N',label:'追加'},
-      {key:'S',label:'選ぶ'},
-      {key:'E',label:'線をつなぐ'},
+      {key:'A',label:'整える'},
+      {key:'F',label:'全体に戻す'},
+      {key:'D',label:'データ'}
+    ];
+  }else if(phase==='builder'){
+    html='塊を意識して整えると、整理している感覚から編集している感覚に変わります。';
+    dockTitle='整理が進んできたら';
+    items=[
+      {key:'A',label:'整える'},
+      {key:'N',label:'追加'},
+      {key:'F',label:'全体に戻す'},
+      {key:'R',label:'更新履歴'}
+    ];
+  }else{
+    html='大きいマップです。進行中だけ見る、完了した枝をたたむ、塊ごとに整える、の順が近道です。';
+    dockTitle='大きいマップ';
+    items=[
       {key:'A',label:'整える'},
       {key:'F',label:'全体に戻す'},
       {key:'D',label:'データ'},
-      {key:'?',label:'使い方'}
-    ]);
+      {key:'Esc',label:'選択解除'}
+    ];
   }
   hintEl.innerHTML=html;
+  setShortcutDock(dockTitle,items);
 }
+
 function updateHUD(){
   if(modeChip){
     const isEdge=mode==='edge';
@@ -1449,8 +1843,11 @@ function updateHUD(){
     if(selectedEdgeId) summary='矢印: '+escapeHtml(getEdgeSummary(selectedEdgeId));
     else if(selectedNodeIds.size>1) summary=`${selectedNodeIds.size}ノード選択中`;
     else if(activeNodeId && nb(activeNodeId)) summary='ノード: '+escapeHtml(shortenText(nb(activeNodeId).label,18));
+    else if(!nodes.length) summary='まずは始め方を選ぶ';
     selectionChip.innerHTML=`<strong>${zoom}</strong><span>${summary}</span>`;
   }
+  updateToolbarAdaptive();
+  updateEmptyState();
   updateHint();
 }
 function getSelectionScreenAnchor(){
@@ -1468,28 +1865,46 @@ function getSelectionScreenAnchor(){
 }
 function updateQuickbar(){
   if(!quickbar) return;
-  const hasModal=ep.style.display==='block' || eep.style.display==='block' || helpBackdrop?.classList.contains('open');
-  const hasNodeSelection=(selectedNodeIds.size>0 || (activeNodeId && nb(activeNodeId)));
-  const hasEdgeSelection=!!(selectedEdgeId && eb(selectedEdgeId));
-  if(hasModal || (!hasNodeSelection && !hasEdgeSelection)){
+  const hasModal=ep.style.display==='block' || eep.style.display==='block' || helpBackdrop?.classList.contains('open') || historyBackdrop?.classList.contains('open');
+  if(hasModal || !nodes.length){
     quickbar.style.display='none';
     quickbar.setAttribute('aria-hidden','true');
     return;
   }
-  const anchor=getSelectionScreenAnchor();
+  const config=getQuickbarConfig().filter(item=>!item.hidden);
+  if(!config.length){
+    quickbar.style.display='none';
+    quickbar.setAttribute('aria-hidden','true');
+    return;
+  }
+  const anchor=(selectedNodeIds.size || selectedEdgeId || (activeNodeId && nb(activeNodeId))) ? getSelectionScreenAnchor() : {x:(cw.clientWidth||0)/2,y:(cw.clientHeight||0)-66};
   if(!anchor){
     quickbar.style.display='none';
     quickbar.setAttribute('aria-hidden','true');
     return;
   }
-  const qbEdit=document.getElementById('qb-edit');
-  const qbChild=document.getElementById('qb-child');
-  const qbConnect=document.getElementById('qb-connect');
-  const qbDelete=document.getElementById('qb-delete');
-  qbEdit.textContent=hasEdgeSelection?'矢印編集':'編集';
-  qbChild.style.display=hasEdgeSelection || selectedNodeIds.size>1 ? 'none' : '';
-  qbConnect.style.display=hasEdgeSelection || selectedNodeIds.size>1 ? 'none' : '';
-  qbDelete.style.display='';
+  const map={
+    'qb-edit':document.getElementById('qb-edit'),
+    'qb-child':document.getElementById('qb-child'),
+    'qb-connect':document.getElementById('qb-connect'),
+    'qb-fit':document.getElementById('qb-fit'),
+    'qb-delete':document.getElementById('qb-delete')
+  };
+  Object.values(map).forEach(btn=>{
+    if(!btn) return;
+    btn.style.display='none';
+    btn.classList.remove('primary','danger');
+    btn.dataset.action='';
+  });
+  config.forEach(item=>{
+    const btn=map[item.id];
+    if(!btn) return;
+    btn.style.display='';
+    btn.textContent=item.label;
+    btn.dataset.action=item.action;
+    if(item.tone==='primary') btn.classList.add('primary');
+    if(item.tone==='danger') btn.classList.add('danger');
+  });
   quickbar.style.display='flex';
   quickbar.setAttribute('aria-hidden','false');
   const cwRect=cw.getBoundingClientRect();
@@ -1501,6 +1916,7 @@ function updateQuickbar(){
   quickbar.style.left=left+'px';
   quickbar.style.top=top+'px';
 }
+
 function showToast(message,tone='ok'){
   if(!toastEl) return;
   toastEl.textContent=message;
@@ -2293,6 +2709,10 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Escape' || e.key==='?' || (e.key||'').toLowerCase()==='h'){ e.preventDefault(); setHelpOpen(false); }
     return;
   }
+  if(historyBackdrop?.classList.contains('open')){
+    if(e.key==='Escape' || (e.key||'').toLowerCase()==='r'){ e.preventDefault(); setHistoryOpen(false); }
+    return;
+  }
   if(ep.style.display==='block' || eep.style.display==='block') return;
   const tag=(document.activeElement?.tagName||'').toUpperCase();
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
@@ -2312,6 +2732,7 @@ document.addEventListener('keydown',e=>{
     if(selectedNodeIds.size || selectedEdgeId){ e.preventDefault(); clearSelection(); draw(); showToast('選択を解除しました'); return; }
   }
   if(key==='h'){ e.preventDefault(); setHelpOpen(true); return; }
+  if(key==='r'){ e.preventDefault(); setHistoryOpen(true); return; }
   if(key==='d'){ e.preventDefault(); toggleIoWithToast(); return; }
   if(key==='m'){ e.preventDefault(); focusMapTitle(); return; }
   if(key==='n'){ e.preventDefault(); snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node) openEp(node.id); return; }
@@ -2582,8 +3003,16 @@ document.getElementById('qb-delete').addEventListener('click',()=>{
   }
 });
 document.getElementById('b-help').addEventListener('click',()=>setHelpOpen(true));
+document.getElementById('b-history').addEventListener('click',()=>setHistoryOpen(true));
 document.getElementById('help-close').addEventListener('click',()=>setHelpOpen(false));
+document.getElementById('history-close').addEventListener('click',()=>setHistoryOpen(false));
 helpBackdrop.addEventListener('mousedown',e=>{ if(e.target===helpBackdrop) setHelpOpen(false); });
+historyBackdrop.addEventListener('mousedown',e=>{ if(e.target===historyBackdrop) setHistoryOpen(false); });
+document.getElementById('es-open-help').addEventListener('click',()=>setHelpOpen(true));
+document.getElementById('es-open-history').addEventListener('click',()=>setHistoryOpen(true));
+document.getElementById('es-start-empty').addEventListener('click',()=>{ snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node) openEp(node.id); });
+document.getElementById('es-start-sample').addEventListener('click',()=>replaceMapData(STARTER_PRESETS.sample,{toastMessage:'サンプルマップを読み込みました'}));
+document.getElementById('es-start-template').addEventListener('click',()=>replaceMapData(STARTER_PRESETS.planning,{toastMessage:'企画テンプレートを読み込みました'}));
 document.getElementById('b-io').addEventListener('click',toggleIo);
 document.getElementById('b-io-side').addEventListener('click',toggleIo);
 document.getElementById('b-io-inline').addEventListener('click',()=>setIoOpen(false));
@@ -2592,16 +3021,7 @@ document.getElementById('b-exp-text').addEventListener('click',()=>setExportTab(
 document.getElementById('b-out-refresh').addEventListener('click',()=>writeCurrentExportToBox(currentExportKind));
 document.getElementById('b-preview').addEventListener('click',previewImportText);
 document.getElementById('b-sample').addEventListener('click',()=>{
-  const sample={
-    schemaVersion:'1.0',
-    meta:{title:'サンプルマップ',layoutMode:'horizontal'},
-    nodes:[
-      {id:'n1',label:'中心',subtext:'ここから編集',status:'in_progress',collapsed:false,fitMode:'shrink',x:0,y:0,color:{...PRESETS[0]}},
-      {id:'n2',label:'子ノード',subtext:'補足メモ',status:'none',collapsed:false,fitMode:'shrink',x:220,y:90,color:{...PRESETS[1]}}
-    ],
-    edges:[{id:'e1',from:'n1',to:'n2',label:'関係'}]
-  };
-  document.getElementById('j-io').value=JSON.stringify(sample,null,2);
+  document.getElementById('j-io').value=JSON.stringify(STARTER_PRESETS.sample,null,2);
   previewImportText();
 });
 document.getElementById('b-in-clear').addEventListener('click',()=>{
@@ -2612,22 +3032,7 @@ document.getElementById('b-imp').addEventListener('click',()=>{
   try{
     const d=previewImportText();
     if(!d) throw new Error('JSON を確認してください');
-    snapshot();
-    nodes=d.nodes;
-    edges=d.edges;
-    meta={title:d.meta.title||'案件マインドマップ',layoutMode:d.meta.layoutMode||'radial'};
-    document.getElementById('map-title').value=meta.title;
-    document.getElementById('layout-mode').value=meta.layoutMode;
-    nid=Math.max(
-      1,
-      ...nodes.map(n=>parseInt(String(n.id).replace('n',''))||0),
-      ...edges.map(e=>parseInt(String(e.id).replace('e',''))||0)
-    )+1;
-    clearSelection();
-    setExportTab(currentExportKind);
-    writeCurrentExportToBox(currentExportKind==='text'?'text':'json');
-    fitV();
-    showToast('JSONを読み込みました');
+    replaceMapData(d,{toastMessage:'JSONを読み込みました'});
   }catch(err){
     setIoStatus('読み込みに失敗しました: '+err.message,'err');
     alert('インポートできませんでした: '+err.message);
@@ -2710,27 +3115,16 @@ document.getElementById('b-png').addEventListener('click',()=>{
 meta={title:'案件マインドマップ',layoutMode:'horizontal'};
 document.getElementById('map-title').value=meta.title;
 document.getElementById('layout-mode').value=meta.layoutMode;
-nodes=[
-  normalizeNode({id:'n1',label:'浦和レッズ',subtext:'全体方針 / コアテーマ',status:'in_progress',collapsed:false,fitMode:'shrink',x:0,y:0,color:PRESETS[0]}),
-  normalizeNode({id:'n2',label:'ホームゲーム',subtext:'体験設計・導線',status:'in_progress',collapsed:false,fitMode:'shrink',x:220,y:-110,color:PRESETS[1]}),
-  normalizeNode({id:'n3',label:'アウェー',subtext:'現地運用・発信',status:'none',collapsed:false,fitMode:'shrink',x:220,y:110,color:PRESETS[2]}),
-  normalizeNode({id:'n4',label:'集客施策',subtext:'来場促進 / 会員施策',status:'done',collapsed:false,fitMode:'shrink',x:460,y:-170,color:PRESETS[3]}),
-  normalizeNode({id:'n5',label:'メディア対応',subtext:'プレス / 告知素材',status:'paused',collapsed:false,fitMode:'shrink',x:460,y:-50,color:PRESETS[4]}),
-  normalizeNode({id:'n6',label:'SNS運用',subtext:'X / Instagram / ショート動画',status:'in_progress',collapsed:false,fitMode:'shrink',x:460,y:110,color:PRESETS[5]}),
-];
-edges=[
-  normalizeEdge({id:'e1',from:'n1',to:'n2',label:'主導'}),
-  normalizeEdge({id:'e2',from:'n1',to:'n3',label:'連携'}),
-  normalizeEdge({id:'e3',from:'n2',to:'n4',label:'発注'}),
-  normalizeEdge({id:'e4',from:'n2',to:'n5',label:'承認待ち'}),
-  normalizeEdge({id:'e5',from:'n3',to:'n6',label:'配信'}),
-];
-nid=20;
+nodes=[];
+edges=[];
+nid=1;
 setExportTab('json');
 setIoOpen(false);
+renderHistory();
 
 setTimeout(()=>{
-  fitV();
+  applyT();
+  draw();
   updateUndoUI();
   updateHUD();
   updateQuickbar();
