@@ -1374,6 +1374,27 @@ const coachToggleBtn=document.getElementById('coach-toggle');
 let toastTimer=null;
 let advancedUiOpen=false;
 let coachCollapsed=false;
+let hasUnsavedChanges=false;
+
+function updateDocumentTitle(){
+  const baseTitle=(meta&&meta.title?meta.title:'案件マインドマップ');
+  document.title=`${hasUnsavedChanges?'● ':''}${baseTitle}`;
+}
+function markDirty(){
+  if(!hasUnsavedChanges){
+    hasUnsavedChanges=true;
+    updateDocumentTitle();
+  }
+}
+function markSaved(){
+  hasUnsavedChanges=false;
+  updateDocumentTitle();
+}
+window.addEventListener('beforeunload',e=>{
+  if(!hasUnsavedChanges) return;
+  e.preventDefault();
+  e.returnValue='';
+});
 
 const nb=id=>nodes.find(n=>n.id===id);
 const eb=id=>edges.find(e=>e.id===id);
@@ -1384,6 +1405,7 @@ function snapshot(){
   if(undoStack.length>40) undoStack.shift();
   redoStack=[];
   updateUndoUI();
+  markDirty();
 }
 function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
@@ -1391,6 +1413,7 @@ function restoreState(payload){
   meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial'};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
+  updateDocumentTitle();
   nid=payload.nid||Math.max(
     1,
     ...nodes.map(n=>parseInt(String(n.id).replace('n',''))||0),
@@ -2321,6 +2344,7 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial'};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
+  updateDocumentTitle();
   nid=Math.max(
     1,
     ...nodes.map(n=>parseInt(String(n.id).replace('n',''))||0),
@@ -4010,8 +4034,15 @@ document.getElementById('j-io').addEventListener('input',()=>{
   setIoStatus(currentExportKind==='md'?'Markdown を編集しています。必要ならコピーできます。':'テキストを編集しています。必要ならコピーできます。','warn');
 });
 
-document.getElementById('map-title').addEventListener('input',e=>{ meta.title=e.target.value||'案件マインドマップ'; });
-document.getElementById('layout-mode').addEventListener('change',e=>{ meta.layoutMode=e.target.value; });
+document.getElementById('map-title').addEventListener('input',e=>{
+  meta.title=e.target.value||'案件マインドマップ';
+  markDirty();
+  updateDocumentTitle();
+});
+document.getElementById('layout-mode').addEventListener('change',e=>{
+  meta.layoutMode=e.target.value;
+  markDirty();
+});
 
 function downloadBlob(blob,filename){
   const url=URL.createObjectURL(blob);
@@ -4022,6 +4053,7 @@ function downloadBlob(blob,filename){
   a.click();
   a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),400);
+  markSaved();
 }
 function getSvgExportString(){
   const clone=sv.cloneNode(true);
@@ -4085,6 +4117,7 @@ meta={
 };
 document.getElementById('map-title').value=meta.title;
 document.getElementById('layout-mode').value=meta.layoutMode;
+updateDocumentTitle();
 nodes=(initialPreset.nodes||[]).map(normalizeNode);
 edges=(initialPreset.edges||[]).map(normalizeEdge);
 nid=Math.max(
@@ -4104,6 +4137,7 @@ setTimeout(()=>{
   updateUndoUI();
   updateHUD();
   updateQuickbar();
+  markSaved();
 },100);
 </script>
 </body>
