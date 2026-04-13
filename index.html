@@ -116,6 +116,14 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.ok{background:rgba(6,95,70,.96)}
 #toast.warn{background:rgba(146,64,14,.96)}
+#shortcut-dock{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;min-width:260px;max-width:min(420px,calc(100% - 24px));padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.96);border:1px solid #dbe3ef;box-shadow:0 12px 30px rgba(15,23,42,.14);z-index:63;backdrop-filter:blur(10px);pointer-events:none}
+#shortcut-dock .sc-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#shortcut-dock .sc-title{font-size:11px;font-weight:800;letter-spacing:.04em;color:#334155;text-transform:uppercase}
+#shortcut-dock .sc-sub{font-size:11px;color:#64748b}
+#shortcut-dock .sc-list{display:flex;flex-wrap:wrap;gap:6px}
+#shortcut-dock .sc-item{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;color:#334155;font-size:11px;line-height:1.25;white-space:nowrap}
+#shortcut-dock .sc-item kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;padding:2px 6px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-size:10px;font-weight:700;box-shadow:inset 0 -1px 0 rgba(15,23,42,.05)}
+#shortcut-dock .sc-item strong{font-weight:700;color:#0f172a}
 #help-backdrop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.36);z-index:88}
 #help-backdrop.open{display:flex}
 #help-panel{width:min(760px,calc(100% - 20px));max-height:min(720px,calc(100% - 20px));overflow:auto;background:#fff;border:1px solid #dbe3ef;border-radius:18px;box-shadow:0 20px 50px rgba(15,23,42,.22);padding:18px 18px 16px}
@@ -133,6 +141,9 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
   .hud-chip{font-size:11px;padding:6px 9px}
   #quickbar{padding:6px;gap:5px;max-width:calc(100% - 16px);flex-wrap:wrap}
   #quickbar button{font-size:11px;padding:5px 8px}
+  #shortcut-dock{left:10px;right:10px;bottom:10px;min-width:0;max-width:none;padding:9px 10px}
+  #shortcut-dock .sc-list{gap:5px}
+  #shortcut-dock .sc-item{font-size:10.5px;padding:4px 7px}
   .help-grid,.help-shortcuts{grid-template-columns:1fr}
 }
 
@@ -336,6 +347,13 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
       </div>
     </div>
     <div id="hint">ノードを追加して、名前を入れて、必要なら線でつなぎます。迷ったら「整える」か「全体に戻す」を使ってください。</div>
+    <div id="shortcut-dock" aria-hidden="true">
+      <div class="sc-head">
+        <div class="sc-title">ショートカット</div>
+        <div id="shortcut-sub" class="sc-sub">よく使うもの</div>
+      </div>
+      <div id="shortcut-list" class="sc-list"></div>
+    </div>
   </div>
 
   <div id="io-wrap">
@@ -487,6 +505,9 @@ const selectionChip=document.getElementById('selection-chip');
 const quickbar=document.getElementById('quickbar');
 const toastEl=document.getElementById('toast');
 const helpBackdrop=document.getElementById('help-backdrop');
+const shortcutDock=document.getElementById('shortcut-dock');
+const shortcutListEl=document.getElementById('shortcut-list');
+const shortcutSubEl=document.getElementById('shortcut-sub');
 let toastTimer=null;
 
 const nb=id=>nodes.find(n=>n.id===id);
@@ -1345,23 +1366,71 @@ function getEdgeSummary(edgeId){
 function getLayoutLabel(mode){
   return LAYOUT_LABELS[mode]||mode||'放射';
 }
+function setShortcutDock(title,items){
+  if(!shortcutDock || !shortcutListEl || !shortcutSubEl) return;
+  shortcutSubEl.textContent=title||'よく使うもの';
+  shortcutListEl.innerHTML=(items||[]).map(item=>`<div class="sc-item"><kbd>${escapeHtml(item.key)}</kbd><span><strong>${escapeHtml(item.label)}</strong>${item.desc?` ${escapeHtml(item.desc)}`:''}</span></div>`).join('');
+}
 function updateHint(){
   if(!hintEl) return;
   let html='';
   if(helpBackdrop?.classList.contains('open')){
     html='使い方を表示中です。Esc または閉じるで戻れます。';
+    setShortcutDock('今使えるもの',[
+      {key:'Esc',label:'閉じる'},
+      {key:'H',label:'使い方'},
+      {key:'?',label:'使い方'}
+    ]);
   }else if(mode==='edge' && efrom && nb(efrom)){
     html=`<b>${escapeHtml(shortenText(nb(efrom).label,16))}</b> からつなぎます。次に、つなぐ先をクリック。`;
+    setShortcutDock('線をつなぐとき',[
+      {key:'Click',label:'つなぐ先を選ぶ'},
+      {key:'Esc',label:'やめる'},
+      {key:'E',label:'選ぶに戻る'}
+    ]);
   }else if(mode==='edge'){
     html='線をつなぐモードです。始点 → 終点の順にクリック。Esc または E で戻れます。';
+    setShortcutDock('線をつなぐとき',[
+      {key:'Click',label:'始点を選ぶ'},
+      {key:'Esc',label:'やめる'},
+      {key:'E',label:'選ぶに戻る'}
+    ]);
   }else if(selectedEdgeId){
     html='線を選択中です。Enter で編集、Delete / Backspace で削除できます。';
+    setShortcutDock('線を選んだとき',[
+      {key:'Enter',label:'編集'},
+      {key:'Delete',label:'消す'},
+      {key:'Esc',label:'選択解除'},
+      {key:'D',label:'データ'}
+    ]);
   }else if(selectedNodeIds.size>1){
     html=`${selectedNodeIds.size}個を選択中です。まとめて動かしたり、色や状態をそろえたりできます。`;
+    setShortcutDock('複数選択中',[
+      {key:'Ctrl+Click',label:'追加選択'},
+      {key:'Delete',label:'消す'},
+      {key:'A',label:'整える'},
+      {key:'Esc',label:'選択解除'}
+    ]);
   }else if(activeNodeId && nb(activeNodeId)){
     html=`<b>${escapeHtml(shortenText(nb(activeNodeId).label,18))}</b> を選択中。Enter: 編集 / Tab: 子を追加 / E: つなぐ`;
+    setShortcutDock('ノードを選んだとき',[
+      {key:'Enter',label:'編集'},
+      {key:'Tab',label:'子を追加'},
+      {key:'E',label:'線をつなぐ'},
+      {key:'Delete',label:'消す'},
+      {key:'F',label:'全体に戻す'}
+    ]);
   }else{
     html='N: 追加 / S: 選ぶ / E: 線をつなぐ / A: 整える / F: 全体に戻す / D: データ / ?: 使い方';
+    setShortcutDock('よく使うもの',[
+      {key:'N',label:'追加'},
+      {key:'S',label:'選ぶ'},
+      {key:'E',label:'線をつなぐ'},
+      {key:'A',label:'整える'},
+      {key:'F',label:'全体に戻す'},
+      {key:'D',label:'データ'},
+      {key:'?',label:'使い方'}
+    ]);
   }
   hintEl.innerHTML=html;
 }
