@@ -66,6 +66,26 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #io-status.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
 #io-status.warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
 #io-status.err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+#io-outline-section{margin-top:14px;padding-top:12px;border-top:1px solid rgba(132,145,164,.16)}
+.io-outline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.io-outline-copy{min-width:0}
+.io-outline-title{font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--sf-text-0);text-transform:uppercase}
+.io-outline-sub{font-size:10px;line-height:1.45;color:var(--sf-text-2);margin-top:2px}
+.io-outline-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#io-outline-section .outline-note{font-size:10px;line-height:1.45;margin-top:8px;color:var(--sf-text-2)}
+#io-outline-section #outline-list{display:flex;flex-direction:column;gap:4px;max-height:42vh;overflow:auto;padding-right:2px}
+#io-outline-section .outline-level{gap:4px}
+#io-outline-section .outline-level.depth-1,#io-outline-section .outline-level.depth-2,#io-outline-section .outline-level.depth-3,#io-outline-section .outline-level.depth-4,#io-outline-section .outline-level.depth-5,#io-outline-section .outline-level.depth-6{margin-left:12px;padding-left:8px}
+#io-outline-section .outline-item{gap:4px}
+#io-outline-section .outline-row{gap:8px;padding:6px 8px;border-radius:12px}
+#io-outline-section .outline-handle{width:14px;flex:0 0 14px;font-size:11px;padding-top:1px}
+#io-outline-section .outline-number{min-width:34px;flex:0 0 34px;font-size:9.5px;font-weight:600;padding-top:2px;opacity:.72}
+#io-outline-section .outline-main{gap:2px}
+#io-outline-section .outline-title-text{font-size:11px;line-height:1.28;font-weight:700}
+#io-outline-section .outline-subtext{font-size:9.5px;line-height:1.32}
+#io-outline-section .outline-actions{gap:4px;margin-top:4px}
+#io-outline-section .outline-action{font-size:9px;padding:3px 5px}
+#io-outline-section .outline-status{font-size:9px;padding:3px 6px}
 @media (max-width:960px){
   #app.io-open #io-wrap{width:min(360px,44vw)}
 }
@@ -165,7 +185,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #app[data-adaptive-phase="empty"] .tb-group.tb-secondary-group select,
 #app[data-adaptive-phase="starter"] .tb-group.tb-secondary-group select{box-shadow:none}
 #app[data-advanced="open"] #b-more{background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98));border-color:rgba(18,198,255,.48);color:#effcff}
-#empty-state{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;z-index:68;background:radial-gradient(circle at top,#f8fbff 0,#ffffff 62%)}
+#empty-state{display:none !important}
 #empty-state.open{display:flex}
 #empty-state .es-card{width:min(760px,calc(100% - 32px));padding:28px;border:1px solid #dbe3ef;border-radius:24px;background:rgba(255,255,255,.98);box-shadow:0 20px 50px rgba(15,23,42,.12);display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:center}
 #empty-state .es-copy{display:flex;flex-direction:column;gap:12px}
@@ -803,7 +823,7 @@ svg{background:transparent;position:relative;z-index:1}
         <button id="b-io" class="secondary-action">データ</button>
         <button id="b-help" class="secondary-action">使い方</button>
         <button id="b-history" class="secondary-action">更新履歴</button>
-        <button id="b-outline" class="secondary-action">順番</button>
+        <button id="b-outline" class="secondary-action">アウトライナー</button>
       </div>
     </div>
 
@@ -971,7 +991,7 @@ svg{background:transparent;position:relative;z-index:1}
             <h3>最初にやること</h3>
             <ul>
               <li>「＋ ノードを追加」で考えたい要素を置く</li>
-              <li>Enter またはダブルクリックで内容を編集する</li>
+              <li>Enter で同階層を追加、Ctrl/Cmd+Enter またはダブルクリックで内容を編集する</li>
               <li>「線をつなぐ」にして、始点 → 終点の順にクリックする</li>
               <li>散らかったら「整える」か「全体に戻す」を使う</li>
             </ul>
@@ -1001,7 +1021,7 @@ svg{background:transparent;position:relative;z-index:1}
           <div><span>PNGで保存</span><kbd>P</kbd></div>
           <div><span>並び方 1〜6</span><kbd>1</kbd>〜<kbd>6</kbd></div>
           <div><span>JSON / テキスト切替</span><kbd>J</kbd> / <kbd>T</kbd></div>
-          <div><span>順番を整える</span><kbd>O</kbd></div>
+          <div><span>アウトライナーを開く</span><kbd>O</kbd></div>
           <div><span>元に戻す / やり直し</span><kbd>Ctrl/Cmd+Z</kbd></div>
           <div><span>Escで閉じる / 選択解除</span><kbd>Esc</kbd></div>
         </div>
@@ -1010,19 +1030,19 @@ svg{background:transparent;position:relative;z-index:1}
         </div>
       </div>
     </div>
-    <div id="outline-backdrop" aria-hidden="true">
-      <div id="outline-panel" role="dialog" aria-modal="true" aria-labelledby="outline-title">
+    <div id="outline-backdrop" aria-hidden="true" hidden style="display:none !important">
+      <div id="outline-panel" role="dialog" aria-modal="true" aria-labelledby="outline-title-modal">
         <div class="outline-head">
           <div>
-            <h2 id="outline-title">順番を整える</h2>
+            <h2 id="outline-title-modal">アウトライナー</h2>
             <p>1 / 1.1 / 1.1.1 の番号で見ながら、同じ親の中でドラッグして順番を入れ替えられます。並び替え後は、整列やテキスト出力にもその順番が反映されます。</p>
           </div>
           <div class="outline-head-actions">
-            <button id="b-outline-layout" class="io-mini" type="button">今の順で整列</button>
+            <button id="b-outline-layout-modal" class="io-mini" type="button">今の順で整列</button>
             <button id="outline-close" class="primary-btn" type="button">閉じる</button>
           </div>
         </div>
-        <div id="outline-list"></div>
+        <div id="outline-list-modal"></div>
         <div class="outline-note">ドラッグで並び替え / クリックでそのノードを選択 / 番号は自動で振り直します。</div>
       </div>
     </div>
@@ -1078,6 +1098,19 @@ svg{background:transparent;position:relative;z-index:1}
           <button id="b-in-clear" type="button">空にする</button>
           <button id="b-imp" class="primary-btn" type="button">今のマップを置き換える</button>
         </div>
+        <section id="io-outline-section" aria-labelledby="io-outline-title">
+          <div class="io-outline-head">
+            <div class="io-outline-copy">
+              <div id="io-outline-title" class="io-outline-title">アウトライナー</div>
+              <div class="io-outline-sub">番号を見ながら並び替え・階層変更・ノード追加ができます。整列や出力にもその順番が反映されます。</div>
+            </div>
+            <div class="io-outline-actions">
+              <button id="b-outline-layout" class="io-mini" type="button">今の順で整列</button>
+            </div>
+          </div>
+          <div id="outline-list"></div>
+          <div class="outline-note">ドラッグで並び替え / Enterで同階層追加 / Tabで子にする / Shift+Tabで親に戻す</div>
+        </section>
       </div>
     </div>
   </div>
@@ -1418,11 +1451,14 @@ function renderOutlineEditor(){
 }
 function setOutlineOpen(open){
   if(!outlineBackdrop) return;
-  outlineBackdrop.classList.toggle('open',!!open);
-  outlineBackdrop.setAttribute('aria-hidden',open?'false':'true');
-  if(open){
+  const shouldOpen=!!open;
+  outlineBackdrop.classList.toggle('open',shouldOpen);
+  outlineBackdrop.setAttribute('aria-hidden',shouldOpen?'false':'true');
+  if(shouldOpen){
+    app.classList.add('io-open');
     renderOutlineEditor();
     quickbar.style.display='none';
+    requestAnimationFrame(()=>{ outlineBackdrop.scrollIntoView({block:'nearest',behavior:'smooth'}); });
   }else{
     outlineDragState=null;
     clearOutlineDropState();
@@ -1719,7 +1755,7 @@ const helpBackdrop=document.getElementById('help-backdrop');
 const emptyStateEl=document.getElementById('empty-state');
 const historyBackdrop=document.getElementById('history-backdrop');
 const historyListEl=document.getElementById('history-list');
-const outlineBackdrop=document.getElementById('outline-backdrop');
+const outlineBackdrop=document.getElementById('io-outline-section');
 const outlineListEl=document.getElementById('outline-list');
 const shortcutDock=document.getElementById('shortcut-dock');
 const shortcutListEl=document.getElementById('shortcut-list');
@@ -1809,7 +1845,7 @@ function applyT(){
 function syncViewportUi(){
   updateHUD();
   updateQuickbar();
-  if(outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
+  if(app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
 }
 function toS(x,y){return{x:(x-vx)/vs,y:(y-vy)/vs}}
 function toW(x,y){return{x:x*vs+vx,y:y*vs+vy}}
@@ -2680,10 +2716,9 @@ function updateToolbarAdaptive(){
 }
 function updateEmptyState(){
   if(!emptyStateEl) return;
-  const isOpen=!nodes.length;
-  emptyStateEl.classList.toggle('open',isOpen);
-  emptyStateEl.setAttribute('aria-hidden',isOpen?'false':'true');
-  emptyStateEl.dataset.emptyVariant=isOpen?'default':'hidden';
+  emptyStateEl.classList.remove('open');
+  emptyStateEl.setAttribute('aria-hidden','true');
+  emptyStateEl.dataset.emptyVariant='hidden';
 }
 function renderHistory(){
   if(!historyListEl) return;
@@ -2921,7 +2956,7 @@ function updateHint(){
       title:'線を選択中',
       subtitle:getEdgeSummary(selectedEdgeId),
       body:'線は <b>名前を付ける / 向きを変える / 消す</b> の3つだけ使えれば十分です。',
-      items:[{key:'Enter',label:'編集'},{key:'Delete',label:'消す'},{key:'Esc',label:'選択解除'}],
+      items:[{key:'Enter',label:'同階層追加'},{key:'Ctrl+Enter',label:'編集'},{key:'Delete',label:'消す'},{key:'Esc',label:'選択解除'}],
       visible:true
     };
   }else if(selectedNodeIds.size>1){
@@ -2938,9 +2973,9 @@ function updateHint(){
       title:'ノードを選択中',
       subtitle:shortenText(node.label,18),
       body:phase==='starter'
-        ? '<b>Enter で編集 / Tab で子追加 / E でつなぐ</b>。最初はこの3つだけで足ります。'
+        ? '<b>Enter で同階層追加 / Tab で子追加 / E でつなぐ</b>。最初はこの3つだけで足ります。'
         : '<b>編集 / 子を追加 / つなぐ</b> のどれをしたいかだけ決めれば十分です。',
-      items:[{key:'Enter',label:'編集'},{key:'Tab',label:'子を追加'},{key:'E',label:'つなぐ'},{key:'Delete',label:'消す'}],
+      items:[{key:'Enter',label:'同階層追加'},{key:'Tab',label:'子を追加'},{key:'Ctrl+Enter',label:'編集'},{key:'E',label:'つなぐ'},{key:'Delete',label:'消す'}],
       visible:true
     };
   }else if(phase==='starter'){
@@ -2956,7 +2991,7 @@ function updateHint(){
       title:'整理フェーズ',
       subtitle:'塊ごとに見ると迷いません',
       body:'必要なときだけ「詳細を開く」で十分です。普段は <b>追加 / 整える / 編集</b> に寄せるのがおすすめです。',
-      items:[{key:'N',label:'追加'},{key:'A',label:'整える'},{key:'Enter',label:'編集'},{key:'B',label:'詳細'}],
+      items:[{key:'N',label:'追加'},{key:'A',label:'整える'},{key:'Enter',label:'同階層追加'},{key:'B',label:'詳細'}],
       visible:true
     };
   }else{
@@ -3455,7 +3490,7 @@ function draw(){
   });
   updateHUD();
   updateQuickbar();
-  if(outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
+  if(app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
   if(appEl && appEl.classList.contains('io-open') && currentExportKind!=='json'){
     writeCurrentExportToBox(currentExportKind,{silent:true});
   }
@@ -4154,6 +4189,9 @@ document.addEventListener('keydown',e=>{
   if(ep.style.display==='block' || eep.style.display==='block') return;
   const tag=(document.activeElement?.tagName||'').toUpperCase();
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+  const primarySelectedNodeId=(activeNodeId && nb(activeNodeId))
+    ? activeNodeId
+    : ([...selectedNodeIds].reverse().find(id=>nb(id)) || null);
   if(e.key==='Enter'){
     if(selectedEdgeId && eb(selectedEdgeId)){
       e.preventDefault();
@@ -4164,18 +4202,19 @@ document.addEventListener('keydown',e=>{
       openEep(selectedEdgeId, fx||undefined, fy||undefined);
       return;
     }
-    if(activeNodeId && nb(activeNodeId)){
+    if(primarySelectedNodeId){
       if(e.ctrlKey || e.metaKey){
         e.preventDefault();
-        openEp(activeNodeId);
+        openEp(primarySelectedNodeId);
         return;
       }
       if(!ensureMapTitle()) return;
       e.preventDefault();
       snapshot();
-      const sibling=createSiblingNode(activeNodeId,{status:'none',fitMode:'shrink'});
+      const sibling=createSiblingNode(primarySelectedNodeId,{status:'none',fitMode:'shrink'});
       draw();
       if(sibling){
+        setSingleSelection(sibling.id);
         openEp(sibling.id);
         showToast('同じ階層にノードを追加しました');
       }
@@ -4457,14 +4496,14 @@ document.getElementById('b-more').addEventListener('click',()=>{
 });
 document.getElementById('b-help').addEventListener('click',()=>setHelpOpen(true));
 document.getElementById('b-history').addEventListener('click',()=>setHistoryOpen(true));
-document.getElementById('b-outline').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setOutlineOpen(true); });
-document.getElementById('outline-close').addEventListener('click',()=>setOutlineOpen(false));
+document.getElementById('b-outline').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setIoOpen(true); setOutlineOpen(true); });
+if(document.getElementById('outline-close')) document.getElementById('outline-close').addEventListener('click',()=>setOutlineOpen(false));
 document.getElementById('b-outline-layout').addEventListener('click',()=>{ if(!ensureMapTitle()) return; applyAutoLayout(meta.layoutMode); draw(); showToast('今の順番で整列しました'); });
 document.getElementById('help-close').addEventListener('click',()=>setHelpOpen(false));
 document.getElementById('history-close').addEventListener('click',()=>setHistoryOpen(false));
 helpBackdrop.addEventListener('mousedown',e=>{ if(e.target===helpBackdrop) setHelpOpen(false); });
 historyBackdrop.addEventListener('mousedown',e=>{ if(e.target===historyBackdrop) setHistoryOpen(false); });
-outlineBackdrop.addEventListener('mousedown',e=>{ if(e.target===outlineBackdrop) setOutlineOpen(false); });
+if(document.getElementById('outline-backdrop')) document.getElementById('outline-backdrop').addEventListener('mousedown',e=>{ if(e.target===document.getElementById('outline-backdrop')) setOutlineOpen(false); });
 document.getElementById('es-open-help').addEventListener('click',()=>setHelpOpen(true));
 document.getElementById('es-open-history').addEventListener('click',()=>setHistoryOpen(true));
 document.getElementById('es-start-empty').addEventListener('click',()=>{ snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node){ openEp(node.id); showToast('1/3 ノードを置きました。次は名前を付けます'); } });
@@ -4635,7 +4674,7 @@ function runInitialBoot(){
   updateUndoUI();
   updateHUD();
   updateQuickbar();
-  if(outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
+  if(app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
   markSaved();
 }
 if(document.readyState==='complete'){
