@@ -1117,8 +1117,8 @@ svg{background:transparent;position:relative;z-index:1}
         </div>
 
         <label class="io-label" for="j-io">内容</label>
-        <textarea id="j-io" placeholder="JSONを貼り付けるか、タブを押して今の内容を表示します"></textarea>
-        <div id="io-status" class="warn">JSONを貼り付けるか、タブを押して今の内容を確認してください。</div>
+        <textarea id="j-io" placeholder="JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を表示します"></textarea>
+        <div id="io-status" class="warn">JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を確認してください。</div>
         <div class="io-actions">
           <button id="b-out-refresh" type="button">更新</button>
           <button id="b-cpy" type="button">コピー</button>
@@ -1676,12 +1676,23 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='3.3.1';
-const APP_UPDATED_AT='2026-04-14 17:04 JST';
+const APP_VERSION='3.3.2';
+const APP_UPDATED_AT='2026-04-14 17:26 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {
+    version:'3.3.2',
+    date:'2026-04-14 17:26 JST',
+    summary:'テキストとMarkdownからもマップを再構成して読み込めるよう改善。',
+    items:[
+      'データ欄の内容判定を拡張し、JSONだけでなくテキスト/Markdownからもインポート可能に変更',
+      'テキスト・Markdownの箇条書きと見出しを解析してノード/エッジへ変換するパーサーを追加',
+      'データ欄の案内文とステータスを更新し、テキスト/Markdownも編集してそのまま読み込めるよう明示',
+      '座標を持たないテキスト/Markdownインポート後は自動整列して中央表示するよう改善'
+    ]
+  },
   {
     version:'3.3.1',
     date:'2026-04-14 17:04 JST',
@@ -2221,9 +2232,144 @@ function createStandaloneNode(options={}){
   setSingleSelection(id);
   return node;
 }
-function parseImportData(raw){
+const STATUS_KEY_BY_LABEL=Object.fromEntries(Object.entries(STATUS_META).map(([key,value])=>[value.label,key]));
+function detectImportKind(raw='',preferred=currentExportKind){
+  const s=String(raw||'').trim();
+  if(!s) return 'json';
+  if(looksLikeJsonInput(s)) return 'json';
+  if(preferred==='md' || preferred==='markdown') return 'md';
+  if(preferred==='text') return 'text';
+  if(/^#\s+/m.test(s) || /^##\s+/m.test(s) || /^\s*-\s+_.*?_\s*→/m.test(s)) return 'md';
+  return 'text';
+}
+function stripExportNumberPrefix(text=''){
+  return String(text||'').replace(/^(?:\d+(?:\.\d+)*)\s+/,'').trim();
+}
+function parseOutlineLinePayload(raw='',format='text'){
+  let text=String(raw||'').trim();
+  let edgeLabel='';
+  if(format==='md'){
+    const edgeMatch=text.match(/^_(.+?)_\s*→\s*(.+)$/);
+    if(edgeMatch){
+      edgeLabel=edgeMatch[1].trim();
+      text=edgeMatch[2].trim();
+    }
+  }else{
+    const edgeMatch=text.match(/^\[([^\]]+)\]\s*→\s*(.+)$/);
+    if(edgeMatch){
+      edgeLabel=edgeMatch[1].trim();
+      text=edgeMatch[2].trim();
+    }
+  }
+  let status='none';
+  let match=text.match(/\s*\[([^\]]+)\]\s*$/);
+  if(match && STATUS_KEY_BY_LABEL[match[1].trim()]){
+    status=STATUS_KEY_BY_LABEL[match[1].trim()];
+    text=text.slice(0,match.index).trim();
+  }
+  match=text.match(/\s*（([^）]+)）\s*$/);
+  if(match && STATUS_KEY_BY_LABEL[match[1].trim()]){
+    status=STATUS_KEY_BY_LABEL[match[1].trim()];
+    text=text.slice(0,match.index).trim();
+  }
+  text=stripExportNumberPrefix(text);
+  return {label:text||'新規案件',edgeLabel,status};
+}
+function parseStructuredOutlineImport(raw,format='text'){
+  const cleaned=String(raw||'').replace(/^﻿/,'').replace(/\r/g,'');
+  const lines=cleaned.split('\n');
+  const nodes=[];
+  const edges=[];
+  const stack=[];
+  const siblingOrder=[];
+  let currentNode=null;
+  let title='';
+  let started=false;
+  let nodeSeq=1;
+  let edgeSeq=1;
+  function pushNode(depth,payload){
+    const safeDepth=Math.max(0,depth|0);
+    siblingOrder[safeDepth]=(siblingOrder[safeDepth]||0)+1;
+    siblingOrder.length=safeDepth+1;
+    const node={
+      id:`n${nodeSeq++}`,
+      label:payload.label,
+      subtext:'',
+      status:payload.status||'none',
+      collapsed:false,
+      fitMode:'shrink',
+      order:siblingOrder[safeDepth],
+      x:0,
+      y:0,
+      color:{...PRESETS[0]}
+    };
+    nodes.push(normalizeNode(node));
+    if(safeDepth>0 && stack[safeDepth-1]){
+      edges.push(normalizeEdge({id:`e${edgeSeq++}`,from:stack[safeDepth-1],to:node.id,label:payload.edgeLabel||''}));
+    }
+    stack[safeDepth]=node.id;
+    stack.length=safeDepth+1;
+    currentNode=nodes[nodes.length-1];
+  }
+  for(const rawLine of lines){
+    const line=String(rawLine||'').replace(/\t/g,'  ');
+    const trimmed=line.trim();
+    if(!trimmed) continue;
+    if(format==='md'){
+      if(trimmed.startsWith('# ')){
+        if(!title) title=trimmed.slice(2).trim();
+        continue;
+      }
+      const headingMatch=trimmed.match(/^(#{2,6})\s+(.*)$/);
+      if(headingMatch){
+        pushNode(Math.max(0,headingMatch[1].length-2),parseOutlineLinePayload(headingMatch[2],'md'));
+        started=true;
+        continue;
+      }
+      const bulletMatch=line.match(/^(\s*)-\s+(.*)$/);
+      if(bulletMatch){
+        const indent=bulletMatch[1].replace(/\t/g,'  ').length;
+        pushNode(Math.max(0,Math.floor(indent/2)),parseOutlineLinePayload(bulletMatch[2],'md'));
+        started=true;
+        continue;
+      }
+    }else{
+      const bulletMatch=line.match(/^(\s*)-\s+(.*)$/);
+      if(bulletMatch){
+        const indent=bulletMatch[1].replace(/\t/g,'  ').length;
+        pushNode(Math.max(0,Math.floor(indent/2)),parseOutlineLinePayload(bulletMatch[2],'text'));
+        started=true;
+        continue;
+      }
+      if(!started && !title){
+        title=trimmed;
+        continue;
+      }
+    }
+    if(currentNode){
+      currentNode.subtext=currentNode.subtext?`${currentNode.subtext}\n${trimmed}`:trimmed;
+    }else if(!title){
+      title=trimmed;
+    }
+  }
+  if(!nodes.length) throw new Error(format==='md'?'Markdown の見出し・箇条書きが見つかりません':'テキストの箇条書きが見つかりません');
+  nodes.forEach(n=>{ n.subtext=String(n.subtext||'').trim(); updateNodeMetrics(n,getOutlineNumberMap()); });
+  ensureOutlineOrders(nodes,edges);
+  return {
+    nodes,
+    edges,
+    meta:{
+      title:title||'案件マインドマップ',
+      layoutMode:'horizontal'
+    },
+    importKind:format
+  };
+}
+function parseImportData(raw,{kind}={}){
   const cleaned=String(raw||'').trim().replace(/^﻿/,'');
   if(!cleaned) throw new Error('入力が空です');
+  const resolvedKind=detectImportKind(cleaned,kind||currentExportKind);
+  if(resolvedKind!=='json') return parseStructuredOutlineImport(cleaned,resolvedKind);
   let parsed;
   try{ parsed=JSON.parse(cleaned); }catch(err){ throw new Error('JSONの形式が不正です'); }
   if(Array.isArray(parsed)) parsed={nodes:parsed,edges:[]};
@@ -2299,7 +2445,7 @@ function parseImportData(raw){
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial'
   };
   ensureOutlineOrders(nodesNorm,edgesNorm);
-  return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm};
+  return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm,importKind:'json'};
 }
 
 function buildOutlineText(onlySelection=false){
@@ -2879,7 +3025,9 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   clearSelection();
   setExportTab(currentExportKind);
   writeCurrentExportToBox(currentExportKind==='text'?'text':currentExportKind,{silent:true});
+  const needsAutoLayout=nodes.length>1 && nodes.every(n=>Math.round(n.x)===0 && Math.round(n.y)===0);
   if(nodes.length){
+    if(needsAutoLayout) applyAutoLayout(meta.layoutMode||'horizontal');
     placeGraphAtViewportCenter({resetViewport:true});
   }else{
     vs=1;vx=0;vy=0;
@@ -4520,8 +4668,8 @@ function writeCurrentExportToBox(kind=currentExportKind,{silent=false}={}){
   const ioBox=document.getElementById('j-io');
   const hasSelection=getSelectionExportNodeIds().size>0;
   if(ioBox) ioBox.value=getExportString(kind);
-  if(kind==='text') setIoStatus(hasSelection?'選択中ノードだけを構造付きテキストで表示しました。':'今のテキストを表示しました。','ok');
-  else if(kind==='md'){ setIoStatus(hasSelection?'選択中ノードだけを構造付きMarkdownで表示しました。':'今のMarkdownを表示しました。','ok'); if(ioBox){ ioBox.focus(); ioBox.select(); ioBox.setSelectionRange(0, ioBox.value.length); } }
+  if(kind==='text') setIoStatus(hasSelection?'選択中ノードだけを構造付きテキストで表示しました。編集してそのまま読み込めます。':'今のテキストを表示しました。編集してそのまま読み込めます。','ok');
+  else if(kind==='md'){ setIoStatus(hasSelection?'選択中ノードだけを構造付きMarkdownで表示しました。編集してそのまま読み込めます。':'今のMarkdownを表示しました。編集してそのまま読み込めます。','ok'); if(ioBox){ ioBox.focus(); ioBox.select(); ioBox.setSelectionRange(0, ioBox.value.length); } }
   else setIoStatus('今のJSONを表示しました。必要ならそのまま編集して読み込めます。','ok');
   if(!silent) showToast(kind==='text'?(hasSelection?'選択中ノードをテキスト表示しました':'テキストを表示しました'):kind==='md'?(hasSelection?'選択中ノードをMarkdown表示しました':'Markdownを表示しました'):'JSONを表示しました');
 }
@@ -4535,35 +4683,36 @@ function setIoStatus(message,tone='warn'){
 function previewImportText(){
   const raw=document.getElementById('j-io').value;
   if(!String(raw||'').trim()){
-    setIoStatus('未解析です。JSON を貼り付けて内容を確認してください。','warn');
-    return null;
-  }
-  if(currentExportKind!=='json' && !looksLikeJsonInput(raw)){
-    setIoStatus((currentExportKind==='md'?'Markdown':'テキスト')+'表示中です。JSON を貼り付けると読み込み確認できます。','warn');
+    setIoStatus('未解析です。JSON / テキスト / Markdown を貼り付けて内容を確認してください。','warn');
     return null;
   }
   try{
-    const cleaned=String(raw||'').trim().replace(/^﻿/,'');
-    const parsed=JSON.parse(cleaned);
-    const d=parseImportData(raw);
-    const nodesSrc=Array.isArray(parsed)?parsed:(Array.isArray(parsed.nodes)?parsed.nodes:(parsed.data&&Array.isArray(parsed.data.nodes)?parsed.data.nodes:[]));
-    const edgesSrc=Array.isArray(parsed)?[]:(Array.isArray(parsed.edges)?parsed.edges:(parsed.data&&Array.isArray(parsed.data.edges)?parsed.data.edges:[]));
-    const rawDuplicateNodeCount=Math.max(0,nodesSrc.length-new Set(nodesSrc.map(n=>String(n&&n.id||'').trim()||'')).size);
-    const rawDuplicateEdgeCount=Math.max(0,edgesSrc.length-new Set(edgesSrc.map(e=>String(e&&e.id||'').trim()||'')).size);
-    const duplicateCount=rawDuplicateNodeCount;
-    const droppedEdges=Math.max(0,edgesSrc.length-d.edges.length);
-    const zeroPosCount=d.nodes.filter(n=>n.x===0&&n.y===0).length;
+    const importKind=detectImportKind(raw,currentExportKind);
+    const d=parseImportData(raw,{kind:currentExportKind});
     const lines=[
+      `形式: ${importKind==='json'?'JSON':importKind==='md'?'Markdown':'テキスト'}`,
       `ノード: ${d.nodes.length}件 / エッジ: ${d.edges.length}件`,
       `マップ名: ${d.meta.title||'案件マインドマップ'}`,
       `並び方: ${getLayoutLabel(d.meta.layoutMode||'radial')}`
     ];
     const warns=[];
-    if(duplicateCount>0) warns.push(`重複ノードID: ${duplicateCount}件を自動補正`);
-    if(droppedEdges>0) warns.push(`存在しないノードを指すエッジを除外: ${droppedEdges}件`);
-    if(rawDuplicateEdgeCount>0) warns.push(`重複エッジID: ${rawDuplicateEdgeCount}件を自動補正`);
-    if(zeroPosCount===d.nodes.length && d.nodes.length>1) warns.push('座標がすべて 0,0 です。読み込み後に整える推奨。');
-    if(nodesSrc.some(node=>node && node.color && ensureDarkThemeColor(node.color,{...PRESETS[0]}).fill!==String(node.color.fill||'').trim().toLowerCase())) warns.push('明るい配色はダークテーマ向けに自動補正します。');
+    if(importKind==='json'){
+      const cleaned=String(raw||'').trim().replace(/^﻿/,'');
+      const parsed=JSON.parse(cleaned);
+      const nodesSrc=Array.isArray(parsed)?parsed:(Array.isArray(parsed.nodes)?parsed.nodes:(parsed.data&&Array.isArray(parsed.data.nodes)?parsed.data.nodes:[]));
+      const edgesSrc=Array.isArray(parsed)?[]:(Array.isArray(parsed.edges)?parsed.edges:(parsed.data&&Array.isArray(parsed.data.edges)?parsed.data.edges:[]));
+      const rawDuplicateNodeCount=Math.max(0,nodesSrc.length-new Set(nodesSrc.map(n=>String(n&&n.id||'').trim()||'')).size);
+      const rawDuplicateEdgeCount=Math.max(0,edgesSrc.length-new Set(edgesSrc.map(e=>String(e&&e.id||'').trim()||'')).size);
+      const droppedEdges=Math.max(0,edgesSrc.length-d.edges.length);
+      const zeroPosCount=d.nodes.filter(n=>n.x===0&&n.y===0).length;
+      if(rawDuplicateNodeCount>0) warns.push(`重複ノードID: ${rawDuplicateNodeCount}件を自動補正`);
+      if(droppedEdges>0) warns.push(`存在しないノードを指すエッジを除外: ${droppedEdges}件`);
+      if(rawDuplicateEdgeCount>0) warns.push(`重複エッジID: ${rawDuplicateEdgeCount}件を自動補正`);
+      if(zeroPosCount===d.nodes.length && d.nodes.length>1) warns.push('座標がないので、読み込み後に自動整列します。');
+      if(nodesSrc.some(node=>node && node.color && ensureDarkThemeColor(node.color,{...PRESETS[0]}).fill!==String(node.color.fill||'').trim().toLowerCase())) warns.push('明るい配色はダークテーマ向けに自動補正します。');
+    }else{
+      warns.push(importKind==='md'?'Markdown の見出しと箇条書きからノードを再構成します。':'テキストの箇条書きからノードを再構成します。');
+    }
     if(warns.length) lines.push('注意: '+warns.join(' / '));
     setIoStatus(lines.join('\n'),warns.length?'warn':'ok');
     return d;
@@ -4641,13 +4790,14 @@ document.getElementById('b-exp-md').addEventListener('click',()=>activateExportT
 document.getElementById('b-out-refresh').addEventListener('click',()=>writeCurrentExportToBox(currentExportKind));
 document.getElementById('b-in-clear').addEventListener('click',()=>{
   document.getElementById('j-io').value='';
-  setIoStatus('未解析です。JSON を貼り付けると内容を確認できます。','warn');
+  setIoStatus('未解析です。JSON / テキスト / Markdown を貼り付けると内容を確認できます。','warn');
 });
 document.getElementById('b-imp').addEventListener('click',()=>{
   try{
     const d=previewImportText();
     if(!d) throw new Error('JSON の内容を確認してください');
-    replaceMapData(d,{toastMessage:'JSONを読み込みました'});
+    const kind=detectImportKind(document.getElementById('j-io').value,currentExportKind);
+    replaceMapData(d,{toastMessage:kind==='json'?'JSONを読み込みました':kind==='md'?'Markdownから読み込みました':'テキストから読み込みました'});
   }catch(err){
     setIoStatus('読み込みに失敗しました: '+err.message,'err');
     alert('インポートできませんでした: '+err.message);
@@ -4660,7 +4810,7 @@ document.getElementById('b-cpy').addEventListener('click',()=>{
 document.getElementById('j-io').addEventListener('input',()=>{
   const raw=document.getElementById('j-io').value;
   if(!String(raw||'').trim()){
-    setIoStatus('未解析です。JSON を貼り付けると内容を確認できます。','warn');
+    setIoStatus('未解析です。JSON / テキスト / Markdown を貼り付けると内容を確認できます。','warn');
     return;
   }
   if(currentExportKind==='json' || looksLikeJsonInput(raw)){
