@@ -1474,6 +1474,7 @@ function centerViewAtZoom(targetZoom=vs){
   const visibleNodes=getVisibleNodes();
   const W=sv.clientWidth||800, H=sv.clientHeight||480;
   const nextZoom=Math.min(3,Math.max(0.15,Number.isFinite(targetZoom)?targetZoom:1));
+  const numberMap=getOutlineNumberMap();
   vs=nextZoom;
   if(!visibleNodes.length){
     vx=W/2;
@@ -1485,7 +1486,7 @@ function centerViewAtZoom(targetZoom=vs){
   }
   const xs=[], ys=[];
   visibleNodes.forEach(n=>{
-    updateNodeMetrics(n, outlineNumberMap);
+    updateNodeMetrics(n, numberMap);
     xs.push(n.x-n.w/2, n.x+n.w/2);
     ys.push(n.y-n.h/2, n.y+n.h/2);
   });
@@ -1494,11 +1495,13 @@ function centerViewAtZoom(targetZoom=vs){
   vx=W/2-cx*vs;
   vy=H/2-cy*vs;
   applyT();
+  syncViewportUi();
   draw();
 }
 function placeGraphAtViewportCenter({resetViewport=true}={}){
   const visibleNodes=getVisibleNodes();
   const W=sv.clientWidth||800, H=sv.clientHeight||480;
+  const numberMap=getOutlineNumberMap();
   if(!visibleNodes.length) return;
   if(resetViewport){
     vs=1;
@@ -1508,7 +1511,7 @@ function placeGraphAtViewportCenter({resetViewport=true}={}){
   }
   const xs=[], ys=[];
   visibleNodes.forEach(n=>{
-    updateNodeMetrics(n, outlineNumberMap);
+    updateNodeMetrics(n, numberMap);
     xs.push(n.x-n.w/2, n.x+n.w/2);
     ys.push(n.y-n.h/2, n.y+n.h/2);
   });
@@ -1522,8 +1525,8 @@ function placeGraphAtViewportCenter({resetViewport=true}={}){
     n.x+=dx;
     n.y+=dy;
   });
-  draw();
   syncViewportUi();
+  draw();
 }
 function looksLikeJsonInput(raw=''){
   const s=String(raw||'').trim();
@@ -1802,6 +1805,13 @@ function closePanels(){
 }
 function closeEp(){ep.style.display='none';epid=null;epc=null;updateQuickbar();updateHint();}
 function closeEep(){eep.style.display='none';eeid=null;updateQuickbar();updateHint();}
+function closeTransientUi({keepIo=false}={}){
+  cm.style.display='none';
+  document.getElementById('confirm-bar').style.display='none';
+  closeEp();
+  closeEep();
+  if(!keepIo) setIoOpen(false);
+}
 function clearSelection(){
   selectedNodeIds.clear();
   activeNodeId=null;
@@ -2676,6 +2686,7 @@ function setHistoryOpen(open){
   updateHint();
 }
 function replaceMapData(d,{toastMessage='マップを読み込みました',skipHistory=false}={}){
+  closeTransientUi({keepIo:true});
   if(!skipHistory) snapshot();
   nodes=(d.nodes||[]).map(normalizeNode);
   edges=(d.edges||[]).map(normalizeEdge);
@@ -2692,11 +2703,16 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   clearSelection();
   setExportTab(currentExportKind);
   writeCurrentExportToBox(currentExportKind==='text'?'text':currentExportKind,{silent:true});
-  if(nodes.length) centerViewAtZoom(1);
-  else{ vs=1; applyT(); draw(); }
-  if(nodes.length===1){
-    setSingleSelection(nodes[0].id);
-    openEp(nodes[0].id);
+  if(nodes.length){
+    centerViewAtZoom(1);
+    if(nodes.length===1) setSingleSelection(nodes[0].id);
+  }else{
+    vs=1;
+    vx=0;
+    vy=0;
+    applyT();
+    syncViewportUi();
+    draw();
   }
   showToast(toastMessage);
 }
@@ -3933,10 +3949,11 @@ document.getElementById('b-auto').addEventListener('click',()=>{
 });
 function fitV(){
   const visibleNodes=getVisibleNodes();
+  const numberMap=getOutlineNumberMap();
   if(!visibleNodes.length) return;
   const xs=[], ys=[];
   visibleNodes.forEach(n=>{
-    updateNodeMetrics(n, outlineNumberMap);
+    updateNodeMetrics(n, numberMap);
     xs.push(n.x-n.w/2, n.x+n.w/2);
     ys.push(n.y-n.h/2, n.y+n.h/2);
   });
@@ -3946,6 +3963,7 @@ function fitV(){
   vx=W/2-((Math.min(...xs)+Math.max(...xs))/2)*sc;
   vy=H/2-((Math.min(...ys)+Math.max(...ys))/2)*sc;
   applyT();
+  syncViewportUi();
   draw();
 }
 document.getElementById('b-fit').addEventListener('click',()=>{fitV();showToast('全体が見える位置に戻しました');});
@@ -4228,17 +4246,16 @@ document.getElementById('b-clear').addEventListener('click',()=>{
   document.getElementById('confirm-bar').style.display='flex';
 });
 document.getElementById('confirm-yes').addEventListener('click',()=>{
-  document.getElementById('confirm-bar').style.display='none';
+  closeTransientUi();
   snapshot();
   nodes=[normalizeNode({id:'n1',label:'サンプル',subtext:'',status:'none',collapsed:false,order:1,x:0,y:0,color:{...PRESETS[0]}})];
   edges=[];
   nid=2;
   clearSelection();
   centerViewAtZoom(1);
-  if(nodes[0]){
-    setSingleSelection(nodes[0].id);
-    openEp(nodes[0].id);
-  }
+  if(nodes[0]) setSingleSelection(nodes[0].id);
+  draw();
+  showToast('サンプル1件の状態に戻しました');
 });
 document.getElementById('confirm-no').addEventListener('click',()=>{
   document.getElementById('confirm-bar').style.display='none';
