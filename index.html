@@ -76,6 +76,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 .io-tab.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
 .io-mini{font-size:12px;padding:5px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
 #b-io-side{position:absolute;left:-74px;top:14px;min-width:74px;font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;border-right:none;border-radius:10px 0 0 10px;background:#fff;color:#334155;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:20}
+#b-outline-side{position:absolute;left:-106px;top:56px;min-width:106px;font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;border-right:none;border-radius:10px 0 0 10px;background:#fff;color:#334155;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:19}
 #j-io{width:100%;min-height:220px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:rgba(5,8,12,.78);color:var(--sf-text-0);resize:vertical;outline:none;line-height:1.5;white-space:pre;color-scheme:dark;caret-color:#f7f2eb}
 #j-io:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:rgba(8,12,18,.92);color:var(--sf-text-0);color-scheme:dark}
 #j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
@@ -116,6 +117,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
   .io-head-actions{justify-content:flex-start}
   #j-io{min-height:180px}
   #b-io-side{left:-64px;min-width:64px;padding:7px 8px}
+  #b-outline-side{left:-94px;min-width:94px;padding:7px 8px}
 }
 #cm{position:absolute;background:#fff;border:1px solid #ddd;border-radius:8px;padding:4px 0;display:none;z-index:50;min-width:170px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
 #cm div{padding:7px 14px;font-size:13px;cursor:pointer;color:#333}
@@ -397,6 +399,7 @@ svg{background:transparent;position:relative;z-index:1}
 .io-actions button,
 .epft button,
 #b-io-side,
+#b-outline-side,
 #empty-state .es-actions button{
   position:relative;
   overflow:hidden;
@@ -511,7 +514,8 @@ svg{background:transparent;position:relative;z-index:1}
 #cm div:hover{background:rgba(255,255,255,.055)}
 #cm hr{border-top-color:rgba(255,255,255,.08)}
 .panel label,.io-label,.io-sub,.mini-note,#help-panel p,#history-panel p,.help-card ul,.help-shortcuts div,.history-date{color:var(--sf-text-2)}
-#b-io-side{
+#b-io-side,
+#b-outline-side{
   background:linear-gradient(180deg, rgba(20,25,34,.95), rgba(11,15,22,.98));
   color:var(--sf-text-0);
   border-color:rgba(132,145,164,.22);
@@ -1099,6 +1103,7 @@ svg{background:transparent;position:relative;z-index:1}
 
   <div id="io-wrap">
     <button id="b-io-side" type="button" aria-label="データの開閉">データ</button>
+    <button id="b-outline-side" type="button" aria-label="アウトライナーの開閉">アウトライナー</button>
     <div id="io">
       <div class="io-panel">
         <div class="io-head">
@@ -1677,7 +1682,7 @@ let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
 const APP_VERSION='3.3.2';
-const APP_UPDATED_AT='2026-04-14 17:26 JST';
+const APP_UPDATED_AT='2026-04-14 15:54 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
@@ -4783,6 +4788,7 @@ document.getElementById('es-start-sample').addEventListener('click',()=>replaceM
 document.getElementById('es-start-template').addEventListener('click',()=>replaceMapData(STARTER_PRESETS.planning,{toastMessage:'企画テンプレートを読み込みました'}));
 document.getElementById('b-io').addEventListener('click',toggleIo);
 document.getElementById('b-io-side').addEventListener('click',toggleIo);
+document.getElementById('b-outline-side').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setOutlineOpen(!appEl.classList.contains('outline-open')); });
 document.getElementById('b-io-inline').addEventListener('click',()=>setIoOpen(false));
 document.getElementById('b-exp-json').addEventListener('click',()=>activateExportTab('json'));
 document.getElementById('b-exp-text').addEventListener('click',()=>activateExportTab('text',{copy:true}));
