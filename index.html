@@ -1758,12 +1758,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.2.7';
-const APP_UPDATED_AT='2026-04-14 19:55 JST';
+const APP_VERSION='1.2.8';
+const APP_UPDATED_AT='2026-04-14 20:08 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {version:'1.2.8',date:'2026-04-14 20:08 JST',summary:'ノード編集を Enter で確定したあと、次の Enter で同階層追加しやすいよう編集パネル終了時のフォーカス復帰を修正。',items:['closeEp / closeEep 実行時に開いていた入力欄のフォーカスを明示的に外すよう調整','ノード編集保存後は選択状態を保ったままキャンバスへフォーカスを戻し、次の Enter をショートカットとして拾えるよう修正','編集パネルのキャンセルや矢印編集終了後も同様にショートカット先をキャンバスへ戻すよう統一','隠れた入力欄にフォーカスが残って Enter / Tab の判定を止める状態を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.7',date:'2026-04-14 19:55 JST',summary:'ノード選択中の Enter / Tab 系ショートカットが通常キャンバスでも効くようフォーカス判定を修正。',items:['ノード選択時に map-title のフォーカスを外してキャンバスへ戻すよう調整','Enter の同階層追加ショートカットが map-title フォーカス中でも選択ノードに対して動くよう修正','Tab の子ノード追加ショートカットも同様に map-title フォーカス時は許可','他の入力欄・データ欄・編集欄では従来通りショートカットを抑止','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.6',date:'2026-04-14 19:40 JST',summary:'右側のデータ / アウトライナーボタンの余白と間隔を調整し、見た目のまとまりを改善。',items:['データ / アウトライナーボタンの左右内側余白を増やし、文字の窮屈さを解消','両ボタンの幅と左位置をそろえ、視覚的にそろった縦並びへ調整','アウトライナーボタンの縦位置を少し上げ、データボタンとの距離を縮めた','モバイル幅でも折り返しにくいようボタンの最小幅と余白を再調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.5',date:'2026-04-14 19:25 JST',summary:'タイトルと最初のノード名の初回同期を双方向に改善。',items:['マップ名を先に入力したときは、初回だけ最初のノード名へ追従する既存挙動を維持','最初のノード名を先に変更したときは、マップ名が空ならタイトルへ自動反映して同期を完了','タイトル欄の値と document.title が初回ノード編集でも即時に更新されるよう調整']},
@@ -2047,8 +2048,27 @@ function closePanels(){
   closeEp();
   closeEep();
 }
-function closeEp(){ep.style.display='none';epid=null;epc=null;updateQuickbar();updateHint();}
-function closeEep(){eep.style.display='none';eeid=null;updateQuickbar();updateHint();}
+function closeEp(){
+  const activeEl=document.activeElement;
+  const shouldRestore=!!(activeEl && ep.contains(activeEl));
+  if(shouldRestore && typeof activeEl.blur==='function') activeEl.blur();
+  ep.style.display='none';
+  epid=null;
+  epc=null;
+  updateQuickbar();
+  updateHint();
+  if(shouldRestore) focusCanvasForShortcuts();
+}
+function closeEep(){
+  const activeEl=document.activeElement;
+  const shouldRestore=!!(activeEl && eep.contains(activeEl));
+  if(shouldRestore && typeof activeEl.blur==='function') activeEl.blur();
+  eep.style.display='none';
+  eeid=null;
+  updateQuickbar();
+  updateHint();
+  if(shouldRestore) focusCanvasForShortcuts();
+}
 function closeTransientUi({keepIo=false}={}){
   cm.style.display='none';
   document.getElementById('confirm-bar').style.display='none';
