@@ -4357,6 +4357,19 @@ setExportTab('json');
 setIoOpen(false);
 renderHistory();
 
+// 起動時は必ず「選択モード + ノード1件以上」から始める
+sm('select');
+if(!nodes.length){
+  nodes=(STARTER_PRESETS.sample.nodes||[]).map(normalizeNode);
+  edges=(STARTER_PRESETS.sample.edges||[]).map(normalizeEdge);
+  ensureOutlineOrders(nodes,edges);
+  nid=Math.max(
+    1,
+    ...nodes.map(n=>parseInt(String(n.id).replace('n',''))||0),
+    ...edges.map(e=>parseInt(String(e.id).replace('e',''))||0)
+  )+1;
+}
+
 setTimeout(()=>{
   centerViewAtZoom(1);
   clearSelection();
