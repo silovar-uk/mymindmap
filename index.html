@@ -1496,6 +1496,39 @@ function centerViewAtZoom(targetZoom=vs){
   applyT();
   draw();
 }
+function placeGraphAtViewportCenter({resetViewport=true}={}){
+  const visibleNodes=getVisibleNodes();
+  const W=sv.clientWidth||800, H=sv.clientHeight||480;
+  if(!visibleNodes.length) return;
+  if(resetViewport){
+    vs=1;
+    vx=0;
+    vy=0;
+    applyT();
+  }
+  const xs=[], ys=[];
+  visibleNodes.forEach(n=>{
+    updateNodeMetrics(n, outlineNumberMap);
+    xs.push(n.x-n.w/2, n.x+n.w/2);
+    ys.push(n.y-n.h/2, n.y+n.h/2);
+  });
+  const cx=(Math.min(...xs)+Math.max(...xs))/2;
+  const cy=(Math.min(...ys)+Math.max(...ys))/2;
+  const targetX=(W/2-vx)/vs;
+  const targetY=(H/2-vy)/vs;
+  const dx=targetX-cx;
+  const dy=targetY-cy;
+  visibleNodes.forEach(n=>{
+    n.x+=dx;
+    n.y+=dy;
+  });
+  draw();
+  syncViewportUi();
+}
+function looksLikeJsonInput(raw=''){
+  const s=String(raw||'').trim();
+  return s.startsWith('{') || s.startsWith('[');
+}
 const REFINED_BRANCH_HUES=[22,196,258,338,42,148,214,292];
 const NODE_W_MIN=156;
 const NODE_W_MAX=320;
@@ -4281,7 +4314,7 @@ function setExportTab(kind='json'){
   document.getElementById('b-exp-text').classList.toggle('act',kind==='text');
   document.getElementById('b-exp-md').classList.toggle('act',kind==='md');
   const impBtn=document.getElementById('b-imp');
-  if(impBtn) impBtn.disabled=(kind!=='json');
+  if(impBtn) impBtn.disabled=false;
   writeCurrentExportToBox(kind,{silent:true});
 }
 
@@ -4302,13 +4335,13 @@ function setIoStatus(message,tone='warn'){
   box.classList.add(tone);
 }
 function previewImportText(){
-  if(currentExportKind!=='json'){
-    setIoStatus((currentExportKind==='md'?'Markdown':'テキスト')+'表示中は読み込めません。JSON タブに切り替えてください。','warn');
-    return null;
-  }
   const raw=document.getElementById('j-io').value;
   if(!String(raw||'').trim()){
     setIoStatus('未解析です。JSON を貼り付けて内容を確認してください。','warn');
+    return null;
+  }
+  if(currentExportKind!=='json' && !looksLikeJsonInput(raw)){
+    setIoStatus((currentExportKind==='md'?'Markdown':'テキスト')+'表示中です。JSON を貼り付けると読み込み確認できます。','warn');
     return null;
   }
   try{
@@ -4424,12 +4457,12 @@ document.getElementById('b-cpy').addEventListener('click',()=>{
   copyTextToClipboard(out,{successMessage:'内容をコピーしました'});
 });
 document.getElementById('j-io').addEventListener('input',()=>{
-  if(currentExportKind==='json'){
-    const raw=document.getElementById('j-io').value;
-    if(!String(raw||'').trim()){
-      setIoStatus('未解析です。JSON を貼り付けると内容を確認できます。','warn');
-      return;
-    }
+  const raw=document.getElementById('j-io').value;
+  if(!String(raw||'').trim()){
+    setIoStatus('未解析です。JSON を貼り付けると内容を確認できます。','warn');
+    return;
+  }
+  if(currentExportKind==='json' || looksLikeJsonInput(raw)){
     previewImportText();
     return;
   }
@@ -4549,9 +4582,9 @@ if(!nodes.length){
   )+1;
 }
 
-setTimeout(()=>{
+function runInitialBoot(){
   draw();
-  centerViewAtZoom(1);
+  placeGraphAtViewportCenter({resetViewport:true});
   clearSelection();
   draw();
   focusMapTitle();
@@ -4560,7 +4593,12 @@ setTimeout(()=>{
   updateQuickbar();
   if(outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
   markSaved();
-},100);
+}
+if(document.readyState==='complete'){
+  requestAnimationFrame(()=>requestAnimationFrame(runInitialBoot));
+}else{
+  window.addEventListener('load',()=>requestAnimationFrame(()=>requestAnimationFrame(runInitialBoot)),{once:true});
+}
 </script>
 </body>
 </html>
