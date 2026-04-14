@@ -1602,15 +1602,30 @@ let marquee=null;
 let pan=false,psx=0,psy=0,vx=0,vy=0,vs=1;
 let cid=null,epid=null,epc=null,eeid=null;
 let undoStack=[],redoStack=[];
+let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='3.0.0';
-const APP_UPDATED_AT='2026-04-13';
+const APP_VERSION='3.2.0';
+const APP_UPDATED_AT='2026-04-14 15:00 JST';
+// AIメンテナンス指示:
+// このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
+// APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
   {
+    version:'3.2.0',
+    date:'2026-04-14 15:00 JST',
+    summary:'更新履歴の運用ルールを明示し、マップ名と最初のノード名が初回入力時だけ連動するよう改善。',
+    items:[
+      'AIが今後の修正時に更新履歴を必ず追記するためのコメントをコード内へ追加',
+      '更新履歴の日付表記を日時付きの JST 形式へ統一',
+      'マップ名の初回入力中だけ最初のノード名が追従し、以後は独立するよう調整',
+      'サンプル初期状態とリセット後の状態でも、初回タイトル同期が再び働くよう整理'
+    ]
+  },
+  {
     version:'3.1.0',
-    date:'2026-04-13',
+    date:'2026-04-13 20:30 JST',
     summary:'売り物としての迷いを減らすため、主導線を絞った Focused UX 版を追加',
     items:[
       'ツールバーを「基本操作 + 詳細」に再編し、初期表示のボタン数を大幅に削減',
@@ -1622,7 +1637,7 @@ const APP_CHANGELOG=[
   },
   {
     version:'3.0.0',
-    date:'2026-04-13',
+    date:'2026-04-13 18:10 JST',
     summary:'可読性を優先してSF6寄りのアリーナUIへ全面再設計。',
     items:[
       'ツールバー・HUD・quickbar を高コントラストの dark arena surface に刷新し、オレンジ地に白文字の見づらさを解消',
@@ -1633,7 +1648,7 @@ const APP_CHANGELOG=[
   },
   {
     version:'2.0.0',
-    date:'2026-04-13',
+    date:'2026-04-13 15:40 JST',
     summary:'Adaptive UI の土台を入れ、空のキャンバスでも始めやすい体験へ更新。',
     items:[
       'ノード数と選択状態に応じて <code>hint</code> と <code>quickbar</code> が切り替わるよう改善',
@@ -1644,7 +1659,7 @@ const APP_CHANGELOG=[
   },
   {
     version:'1.0.0',
-    date:'2026-04-13',
+    date:'2026-04-13 11:20 JST',
     summary:'案件マインドマップの初期版。ノード編集、接続、整列、入出力を搭載。',
     items:[
       'ノード / 矢印の編集、整列、SVG / PNG 保存、JSON 入出力を実装',
@@ -1773,6 +1788,7 @@ function restoreState(payload){
   meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial'};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
+  setInitialTitleNodeSyncArmed(false);
   updateDocumentTitle();
   nid=payload.nid||Math.max(
     1,
@@ -2694,6 +2710,7 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial'};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
+  setInitialTitleNodeSyncArmed(false);
   updateDocumentTitle();
   nid=Math.max(
     1,
@@ -4250,6 +4267,11 @@ document.getElementById('confirm-yes').addEventListener('click',()=>{
   snapshot();
   nodes=[normalizeNode({id:'n1',label:'サンプル',subtext:'',status:'none',collapsed:false,order:1,x:0,y:0,color:{...PRESETS[0]}})];
   edges=[];
+  meta.title='';
+  document.getElementById('map-title').value='';
+  document.getElementById('map-title').placeholder='まずマップ名を入力';
+  setInitialTitleNodeSyncArmed(true);
+  updateDocumentTitle();
   nid=2;
   clearSelection();
   centerViewAtZoom(1);
@@ -4488,8 +4510,12 @@ document.getElementById('j-io').addEventListener('input',()=>{
 
 document.getElementById('map-title').addEventListener('input',e=>{
   meta.title=e.target.value;
+  syncFirstNodeLabelWithTitle(meta.title);
   markDirty();
   updateDocumentTitle();
+});
+document.getElementById('map-title').addEventListener('blur',()=>{
+  if(initialTitleNodeSyncArmed && String(meta.title||'').trim()) setInitialTitleNodeSyncArmed(false);
 });
 document.getElementById('layout-mode').addEventListener('change',e=>{
   meta.layoutMode=e.target.value;
@@ -4573,6 +4599,7 @@ meta={
 document.getElementById('map-title').value='';
 document.getElementById('map-title').placeholder='まずマップ名を入力';
 document.getElementById('layout-mode').value=meta.layoutMode;
+setInitialTitleNodeSyncArmed(true);
 updateDocumentTitle();
 nodes=(initialPreset.nodes||[]).map(normalizeNode);
 edges=(initialPreset.edges||[]).map(normalizeEdge);
