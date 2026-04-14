@@ -843,6 +843,8 @@ svg{background:transparent;position:relative;z-index:1}
       <div class="tb-stack">
         <div class="tb-row">
           <button id="b-io" class="secondary-action">データ</button>
+        </div>
+        <div class="tb-row">
           <button id="b-outline" class="secondary-action">アウトライナー</button>
         </div>
         <div class="tb-row">
@@ -1674,12 +1676,22 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='3.3.0';
-const APP_UPDATED_AT='2026-04-14 15:45 JST';
+const APP_VERSION='3.3.1';
+const APP_UPDATED_AT='2026-04-14 17:04 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {
+    version:'3.3.1',
+    date:'2026-04-14 17:04 JST',
+    summary:'確認・共有エリアの導線を整理し、データの直下にアウトライナーボタンを配置。',
+    items:[
+      '確認・共有のボタン配置を見直し、データボタンの直下にアウトライナーボタンを独立表示',
+      '使い方と更新履歴の並びはそのまま維持しつつ、右上操作の視線移動を短縮',
+      'APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新'
+    ]
+  },
   {
     version:'3.3.0',
     date:'2026-04-14 15:45 JST',
