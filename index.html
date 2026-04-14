@@ -1758,12 +1758,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.2.8';
-const APP_UPDATED_AT='2026-04-14 20:08 JST';
+const APP_VERSION='1.2.9';
+const APP_UPDATED_AT='2026-04-14 20:28 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {version:'1.2.9',date:'2026-04-14 20:28 JST',summary:'ノードを約7割重ねてドラッグ終了すると、重ねたノードが相手の子になる自動接続を追加。',items:['ドラッグ終了時に重なり率を判定し、約70%重なった相手ノードへ親子接続するロジックを追加','重ねた側のノードだけを対象にし、相手ノードの子孫へは接続しない安全判定を追加','親変更時は既存の親矢印を差し替えて順番を振り直し、現在のレイアウトに合わせて再整列するよう改善','接続成功時は重ねたノードを選択したままトーストで結果を通知','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.8',date:'2026-04-14 20:08 JST',summary:'ノード編集を Enter で確定したあと、次の Enter で同階層追加しやすいよう編集パネル終了時のフォーカス復帰を修正。',items:['closeEp / closeEep 実行時に開いていた入力欄のフォーカスを明示的に外すよう調整','ノード編集保存後は選択状態を保ったままキャンバスへフォーカスを戻し、次の Enter をショートカットとして拾えるよう修正','編集パネルのキャンセルや矢印編集終了後も同様にショートカット先をキャンバスへ戻すよう統一','隠れた入力欄にフォーカスが残って Enter / Tab の判定を止める状態を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.7',date:'2026-04-14 19:55 JST',summary:'ノード選択中の Enter / Tab 系ショートカットが通常キャンバスでも効くようフォーカス判定を修正。',items:['ノード選択時に map-title のフォーカスを外してキャンバスへ戻すよう調整','Enter の同階層追加ショートカットが map-title フォーカス中でも選択ノードに対して動くよう修正','Tab の子ノード追加ショートカットも同様に map-title フォーカス時は許可','他の入力欄・データ欄・編集欄では従来通りショートカットを抑止','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.6',date:'2026-04-14 19:40 JST',summary:'右側のデータ / アウトライナーボタンの余白と間隔を調整し、見た目のまとまりを改善。',items:['データ / アウトライナーボタンの左右内側余白を増やし、文字の窮屈さを解消','両ボタンの幅と左位置をそろえ、視覚的にそろった縦並びへ調整','アウトライナーボタンの縦位置を少し上げ、データボタンとの距離を縮めた','モバイル幅でも折り返しにくいようボタンの最小幅と余白を再調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2587,7 +2588,8 @@ function parseImportData(raw,{kind}={}){
   });
   const metaNorm={
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
-    layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial'
+    layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial',
+    hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone)
   };
   ensureOutlineOrders(nodesNorm,edgesNorm);
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm,importKind:'json'};
@@ -3083,7 +3085,74 @@ function getScreenNodeBounds(n){
 function rectsIntersect(a,b){
   return !(a.x+a.w<b.x || b.x+b.w<a.x || a.y+a.h<b.y || b.y+b.h<a.y);
 }
-
+function getNodeWorldRect(node){
+  return {left:node.x-node.w/2,right:node.x+node.w/2,top:node.y-node.h/2,bottom:node.y+node.h/2,w:node.w,h:node.h};
+}
+function getRectIntersectionArea(a,b){
+  const width=Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left));
+  const height=Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+  return width*height;
+}
+function getParentId(nodeId,nodeList=nodes,edgeList=edges){
+  const {parentMap}=getHierarchyMaps(nodeList,edgeList);
+  return parentMap[nodeId]??null;
+}
+function isDescendantNode(nodeId,ancestorId,nodeList=nodes,edgeList=edges){
+  if(!nodeId || !ancestorId || nodeId===ancestorId) return false;
+  const {childMap}=getHierarchyMaps(nodeList,edgeList);
+  const stack=[...(childMap[ancestorId]||[])];
+  while(stack.length){
+    const id=stack.pop();
+    if(id===nodeId) return true;
+    const children=childMap[id]||[];
+    for(let i=0;i<children.length;i++) stack.push(children[i]);
+  }
+  return false;
+}
+function reparentNode(nodeId,newParentId){
+  const node=nb(nodeId);
+  const parent=nb(newParentId);
+  if(!node || !parent || nodeId===newParentId) return false;
+  if(isDescendantNode(newParentId,nodeId)) return false;
+  const currentParentId=getParentId(nodeId);
+  if(currentParentId===newParentId) return false;
+  edges=edges.filter(edge=>edge.to!==nodeId);
+  edges.push(normalizeEdge({id:'e'+(nid++),from:newParentId,to:nodeId,label:''}));
+  node.order=getNextOutlineOrder(newParentId);
+  ensureOutlineOrders();
+  return true;
+}
+function maybeAttachDraggedNodesByOverlap(dragState, threshold=0.7){
+  if(!dragState?.moved) return null;
+  const draggedIds=(dragState.ids||[]).filter(id=>nb(id));
+  if(!draggedIds.length) return null;
+  const sourceId=(activeNodeId && draggedIds.includes(activeNodeId)) ? activeNodeId : draggedIds[draggedIds.length-1];
+  const source=nb(sourceId);
+  if(!source) return null;
+  const numberMap=getOutlineNumberMap();
+  updateNodeMetrics(source, numberMap);
+  const sourceRect=getNodeWorldRect(source);
+  const sourceArea=Math.max(1, sourceRect.w*sourceRect.h);
+  let best=null;
+  getVisibleNodes().forEach(target=>{
+    if(!target || target.id===sourceId || draggedIds.includes(target.id)) return;
+    updateNodeMetrics(target, numberMap);
+    if(isDescendantNode(target.id, sourceId)) return;
+    const overlapArea=getRectIntersectionArea(sourceRect, getNodeWorldRect(target));
+    if(overlapArea<=0) return;
+    const ratio=overlapArea/sourceArea;
+    if(ratio < threshold) return;
+    const distance=Math.hypot(source.x-target.x, source.y-target.y);
+    if(!best || ratio>best.ratio || (Math.abs(ratio-best.ratio)<0.001 && distance<best.distance)){
+      best={sourceId,targetId:target.id,ratio,distance};
+    }
+  });
+  if(!best) return null;
+  if(!reparentNode(best.sourceId,best.targetId)) return null;
+  applyAutoLayout(meta.layoutMode||'horizontal');
+  setSingleSelection(best.sourceId);
+  return best;
+}
 
 function shortenText(text,max=16){
   const chars=[...(text||'')];
@@ -4027,6 +4096,7 @@ function tryCommitNodeEdit(){
   if(ep.style.display!=='block' || !epid) return true;
   const n=nb(epid);
   if(!n){ closeEp(); return true; }
+
   snapshot();
   n.label=epl.value.trim()||'新規案件';
   n.subtext=eps.value.trim();
@@ -4034,6 +4104,7 @@ function tryCommitNodeEdit(){
   n.fitMode=epfm.value;
   n.color={...epc};
   updateNodeMetrics(n);
+
   const firstNode=nodes[0];
   if(firstNode && firstNode.id===epid && !String(meta.title||'').trim()){
     syncTitleWithFirstNodeLabel(n.label,{lock:true});
@@ -4048,8 +4119,10 @@ function tryCommitNodeEdit(){
       }
     });
   }
+
   closeEp();
   draw();
+  focusCanvasForShortcuts();
   showToast(n.label+' を更新しました');
   return true;
 }
@@ -4340,8 +4413,17 @@ document.addEventListener('mouseup',()=>{
     hideSelectionBox();
     marquee=null;
   }
+  const finishedDrag=drag;
   drag=null;
   pan=false;
+  if(finishedDrag?.moved){
+    const attached=maybeAttachDraggedNodesByOverlap(finishedDrag,0.7);
+    if(attached){
+      draw();
+      const parentLabel=nb(attached.targetId)?.label||'このノード';
+      showToast(parentLabel+' の子として接続しました');
+    }
+  }
 });
 sv.addEventListener('contextmenu',e=>e.preventDefault());
 sv.addEventListener('wheel',e=>{
