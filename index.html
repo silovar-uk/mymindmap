@@ -45,6 +45,25 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 svg{width:100%;height:100%;display:block;background:#fafafa}
 #io-wrap{width:0;flex:0 0 auto;position:relative;overflow:visible;border-left:0 solid #e8e8e8;background:#fbfbfb;transition:width .22s ease,border-color .22s ease}
 #app.io-open #io-wrap{width:min(420px,38vw);border-left-width:1px}
+#outline-wrap{width:0;flex:0 0 auto;position:relative;overflow:visible;border-left:0 solid #e8e8e8;background:#fbfbfb;transition:width .22s ease,border-color .22s ease}
+#app.outline-open #outline-wrap{width:min(360px,32vw);border-left-width:1px}
+#outline{height:100%;display:flex;flex-direction:column;padding:10px 12px;overflow:auto}
+#outline-wrap .io-panel{min-height:100%}
+#outline-wrap .io-head{margin-bottom:8px}
+#outline-wrap #outline-list-side{display:flex;flex-direction:column;gap:4px;max-height:none;overflow:auto;padding-right:2px}
+#outline-wrap .outline-level{gap:4px}
+#outline-wrap .outline-level.depth-1,#outline-wrap .outline-level.depth-2,#outline-wrap .outline-level.depth-3,#outline-wrap .outline-level.depth-4,#outline-wrap .outline-level.depth-5,#outline-wrap .outline-level.depth-6{margin-left:10px;padding-left:8px}
+#outline-wrap .outline-item{gap:4px}
+#outline-wrap .outline-row{gap:8px;padding:6px 8px;border-radius:12px}
+#outline-wrap .outline-handle{width:14px;flex:0 0 14px;font-size:11px;padding-top:1px}
+#outline-wrap .outline-number{min-width:34px;flex:0 0 34px;font-size:9.5px;font-weight:600;padding-top:2px;opacity:.72}
+#outline-wrap .outline-main{gap:2px}
+#outline-wrap .outline-title-text{font-size:11px;line-height:1.28;font-weight:700}
+#outline-wrap .outline-subtext{font-size:9.5px;line-height:1.32}
+#outline-wrap .outline-actions{gap:4px;margin-top:4px}
+#outline-wrap .outline-action{font-size:9px;padding:3px 5px}
+#outline-wrap .outline-status{font-size:9px;padding:3px 6px}
+#outline-wrap .outline-note{font-size:10px;line-height:1.45;margin-top:8px;color:var(--sf-text-2)}
 #io{height:100%;display:flex;flex-direction:column;padding:10px 12px;overflow:auto}
 .io-panel{display:flex;flex-direction:column;gap:10px;min-height:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px}
 .io-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:2px}
@@ -66,7 +85,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #io-status.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
 #io-status.warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
 #io-status.err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
-#io-outline-section{margin-top:14px;padding-top:12px;border-top:1px solid rgba(132,145,164,.16)}
+#io-outline-section{display:none !important}
 .io-outline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
 .io-outline-copy{min-width:0}
 .io-outline-title{font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--sf-text-0);text-transform:uppercase}
@@ -88,9 +107,11 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #io-outline-section .outline-status{font-size:9px;padding:3px 6px}
 @media (max-width:960px){
   #app.io-open #io-wrap{width:min(360px,44vw)}
+  #app.outline-open #outline-wrap{width:min(320px,40vw)}
 }
 @media (max-width:720px){
   #app.io-open #io-wrap{width:min(320px,52vw)}
+  #app.outline-open #outline-wrap{width:min(280px,48vw)}
   .io-head{flex-direction:column;align-items:stretch}
   .io-head-actions{justify-content:flex-start}
   #j-io{min-height:180px}
@@ -819,11 +840,15 @@ svg{background:transparent;position:relative;z-index:1}
 
     <div class="tb-group tb-secondary-group tb-advanced-group tb-review-group">
       <span class="tb-label" data-en="CONTROL">確認・共有</span>
-      <div class="tb-row">
-        <button id="b-io" class="secondary-action">データ</button>
-        <button id="b-help" class="secondary-action">使い方</button>
-        <button id="b-history" class="secondary-action">更新履歴</button>
-        <button id="b-outline" class="secondary-action">アウトライナー</button>
+      <div class="tb-stack">
+        <div class="tb-row">
+          <button id="b-io" class="secondary-action">データ</button>
+          <button id="b-outline" class="secondary-action">アウトライナー</button>
+        </div>
+        <div class="tb-row">
+          <button id="b-help" class="secondary-action">使い方</button>
+          <button id="b-history" class="secondary-action">更新履歴</button>
+        </div>
       </div>
     </div>
 
@@ -1098,21 +1123,27 @@ svg{background:transparent;position:relative;z-index:1}
           <button id="b-in-clear" type="button">空にする</button>
           <button id="b-imp" class="primary-btn" type="button">今のマップを置き換える</button>
         </div>
-        <section id="io-outline-section" aria-labelledby="io-outline-title">
-          <div class="io-outline-head">
-            <div class="io-outline-copy">
-              <div id="io-outline-title" class="io-outline-title">アウトライナー</div>
-              <div class="io-outline-sub">番号を見ながら並び替え・階層変更・ノード追加ができます。整列や出力にもその順番が反映されます。</div>
-            </div>
-            <div class="io-outline-actions">
-              <button id="b-outline-layout" class="io-mini" type="button">今の順で整列</button>
-            </div>
-          </div>
-          <div id="outline-list"></div>
-          <div class="outline-note">ドラッグで並び替え / Enterで同階層追加 / Tabで子にする / Shift+Tabで親に戻す</div>
-        </section>
       </div>
     </div>
+
+  <div id="outline-wrap">
+    <div id="outline">
+      <div class="io-panel">
+        <div class="io-head">
+          <div>
+            <div class="io-ttl">アウトライナー</div>
+            <div class="io-sub">番号を見ながら並び替え・階層変更・ノード追加ができます。整列や出力にもその順番が反映されます。</div>
+          </div>
+          <div class="io-head-actions">
+            <button id="b-outline-layout-side" class="io-mini" type="button">今の順で整列</button>
+            <button id="b-outline-inline" class="io-mini" type="button">閉じる</button>
+          </div>
+        </div>
+        <div id="outline-list-side"></div>
+        <div class="outline-note">ドラッグで並び替え / Enterで同階層追加 / Tabで子にする / Shift+Tabで親に戻す</div>
+      </div>
+    </div>
+  </div>
   </div>
   </div>
 </div>
@@ -1450,15 +1481,15 @@ function renderOutlineEditor(){
   outlineListEl.appendChild(renderLevel(hierarchy.roots,null,0));
 }
 function setOutlineOpen(open){
-  if(!outlineBackdrop) return;
+  if(!outlineBackdrop || !appEl) return;
   const shouldOpen=!!open;
+  appEl.classList.toggle('outline-open',shouldOpen);
   outlineBackdrop.classList.toggle('open',shouldOpen);
   outlineBackdrop.setAttribute('aria-hidden',shouldOpen?'false':'true');
+  outlineBackdrop.style.width=shouldOpen?'':'0';
   if(shouldOpen){
-    app.classList.add('io-open');
     renderOutlineEditor();
     quickbar.style.display='none';
-    requestAnimationFrame(()=>{ outlineBackdrop.scrollIntoView({block:'nearest',behavior:'smooth'}); });
   }else{
     outlineDragState=null;
     clearOutlineDropState();
@@ -1466,6 +1497,7 @@ function setOutlineOpen(open){
   }
   updateHint();
 }
+
 
 const STATUS_META={
   none:{label:'なし',chip:'',dot:'#7d8794',pillFill:'rgba(125,135,148,.08)',pillStroke:'rgba(125,135,148,.18)',pillText:'#b4beca',icon:''},
@@ -1642,21 +1674,21 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='3.2.0';
-const APP_UPDATED_AT='2026-04-14 15:00 JST';
+const APP_VERSION='3.3.0';
+const APP_UPDATED_AT='2026-04-14 15:45 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
   {
-    version:'3.2.0',
-    date:'2026-04-14 15:00 JST',
-    summary:'更新履歴の運用ルールを明示し、マップ名と最初のノード名が初回入力時だけ連動するよう改善。',
+    version:'3.3.0',
+    date:'2026-04-14 15:45 JST',
+    summary:'初回タイトル同期とインポート安定性を修正し、アウトライナーを独立サイドパネル化。',
     items:[
-      'AIが今後の修正時に更新履歴を必ず追記するためのコメントをコード内へ追加',
-      '更新履歴の日付表記を日時付きの JST 形式へ統一',
-      'マップ名の初回入力中だけ最初のノード名が追従し、以後は独立するよう調整',
-      'サンプル初期状態とリセット後の状態でも、初回タイトル同期が再び働くよう整理'
+      'マップ名入力時だけ最初のノード名が連動する関数を追加し、タブタイトル更新も安定化',
+      '重複ノードID・重複エッジIDを自動で補正して JSON を読み込めるよう改善',
+      'Undo / Redo / 読み込み / 全部消すの再描画を即時反映に寄せる renderNow を追加',
+      'アウトライナーをデータ欄から分離し、独立した右サイドパネルとして開くよう変更'
     ]
   },
   {
@@ -1755,8 +1787,8 @@ const helpBackdrop=document.getElementById('help-backdrop');
 const emptyStateEl=document.getElementById('empty-state');
 const historyBackdrop=document.getElementById('history-backdrop');
 const historyListEl=document.getElementById('history-list');
-const outlineBackdrop=document.getElementById('io-outline-section');
-const outlineListEl=document.getElementById('outline-list');
+const outlineBackdrop=document.getElementById('outline-wrap');
+const outlineListEl=document.getElementById('outline-list-side');
 const shortcutDock=document.getElementById('shortcut-dock');
 const shortcutListEl=document.getElementById('shortcut-list');
 const shortcutSubEl=document.getElementById('shortcut-sub');
@@ -1783,6 +1815,28 @@ function updateDocumentTitle(){
   const baseTitle=(meta&&String(meta.title||'').trim()?String(meta.title).trim():'無題のマップ');
   document.title=`${hasUnsavedChanges?'● ':''}${baseTitle}`;
   updateMapTitleRequirementUi();
+}
+function setInitialTitleNodeSyncArmed(value=true){
+  initialTitleNodeSyncArmed=!!value;
+}
+function syncFirstNodeLabelWithTitle(titleValue){
+  if(!initialTitleNodeSyncArmed) return;
+  const firstNode=nodes[0];
+  const nextLabel=String(titleValue||'').trim();
+  if(!firstNode || !nextLabel) return;
+  firstNode.label=nextLabel;
+  firstNode.w=Math.max(NODE_W_MIN, firstNode.w||NODE_W_MIN);
+  draw();
+}
+function renderNow(){
+  applyT();
+  updateDocumentTitle();
+  updateUndoUI();
+  updateHUD();
+  updateQuickbar();
+  updateHint();
+  if(outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
+  draw();
 }
 function ensureMapTitle({toast=true,focus=true}={}){
   if(hasMapTitle()) return true;
@@ -1832,6 +1886,7 @@ function restoreState(payload){
     ...edges.map(e=>parseInt(String(e.id).replace('e',''))||0)
   )+1;
   clearSelection();
+  renderNow();
 }
 function updateUndoUI(){
   document.getElementById('b-undo').disabled=undoStack.length===0;
@@ -2164,12 +2219,69 @@ function parseImportData(raw){
   const nodesSrc=Array.isArray(parsed.nodes)?parsed.nodes:[];
   const edgesSrc=Array.isArray(parsed.edges)?parsed.edges:[];
   if(!nodesSrc.length) throw new Error('nodes が見つかりません');
-  const nodesNorm=nodesSrc.map((n,i)=>normalizeNode({
-    id:n.id||('n'+(i+1)),label:n.label||n.title||'新規案件',subtext:n.subtext||n.memo||'',status:n.status||'none',collapsed:n.collapsed,
-    fitMode:n.fitMode||'shrink',x:Number(n.x)||0,y:Number(n.y)||0,order:n.order,color:ensureDarkThemeColor(n.color,PRESETS[i%PRESETS.length])
-  }));
+
+  const usedNodeIds=new Set();
+  const nodeIdMap=new Map();
+  const makeUniqueNodeId=(rawId, fallbackPrefix, index)=>{
+    let base=String(rawId||'').trim() || `${fallbackPrefix}${index+1}`;
+    let candidate=base;
+    let suffix=2;
+    while(usedNodeIds.has(candidate)) candidate=`${base}__${suffix++}`;
+    usedNodeIds.add(candidate);
+    return candidate;
+  };
+  const nodesNorm=nodesSrc.map((n,i)=>{
+    const originalId=String(n?.id||'').trim() || `n${i+1}`;
+    const uniqueId=makeUniqueNodeId(originalId,'n',i);
+    if(!nodeIdMap.has(originalId)) nodeIdMap.set(originalId, []);
+    nodeIdMap.get(originalId).push(uniqueId);
+    return normalizeNode({
+      id:uniqueId,
+      label:n.label||n.title||'新規案件',
+      subtext:n.subtext||n.memo||'',
+      status:n.status||'none',
+      collapsed:n.collapsed,
+      fitMode:n.fitMode||'shrink',
+      x:Number(n.x)||0,
+      y:Number(n.y)||0,
+      order:n.order,
+      color:ensureDarkThemeColor(n.color,PRESETS[i%PRESETS.length])
+    });
+  });
+
+  const consumeNodeRefCounters={};
+  const resolveNodeRef=(rawId)=>{
+    const key=String(rawId||'').trim();
+    const ids=nodeIdMap.get(key);
+    if(!ids||!ids.length) return null;
+    const idx=consumeNodeRefCounters[key]||0;
+    consumeNodeRefCounters[key]=Math.min(idx+1, ids.length-1);
+    return ids[Math.min(idx, ids.length-1)];
+  };
+
+  const usedEdgeIds=new Set();
+  const makeUniqueEdgeId=(rawId,index)=>{
+    let base=String(rawId||'').trim() || `e${index+1}`;
+    let candidate=base;
+    let suffix=2;
+    while(usedEdgeIds.has(candidate)) candidate=`${base}__${suffix++}`;
+    usedEdgeIds.add(candidate);
+    return candidate;
+  };
+
   const nodeIdSet=new Set(nodesNorm.map(n=>n.id));
-  const edgesNorm=edgesSrc.map((e,i)=>normalizeEdge({id:e.id||('e'+(i+1)),from:e.from,to:e.to,label:e.label||e.text||''})).filter(e=>nodeIdSet.has(e.from)&&nodeIdSet.has(e.to));
+  const edgesNorm=[];
+  edgesSrc.forEach((e,i)=>{
+    const from=resolveNodeRef(e.from);
+    const to=resolveNodeRef(e.to);
+    if(!from || !to || !nodeIdSet.has(from) || !nodeIdSet.has(to)) return;
+    edgesNorm.push(normalizeEdge({
+      id:makeUniqueEdgeId(e.id,i),
+      from,
+      to,
+      label:e.label||e.text||''
+    }));
+  });
   const metaNorm={
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial'
@@ -2177,6 +2289,7 @@ function parseImportData(raw){
   ensureOutlineOrders(nodesNorm,edgesNorm);
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm};
 }
+
 function buildOutlineText(onlySelection=false){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
@@ -2746,7 +2859,6 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   setInitialTitleNodeSyncArmed(false);
-  updateDocumentTitle();
   nid=Math.max(
     1,
     ...nodes.map(n=>parseInt(String(n.id).replace('n',''))||0),
@@ -2756,18 +2868,14 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   setExportTab(currentExportKind);
   writeCurrentExportToBox(currentExportKind==='text'?'text':currentExportKind,{silent:true});
   if(nodes.length){
-    centerViewAtZoom(1);
-    if(nodes.length===1) setSingleSelection(nodes[0].id);
+    placeGraphAtViewportCenter({resetViewport:true});
   }else{
-    vs=1;
-    vx=0;
-    vy=0;
-    applyT();
-    syncViewportUi();
-    draw();
+    vs=1;vx=0;vy=0;
   }
+  renderNow();
   showToast(toastMessage);
 }
+
 function markSelectedNodesStatus(status){
   const ids=[...selectedNodeIds];
   if(!ids.length) return;
@@ -4032,14 +4140,14 @@ document.getElementById('b-undo').addEventListener('click',()=>{
   redoStack.push(JSON.stringify({nodes,edges,nid,meta}));
   restoreState(JSON.parse(undoStack.pop()));
   updateUndoUI();
-  draw();
+  renderNow();
 });
 document.getElementById('b-redo').addEventListener('click',()=>{
   if(!redoStack.length) return;
   undoStack.push(JSON.stringify({nodes,edges,nid,meta}));
   restoreState(JSON.parse(redoStack.pop()));
   updateUndoUI();
-  draw();
+  renderNow();
 });
 
 function focusMapTitle(){
@@ -4047,7 +4155,7 @@ function focusMapTitle(){
   if(!input) return;
   input.focus();
   input.select();
-  showToast('マップ名を編集できます');
+  
 }
 function toggleIoWithToast(){
   const willOpen=!appEl.classList.contains('io-open');
@@ -4158,6 +4266,7 @@ document.addEventListener('keydown',e=>{
   if(key==='o'){ e.preventDefault(); setOutlineOpen(true); return; }
   if(key==='d'){ e.preventDefault(); toggleIoWithToast(); return; }
   if(key==='m'){ e.preventDefault(); focusMapTitle(); return; }
+  if(key==='o'){ e.preventDefault(); if(!ensureMapTitle({toast:true,focus:true})) return; setOutlineOpen(!appEl.classList.contains('outline-open')); return; }
   if(key==='b'){ e.preventDefault(); advancedUiOpen=!advancedUiOpen; updateHUD(); showToast(advancedUiOpen?'詳細ツールを開きました':'詳細ツールを閉じました'); return; }
   if(key==='n'){ if(!ensureMapTitle()) return; e.preventDefault(); snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node) openEp(node.id); return; }
   if(key==='s'){ e.preventDefault(); sm('select'); showToast('選ぶモードにしました'); return; }
@@ -4310,12 +4419,11 @@ document.getElementById('confirm-yes').addEventListener('click',()=>{
   document.getElementById('map-title').value='';
   document.getElementById('map-title').placeholder='まずマップ名を入力';
   setInitialTitleNodeSyncArmed(true);
-  updateDocumentTitle();
   nid=2;
   clearSelection();
-  centerViewAtZoom(1);
-  if(nodes[0]) setSingleSelection(nodes[0].id);
-  draw();
+  placeGraphAtViewportCenter({resetViewport:true});
+  renderNow();
+  focusMapTitle();
   showToast('サンプル1件の状態に戻しました');
 });
 document.getElementById('confirm-no').addEventListener('click',()=>{
@@ -4428,7 +4536,9 @@ function previewImportText(){
     const d=parseImportData(raw);
     const nodesSrc=Array.isArray(parsed)?parsed:(Array.isArray(parsed.nodes)?parsed.nodes:(parsed.data&&Array.isArray(parsed.data.nodes)?parsed.data.nodes:[]));
     const edgesSrc=Array.isArray(parsed)?[]:(Array.isArray(parsed.edges)?parsed.edges:(parsed.data&&Array.isArray(parsed.data.edges)?parsed.data.edges:[]));
-    const duplicateCount=d.nodes.length-new Set(d.nodes.map(n=>n.id)).size;
+    const rawDuplicateNodeCount=Math.max(0,nodesSrc.length-new Set(nodesSrc.map(n=>String(n&&n.id||'').trim()||'')).size);
+    const rawDuplicateEdgeCount=Math.max(0,edgesSrc.length-new Set(edgesSrc.map(e=>String(e&&e.id||'').trim()||'')).size);
+    const duplicateCount=rawDuplicateNodeCount;
     const droppedEdges=Math.max(0,edgesSrc.length-d.edges.length);
     const zeroPosCount=d.nodes.filter(n=>n.x===0&&n.y===0).length;
     const lines=[
@@ -4437,8 +4547,9 @@ function previewImportText(){
       `並び方: ${getLayoutLabel(d.meta.layoutMode||'radial')}`
     ];
     const warns=[];
-    if(duplicateCount>0) warns.push(`重複ノードID: ${duplicateCount}件`);
+    if(duplicateCount>0) warns.push(`重複ノードID: ${duplicateCount}件を自動補正`);
     if(droppedEdges>0) warns.push(`存在しないノードを指すエッジを除外: ${droppedEdges}件`);
+    if(rawDuplicateEdgeCount>0) warns.push(`重複エッジID: ${rawDuplicateEdgeCount}件を自動補正`);
     if(zeroPosCount===d.nodes.length && d.nodes.length>1) warns.push('座標がすべて 0,0 です。読み込み後に整える推奨。');
     if(nodesSrc.some(node=>node && node.color && ensureDarkThemeColor(node.color,{...PRESETS[0]}).fill!==String(node.color.fill||'').trim().toLowerCase())) warns.push('明るい配色はダークテーマ向けに自動補正します。');
     if(warns.length) lines.push('注意: '+warns.join(' / '));
@@ -4496,14 +4607,14 @@ document.getElementById('b-more').addEventListener('click',()=>{
 });
 document.getElementById('b-help').addEventListener('click',()=>setHelpOpen(true));
 document.getElementById('b-history').addEventListener('click',()=>setHistoryOpen(true));
-document.getElementById('b-outline').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setIoOpen(true); setOutlineOpen(true); });
-if(document.getElementById('outline-close')) document.getElementById('outline-close').addEventListener('click',()=>setOutlineOpen(false));
-document.getElementById('b-outline-layout').addEventListener('click',()=>{ if(!ensureMapTitle()) return; applyAutoLayout(meta.layoutMode); draw(); showToast('今の順番で整列しました'); });
+document.getElementById('b-outline').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setOutlineOpen(!appEl.classList.contains('outline-open')); });
+if(document.getElementById('b-outline-inline')) document.getElementById('b-outline-inline').addEventListener('click',()=>setOutlineOpen(false));
+if(document.getElementById('b-outline-layout-side')) document.getElementById('b-outline-layout-side').addEventListener('click',()=>{ if(!ensureMapTitle()) return; applyAutoLayout(meta.layoutMode); renderNow(); showToast('今の順番で整列しました'); });
 document.getElementById('help-close').addEventListener('click',()=>setHelpOpen(false));
 document.getElementById('history-close').addEventListener('click',()=>setHistoryOpen(false));
 helpBackdrop.addEventListener('mousedown',e=>{ if(e.target===helpBackdrop) setHelpOpen(false); });
 historyBackdrop.addEventListener('mousedown',e=>{ if(e.target===historyBackdrop) setHistoryOpen(false); });
-if(document.getElementById('outline-backdrop')) document.getElementById('outline-backdrop').addEventListener('mousedown',e=>{ if(e.target===document.getElementById('outline-backdrop')) setOutlineOpen(false); });
+
 document.getElementById('es-open-help').addEventListener('click',()=>setHelpOpen(true));
 document.getElementById('es-open-history').addEventListener('click',()=>setHistoryOpen(true));
 document.getElementById('es-start-empty').addEventListener('click',()=>{ snapshot(); const node=createStandaloneNode({status:'none',fitMode:'shrink'}); draw(); if(node){ openEp(node.id); showToast('1/3 ノードを置きました。次は名前を付けます'); } });
