@@ -3115,7 +3115,7 @@ function draw(){
     const contentGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
     contentGroup.setAttribute('clip-path',`url(#${clipId})`);
 
-    const titleLayout=getNodeTitleLayout(n, numberMap);
+    const titleLayout=getNodeTitleLayout(n, outlineNumberMap);
     titleLayout.lines.forEach((line,i)=>{
       const title=document.createElementNS('http://www.w3.org/2000/svg','text');
       title.setAttribute('x',-n.w/2+12);
