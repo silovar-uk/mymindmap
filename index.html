@@ -2270,6 +2270,16 @@ function getDescendantIds(id, childMap=getChildrenMap()){
   walk(id);
   return res;
 }
+function applyNodeStatusWithChildCompletion(node,status,childMap=null){
+  if(!node) return;
+  node.status=status;
+  if(status!=='done') return;
+  const map=childMap||getChildrenMap();
+  getDescendantIds(node.id,map).forEach(childId=>{
+    const child=nb(childId);
+    if(child) child.status='done';
+  });
+}
 function getDirectChildCount(id){
   return edges.filter(e=>e.from===id && nb(e.to)).length;
 }
@@ -3541,7 +3551,8 @@ function markSelectedNodesStatus(status){
   const ids=[...selectedNodeIds];
   if(!ids.length) return;
   snapshot();
-  ids.map(id=>nb(id)).filter(Boolean).forEach(node=>{ node.status=status; });
+  const childMap=status==='done' ? getChildrenMap() : null;
+  ids.map(id=>nb(id)).filter(Boolean).forEach(node=>{ applyNodeStatusWithChildCompletion(node,status,childMap); });
   renderNow();
   const labels={in_progress:'進行中',done:'完了',paused:'保留',none:'未設定'};
   showToast(`選択中のノードを${labels[status]||status}にしました`);
@@ -3550,7 +3561,8 @@ function toggleNodeDone(id,{withHistory=true}={}){
   const node=nb(id);
   if(!node) return false;
   if(withHistory) snapshot();
-  node.status=node.status==='done' ? 'none' : 'done';
+  const nextStatus=node.status==='done' ? 'none' : 'done';
+  applyNodeStatusWithChildCompletion(node,nextStatus,nextStatus==='done' ? getChildrenMap() : null);
   renderNow();
   showToast(node.status==='done'?'完了にしました':'未完了に戻しました');
   return true;
@@ -3561,7 +3573,7 @@ function cycleSingleNodeStatus(){
   const order=['none','in_progress','done','paused'];
   const next=order[(order.indexOf(node.status)+1)%order.length];
   snapshot();
-  node.status=next;
+  applyNodeStatusWithChildCompletion(node,next,next==='done' ? getChildrenMap() : null);
   draw();
   const labels={in_progress:'進行中',done:'完了',paused:'保留',none:'未設定'};
   showToast(`${node.label} を${labels[next]}にしました`);
@@ -4551,7 +4563,7 @@ function tryCommitNodeEdit(){
   snapshot();
   n.label=epl.value.trim()||'新規案件';
   n.subtext=eps.value.trim();
-  n.status=epst.value;
+  applyNodeStatusWithChildCompletion(n,epst.value,epst.value==='done' ? getChildrenMap() : null);
   n.fitMode=epfm.value;
   n.color={...epc};
   updateNodeMetrics(n);
@@ -4563,9 +4575,10 @@ function tryCommitNodeEdit(){
 
   const applyGroup=selectedNodeIds.size>1 && selectedNodeIds.has(epid);
   if(applyGroup){
+    const childMap=n.status==='done' ? getChildrenMap() : null;
     nodes.forEach(node=>{
       if(node.id!==epid && selectedNodeIds.has(node.id)){
-        node.status=n.status;
+        applyNodeStatusWithChildCompletion(node,n.status,childMap);
         node.color={...epc};
       }
     });
