@@ -4215,19 +4215,6 @@ function draw(){
     inner.setAttribute('pointer-events','none');
     g.appendChild(inner);
 
-    const accent=document.createElementNS('http://www.w3.org/2000/svg','path');
-    const accentWidth=Math.max(56, Math.min(92, n.w*.28));
-    const accentRight=n.w/2-14;
-    const accentLeft=accentRight-accentWidth;
-    const accentTop=-n.h/2+10;
-    const accentBottom=accentTop+16;
-    accent.setAttribute('d',`M ${accentLeft} ${accentTop} L ${accentRight-10} ${accentTop} L ${accentRight} ${(accentTop+accentBottom)/2} L ${accentRight-14} ${accentBottom} L ${accentLeft-10} ${accentBottom} Z`);
-    accent.setAttribute('fill',selected?'#ffb36f':edgeSeed?'#ff6f2c':(renderPalette.accent||renderPalette.stroke));
-    accent.setAttribute('opacity',selected||edgeSeed?'.12':isDoneNode?'.08':'.09');
-    accent.setAttribute('pointer-events','none');
-    g.appendChild(accent);
-
-
     const clipId=`node-clip-${n.id.replace(/[^a-zA-Z0-9_-]/g,'_')}`;
     const clip=document.createElementNS('http://www.w3.org/2000/svg','clipPath');
     clip.setAttribute('id',clipId);
