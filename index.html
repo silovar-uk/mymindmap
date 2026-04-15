@@ -48,10 +48,19 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 #tb button.primary-action{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;font-weight:700}
 #tb button.secondary-action{background:#f8fafc}
 #tb button.danger-action{color:#dc2626;border-color:#fca5a5;background:#fff7f7}
-.tb-row-main-actions{gap:8px}
-.tb-row-main-actions #layout-mode{min-width:196px;max-width:220px;flex:0 1 220px}
+.tb-row-main-actions{
+  gap:8px;
+  flex-wrap:nowrap !important;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding-bottom:2px;
+  scrollbar-width:thin;
+  -webkit-overflow-scrolling:touch;
+}
+.tb-row-main-actions > *{flex:0 0 auto}
+.tb-row-main-actions #layout-mode{min-width:176px;max-width:196px;flex:0 0 196px}
 @media (max-width:900px){
-  .tb-row-main-actions #layout-mode{flex:1 1 220px;max-width:none}
+  .tb-row-main-actions #layout-mode{min-width:168px;max-width:184px;flex:0 0 184px}
 }
 
 @media (max-width:1100px){
@@ -1729,7 +1738,7 @@ function getCharDisplayUnits(ch=''){
   if(/[.,:;!'"`|ilI\[\](){}\-]/.test(ch)) return .34;
   if(/[\/\\]/.test(ch)) return .42;
   if(/[~_=+*^]/.test(ch)) return .5;
-  if(/[ -ÿ]/.test(ch)) return .62;
+  if(/[\u0000-\u00FF]/.test(ch)) return .62;
   return 1;
 }
 function measureVisualUnits(text=''){
