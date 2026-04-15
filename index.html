@@ -117,6 +117,8 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
 .io-actions{display:flex;gap:8px;flex-wrap:wrap}
 .io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
+.io-export-options{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
+.io-export-options .tb-check{background:rgba(255,255,255,.03);border-color:rgba(132,145,164,.18)}
 #io-status{padding:9px 11px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-size:12px;line-height:1.55;color:#475569;white-space:pre-wrap}
 #io-status.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
 #io-status.warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
@@ -1207,6 +1209,10 @@ svg{background:transparent;position:relative;z-index:1}
           </div>
         </div>
 
+        <div id="io-export-options" class="io-export-options" hidden>
+          <label class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox"><span>ナンバリングを含めない</span></label>
+        </div>
+
         <label class="io-label" for="j-io">内容</label>
         <textarea id="j-io" placeholder="JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を表示します"></textarea>
         <div id="io-status" class="warn">JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を確認してください。</div>
@@ -1818,13 +1824,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.3.9';
-const APP_UPDATED_AT='2026-04-15 12:18 JST';
+const APP_VERSION='1.4.0';
+const APP_UPDATED_AT='2026-04-15 12:40 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
-{version:'1.3.9',date:'2026-04-15 12:18 JST',summary:'通常キャンバスでの Enter を同階層追加に戻し、Tab のみ子ノード追加として扱うようショートカット表示と実装を整合。',items:['キャンバス用キャプチャショートカットで Enter は addSiblingFromCanvasSelection、Tab は addChildFromCanvasSelection に修正','通常時の Enter キー処理でも新規ノード作成は createSiblingNode を使うよう戻し、モーダル保存後の Enter でも同階層追加になるよう統一','ヘルプ文言・ヒント・ショートカット一覧の Enter 表示を同階層追加へ更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.4.0',date:'2026-04-15 12:40 JST',summary:'テキストとMarkdownの書き出しでナンバリングを含めないチェックを追加し、表示内容と保存内容の両方に反映。',items:['データパネルに「ナンバリングを含めない」チェックを追加し、テキストとMarkdownタブ選択時だけ表示されるよう変更','テキスト書き出しとMarkdown書き出しで番号の有無を切り替えられるよう buildOutlineText / buildMarkdownText にオプションを追加','チェック切り替え時は現在のテキスト/Markdown表示をその場で再生成し、コピー内容にも即反映するよう調整','上部の「Markdownで保存」ボタンも同じ書き出しオプションを使うよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.3.8',date:'2026-04-15 11:58 JST',summary:'Enter キーを編集モーダルでは確定に専念させ、通常キャンバスでは同階層追加として扱うようショートカットの優先順位を整理。',items:['ノード編集モーダルと線編集モーダルで Enter / Escape を stopImmediatePropagation 付きで処理し、モーダル確定後に背後のキャンバスショートカットが暴発しないよう修正','通常キャンバスでの Enter を同階層追加に戻し、Tab のみ子ノード追加になるよう整理','ショートカットのヒント文言も Enter=子追加 に合わせて更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.3.4',date:'2026-04-15 01:15 JST',summary:'ノード内の文字レイアウトを上から再設計し、補足の収まりと左上のナンバリング欠けを解消。',items:['タイトル・補足・番号・状態の各領域を分けるノード内レイアウトへ作り直し、補足が図形内で折り返しやすいよう余白と高さ計算を見直し','文字折り返しを文字数ベースから表示幅ベースへ変更し、日本語と英数字が混ざる補足でも幅推定に合わせて行分割できるよう改善','ノード幅の自動計算に補足の最長行も反映し、タイトルだけでなく補足の長さに応じても横幅が広がるよう調整','左上の番号は独立した小さなバッジ表示へ変更し、透かしアクセントやクリップで欠けないよう位置と描画順を整理','右上アクセントは番号帯に重ならない形へ変更し、状態バッジも折りたたみボタンのぶんだけ逃がして干渉しにくく調整']},
   {version:'1.3.3',date:'2026-04-15 00:42 JST',summary:'整えるボタンの右に整え方リストを常設し、放射レイアウトはノード数が多いときも枝が長くなりすぎないよう中心側へ圧縮。',items:['主な操作エリアで「整える」の右に整え方リストを常時表示し、詳細を開かなくても放射・右向き・扇形・横・縦・リストを選べるよう変更','詳細ツール側からは重複する並び方セレクトを外し、色分け系ボタンだけを残してレイアウト選択の場所を一本化','放射レイアウトの評価指標に親子間の総距離を追加し、面積だけでなく線の短さも考慮して向きを選ぶよう改善','放射配置の決定後に各ノードを同じ角度のまま中心側へ寄せる圧縮パスを追加し、重なりを避けつつ余白を詰めるよう調整','放射・右向き・扇形の既定半径とターゲット位置も少し詰め、ノード数が多いケースで広がりすぎないよう再調整']},
@@ -1987,6 +1993,8 @@ const shortcutTitleEl=document.getElementById('shortcut-title');
 const shortcutBodyEl=document.getElementById('shortcut-body');
 const coachToggleBtn=document.getElementById('coach-toggle');
 const hideDoneToggle=document.getElementById('hide-done-toggle');
+const exportOptionsEl=document.getElementById('io-export-options');
+const exportOmitNumberingToggle=document.getElementById('export-omit-numbering');
 let toastTimer=null;
 let advancedUiOpen=false;
 let coachCollapsed=true;
@@ -2010,6 +2018,16 @@ function updateDocumentTitle(){
 }
 function updateHideDoneUi(){
   if(hideDoneToggle) hideDoneToggle.checked=!!meta?.hideDone;
+}
+function getExportFormattingOptions(){
+  return {omitNumbering:!!exportOmitNumberingToggle?.checked};
+}
+function updateExportOptionsUi(kind=currentExportKind){
+  const show=kind==='text' || kind==='md';
+  if(exportOptionsEl){
+    exportOptionsEl.hidden=!show;
+    exportOptionsEl.style.display=show?'flex':'none';
+  }
 }
 function setInitialTitleNodeSyncArmed(value=true){
   initialTitleNodeSyncArmed=!!value;
@@ -2775,9 +2793,10 @@ function parseImportData(raw,{kind}={}){
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm,importKind:'json'};
 }
 
-function buildOutlineText(onlySelection=false){
+function buildOutlineText(onlySelection=false,options={}){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
+  const omitNumbering=!!options.omitNumbering;
   const titleSuffix=onlySelection && ctx.nodes.length ? '（選択中）' : '';
   if(meta.title) lines.push(meta.title+titleSuffix,'');
   const seen=new Set();
@@ -2788,7 +2807,8 @@ function buildOutlineText(onlySelection=false){
     const prefix='  '.repeat(depth)+'- ';
     let line=prefix;
     if(edgeLabel) line+=`[${edgeLabel}] → `;
-    line+=`${ctx.numberMap[id]||''} ${node.label}`.trim();
+    const numberText=omitNumbering ? '' : (ctx.numberMap[id]||'');
+    line+=[numberText,node.label].filter(Boolean).join(' ').trim();
     if(node.status && node.status!=='none') line+=` [${STATUS_META[node.status].label}]`;
     lines.push(line);
     if(node.subtext) lines.push('  '.repeat(depth+1)+node.subtext.replace(/\n/g,' / '));
@@ -2798,9 +2818,10 @@ function buildOutlineText(onlySelection=false){
   ctx.nodes.forEach(n=>{ if(!seen.has(n.id)) walk(n.id,0); });
   return lines.join('\n').trim();
 }
-function buildMarkdownText(onlySelection=false){
+function buildMarkdownText(onlySelection=false,options={}){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
+  const omitNumbering=!!options.omitNumbering;
   const titleSuffix=onlySelection && ctx.nodes.length ? '（選択中）' : '';
   if(meta.title) lines.push('# '+meta.title+titleSuffix,'');
   const seen=new Set();
@@ -2809,12 +2830,14 @@ function buildMarkdownText(onlySelection=false){
     seen.add(id);
     const node=nb(id); if(!node) return;
     const status=node.status && node.status!=='none' ? `（${STATUS_META[node.status].label}）` : '';
+    const numberText=omitNumbering ? '' : (ctx.numberMap[id]||'').trim();
+    const title=[numberText,node.label].filter(Boolean).join(' ');
     if(depth===0){
-      lines.push(`## ${(ctx.numberMap[id]||'').trim()} ${node.label}${status}`.trim());
+      lines.push(`## ${title}${status}`.trim());
     }else{
       let line='  '.repeat(depth-1)+'- ';
       if(edgeLabel) line+=`_${edgeLabel}_ → `;
-      line+=`${ctx.numberMap[id]||''} ${node.label}${status}`.trim();
+      line+=`${title}${status}`.trim();
       lines.push(line);
     }
     if(node.subtext) lines.push((depth===0?'':'  '.repeat(depth)) + node.subtext.replace(/\n/g,' / '));
@@ -5452,8 +5475,9 @@ function buildExportObject(){
 }
 function getExportString(kind=currentExportKind){
   const onlySelection=getSelectionExportNodeIds().size>0;
-  if(kind==='text') return buildOutlineText(onlySelection);
-  if(kind==='md') return buildMarkdownText(onlySelection);
+  const options=getExportFormattingOptions();
+  if(kind==='text') return buildOutlineText(onlySelection,options);
+  if(kind==='md') return buildMarkdownText(onlySelection,options);
   return JSON.stringify(buildExportObject(),null,2);
 }
 function copyTextToClipboard(value,{successMessage='内容をコピーしました',buttonId='b-cpy'}={}){
@@ -5508,6 +5532,7 @@ function setExportTab(kind='json'){
   document.getElementById('b-exp-json').classList.toggle('act',kind==='json');
   document.getElementById('b-exp-text').classList.toggle('act',kind==='text');
   document.getElementById('b-exp-md').classList.toggle('act',kind==='md');
+  updateExportOptionsUi(kind);
   const impBtn=document.getElementById('b-imp');
   if(impBtn) impBtn.disabled=false;
   writeCurrentExportToBox(kind,{silent:true});
@@ -5647,6 +5672,11 @@ document.getElementById('b-io-inline').addEventListener('click',()=>setIoOpen(fa
 document.getElementById('b-exp-json').addEventListener('click',()=>activateExportTab('json'));
 document.getElementById('b-exp-text').addEventListener('click',()=>activateExportTab('text',{copy:true}));
 document.getElementById('b-exp-md').addEventListener('click',()=>activateExportTab('md',{copy:true}));
+if(exportOmitNumberingToggle){
+  exportOmitNumberingToggle.addEventListener('change',()=>{
+    if(currentExportKind==='text' || currentExportKind==='md') writeCurrentExportToBox(currentExportKind,{silent:true});
+  });
+}
 document.getElementById('b-out-refresh').addEventListener('click',()=>writeCurrentExportToBox(currentExportKind));
 document.getElementById('b-in-clear').addEventListener('click',()=>{
   document.getElementById('j-io').value='';
@@ -5758,7 +5788,7 @@ document.getElementById('b-md').addEventListener('click',()=>{
   if(!ensureMapTitle()) return;
   const safeTitle=(meta.title||'mindmap').replace(/[\/:*?"<>|]/g,'_');
   const onlySelection=getSelectionExportNodeIds().size>0;
-  downloadBlob(new Blob([buildMarkdownText(onlySelection)],{type:'text/markdown;charset=utf-8'}), `${safeTitle||'mindmap'}.md`);
+  downloadBlob(new Blob([getExportString('md')],{type:'text/markdown;charset=utf-8'}), `${safeTitle||'mindmap'}.md`);
   showToast(onlySelection?'選択中ノードをMarkdownで書き出しました':'Markdownを書き出しました');
 });
 
