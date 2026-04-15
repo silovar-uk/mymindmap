@@ -1699,11 +1699,20 @@ function looksLikeJsonInput(raw=''){
   return s.startsWith('{') || s.startsWith('[');
 }
 const REFINED_BRANCH_HUES=[22,196,258,338,42,148,214,292];
-const NODE_W_MIN=156;
-const NODE_W_MAX=320;
-const NODE_H_MIN=62;
+const NODE_W_MIN=168;
+const NODE_W_MAX=380;
+const NODE_H_MIN=68;
 const SUBTEXT_MAX_LINES=99;
 const TITLE_WRAP_MAX_LINES=99;
+const NODE_INNER_PAD_X=16;
+const NODE_TOP_PAD=14;
+const NODE_BOTTOM_PAD=16;
+const NODE_HEADER_BAND_HEIGHT=22;
+const NODE_HEADER_GAP=8;
+const NODE_SECTION_GAP=8;
+const NODE_SUB_FONT_SIZE=11;
+const NODE_SUB_LINE_HEIGHT=15;
+const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
@@ -1712,20 +1721,46 @@ let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
 function escapeHtml(str=''){return str.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]))}
-function wrapText(text,maxChars,maxLines=99){
+function getCharDisplayUnits(ch=''){
+  if(!ch) return 0;
+  if(ch===' ') return .34;
+  if(/[A-Z0-9]/.test(ch)) return .68;
+  if(/[a-z]/.test(ch)) return .6;
+  if(/[.,:;!'"`|ilI\[\](){}\-]/.test(ch)) return .34;
+  if(/[\/\\]/.test(ch)) return .42;
+  if(/[~_=+*^]/.test(ch)) return .5;
+  if(/[ -ÿ]/.test(ch)) return .62;
+  return 1;
+}
+function measureVisualUnits(text=''){
+  let units=0;
+  for(const ch of [...String(text)]) units+=getCharDisplayUnits(ch);
+  return units;
+}
+function estimateTextWidth(text='',fontSize=12){
+  return measureVisualUnits(String(text))*fontSize*.92;
+}
+function wrapText(text,maxUnits,maxLines=99){
   const src=(text||'').replace(/\r/g,'').split('\n');
   const lines=[];
   src.forEach(chunk=>{
     const t=chunk.trim();
-    if(!t){lines.push('');return;}
+    if(!t){
+      if(lines.length<maxLines) lines.push('');
+      return;
+    }
     let cur='';
+    let curUnits=0;
     for(const ch of [...t]){
-      if((cur+ch).length>maxChars){
+      const chUnits=getCharDisplayUnits(ch);
+      if(cur && curUnits+chUnits>maxUnits){
         lines.push(cur);
-        cur=ch;
         if(lines.length>=maxLines) break;
+        cur=ch;
+        curUnits=chUnits;
       }else{
         cur+=ch;
+        curUnits+=chUnits;
       }
     }
     if(lines.length<maxLines && cur) lines.push(cur);
@@ -1740,8 +1775,8 @@ function normalizeNode(n){
   const status=STATUS_META[n.status] ? n.status : 'none';
   const collapsed=!!n.collapsed;
   const fitMode=n.fitMode==='wrap' ? 'wrap' : 'shrink';
-  const subLines=wrapText(subtext,20,SUBTEXT_MAX_LINES).filter(Boolean);
-  const h=Math.max(NODE_H_MIN,50+(subLines.length?subLines.length*14+4:0));
+  const subLines=wrapText(subtext,22,SUBTEXT_MAX_LINES).filter(Boolean);
+  const h=Math.max(NODE_H_MIN, NODE_TOP_PAD + 18 + (subLines.length ? NODE_SECTION_GAP + subLines.length*NODE_SUB_LINE_HEIGHT : 0) + NODE_BOTTOM_PAD);
   return {
     id:n.id,
     label,
@@ -1774,12 +1809,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.3.3';
-const APP_UPDATED_AT='2026-04-15 00:42 JST';
+const APP_VERSION='1.3.4';
+const APP_UPDATED_AT='2026-04-15 01:15 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {version:'1.3.4',date:'2026-04-15 01:15 JST',summary:'ノード内の文字レイアウトを上から再設計し、補足の収まりと左上のナンバリング欠けを解消。',items:['タイトル・補足・番号・状態の各領域を分けるノード内レイアウトへ作り直し、補足が図形内で折り返しやすいよう余白と高さ計算を見直し','文字折り返しを文字数ベースから表示幅ベースへ変更し、日本語と英数字が混ざる補足でも幅推定に合わせて行分割できるよう改善','ノード幅の自動計算に補足の最長行も反映し、タイトルだけでなく補足の長さに応じても横幅が広がるよう調整','左上の番号は独立した小さなバッジ表示へ変更し、透かしアクセントやクリップで欠けないよう位置と描画順を整理','右上アクセントは番号帯に重ならない形へ変更し、状態バッジも折りたたみボタンのぶんだけ逃がして干渉しにくく調整']},
   {version:'1.3.3',date:'2026-04-15 00:42 JST',summary:'整えるボタンの右に整え方リストを常設し、放射レイアウトはノード数が多いときも枝が長くなりすぎないよう中心側へ圧縮。',items:['主な操作エリアで「整える」の右に整え方リストを常時表示し、詳細を開かなくても放射・右向き・扇形・横・縦・リストを選べるよう変更','詳細ツール側からは重複する並び方セレクトを外し、色分け系ボタンだけを残してレイアウト選択の場所を一本化','放射レイアウトの評価指標に親子間の総距離を追加し、面積だけでなく線の短さも考慮して向きを選ぶよう改善','放射配置の決定後に各ノードを同じ角度のまま中心側へ寄せる圧縮パスを追加し、重なりを避けつつ余白を詰めるよう調整','放射・右向き・扇形の既定半径とターゲット位置も少し詰め、ノード数が多いケースで広がりすぎないよう再調整']},
   {version:'1.3.2',date:'2026-04-15 00:20 JST',summary:'Ctrl+Enter で編集モーダルを保存して閉じる操作を全体で拾い、複数選択時は PowerPoint 風の整列と均等配置をクイックバーから実行できるよう追加。',items:['ノード編集パネルと矢印編集パネルで Ctrl/Cmd+Enter をパネル全体のショートカットとして受け取り、その場で保存して閉じるよう統一','複数選択時のクイックバーを左揃え・中央揃え・右揃え・上揃え・縦中央・下揃え・横均等・縦均等の整列メニューへ差し替え','選択中ノードの外接矩形を基準に、各ノードのサイズ差を考慮した位置揃えと等間隔配置をワールド座標で実行する arrangeSelectedNodes を追加','クイックバーは折り返し表示にして、ボタン数が増えても画面内で扱いやすいよう調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.3.1',date:'2026-04-14 21:40 JST',summary:'親ノード削除時に、その子孫ノードもまとめて削除するよう削除処理を拡張。',items:['deleteNodes で選択ノード配下の子孫IDを再帰的に集めて削除対象へ含めるよう修正','親ノードを削除したとき、関連する子ノードと接続線も一括で除去されるよう整理','複数ノード削除時も、それぞれの配下を重複なくまとめて削除するよう Set ベースで集約','選択状態の解除と残存エッジの除去は従来どおり維持','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -3191,48 +3227,65 @@ function getNodeNumberLabel(node, numberMap=null){
   const map=numberMap||getOutlineNumberMap();
   return map[node.id]||'';
 }
+function getNodePreferredInnerWidth(n, numberMap=null){
+  const statusMetrics=getStatusChipMetrics(n.status);
+  const numberLabel=getNodeNumberLabel(n, numberMap);
+  const collapseReserve=hasVisibleChildren(n.id) ? 28 : 0;
+  const numberWidth=numberLabel ? Math.max(36, Math.ceil(estimateTextWidth(numberLabel,10.2)+18)) : 0;
+  const headerWidth=numberWidth + (statusMetrics ? statusMetrics.width + (numberWidth?8:0) : 0) + collapseReserve;
+  const titleFont=n.fitMode==='wrap' ? 13.4 : 14;
+  const titleWidth=Math.ceil(estimateTextWidth(String(n.label||'新規案件'),titleFont));
+  const subLines=String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
+  const subWidth=subLines.length ? Math.max(...subLines.map(line=>Math.ceil(estimateTextWidth(line,NODE_SUB_FONT_SIZE)))) : 0;
+  return Math.max(144, Math.min(NODE_W_MAX-NODE_INNER_PAD_X*2, Math.max(headerWidth, titleWidth, subWidth)));
+}
 function getNodeTitleLayout(n, numberMap=null){
   const statusMetrics=getStatusChipMetrics(n.status);
   const numberLabel=getNodeNumberLabel(n, numberMap);
-  const numberReserve=numberLabel ? Math.min(54, Math.max(28, [...numberLabel].length*6.4+8)) : 0;
-  const usable=Math.max(86,n.w-24-(statusMetrics?statusMetrics.width+10:0)-numberReserve);
+  const headerHeight=numberLabel || statusMetrics ? NODE_HEADER_BAND_HEIGHT : 0;
   const label=String(n?.label||'新規案件');
-  const baseFont=n.fitMode==='wrap' ? 12.4 : 13.2;
-  const minFont=n.fitMode==='wrap' ? 10.8 : 9.6;
-  const est=Math.max(1,[...label].length)*(baseFont*0.58);
-  const fontSize=Math.max(minFont, Math.min(baseFont, baseFont*Math.min(1, usable/Math.max(est, usable*0.72))));
-  const maxChars=Math.max(6, Math.floor(usable/Math.max(5.1, fontSize*0.58)));
-  let lines=wrapText(label,maxChars,TITLE_WRAP_MAX_LINES).filter(Boolean);
+  const usable=Math.max(104, n.w-NODE_INNER_PAD_X*2);
+  const baseFont=n.fitMode==='wrap' ? 13.4 : 14;
+  const minFont=n.fitMode==='wrap' ? 12 : 10.8;
+  let fontSize=baseFont;
+  let lines=[];
+  while(fontSize>=minFont-0.01){
+    const maxUnits=Math.max(8, usable/Math.max(6.4,fontSize*.92));
+    lines=wrapText(label,maxUnits,TITLE_WRAP_MAX_LINES).filter(Boolean);
+    if(lines.length<=3) break;
+    fontSize-=0.6;
+  }
   if(!lines.length) lines=['新規案件'];
+  if(lines.length>4){
+    fontSize=minFont;
+    const maxUnits=Math.max(7, usable/Math.max(6,fontSize*.92));
+    lines=wrapText(label,maxUnits,4).filter(Boolean);
+  }
   return {
     lines,
     fontSize,
-    lineHeight:Math.max(13.6, Math.ceil(fontSize+2.4)),
+    lineHeight:Math.max(16, Math.ceil(fontSize+4)),
     usableWidth:usable,
     numberLabel,
-    headerHeight:numberLabel || statusMetrics ? 18 : 6
+    headerHeight
   };
 }
 function updateNodeMetrics(n, numberMap=null){
-  const statusMetrics=getStatusChipMetrics(n.status);
-  const numberLabel=getNodeNumberLabel(n, numberMap);
-  const numberReserve=numberLabel ? Math.min(56, Math.max(30, [...numberLabel].length*6.4+10)) : 0;
-  const titleReserve=statusMetrics?statusMetrics.width+14:0;
-  const titleOnly=String(n.label||'新規案件');
-  let rawWidth=Math.max(
-    NODE_W_MIN,
-    Math.min(NODE_W_MAX, Math.max(176, [...titleOnly].length*7.5+54+titleReserve+numberReserve))
-  );
+  const preferredInnerWidth=getNodePreferredInnerWidth(n, numberMap);
+  const rawWidth=Math.max(176, preferredInnerWidth + NODE_INNER_PAD_X*2);
   n.w=Math.max(NODE_W_MIN, Math.min(NODE_W_MAX, Math.round(rawWidth)));
   const titleLayout=getNodeTitleLayout(n, numberMap);
   const nodeSubLines=getNodeSubLines(n);
-  const titleHeight=titleLayout.lines.length*titleLayout.lineHeight+8;
-  const subHeight=nodeSubLines.length ? nodeSubLines.length*14+8 : 0;
-  n.h=Math.max(NODE_H_MIN, 18 + titleLayout.headerHeight + titleHeight + subHeight + 14);
+  const titleHeight=titleLayout.lines.length*titleLayout.lineHeight;
+  const subHeight=nodeSubLines.length ? nodeSubLines.length*NODE_SUB_LINE_HEIGHT : 0;
+  const headerGap=titleLayout.headerHeight ? NODE_HEADER_GAP : 0;
+  const subGap=nodeSubLines.length ? NODE_SECTION_GAP : 0;
+  n.h=Math.max(NODE_H_MIN, NODE_TOP_PAD + titleLayout.headerHeight + headerGap + titleHeight + subGap + subHeight + NODE_BOTTOM_PAD);
 }
 function getNodeSubLines(n){
-  const maxChars=Math.max(12, Math.floor((n.w-24)/6.95));
-  return wrapText(n.subtext||'',maxChars,SUBTEXT_MAX_LINES).filter(Boolean);
+  const usable=Math.max(112, n.w-NODE_INNER_PAD_X*2);
+  const maxUnits=Math.max(12, usable/Math.max(6.2,NODE_SUB_FONT_SIZE*.9));
+  return wrapText(n.subtext||'',maxUnits,SUBTEXT_MAX_LINES).filter(Boolean);
 }
 function getPathInfo(f,t){
   const mode=meta.layoutMode||'horizontal';
@@ -4154,7 +4207,12 @@ function draw(){
     g.appendChild(inner);
 
     const accent=document.createElementNS('http://www.w3.org/2000/svg','path');
-    accent.setAttribute('d',`M ${-n.w/2+12} ${-n.h/2+8} L ${n.w/2-40} ${-n.h/2+8} L ${n.w/2-52} ${-n.h/2+18} L ${-n.w/2+12} ${-n.h/2+18} Z`);
+    const accentWidth=Math.max(56, Math.min(92, n.w*.28));
+    const accentRight=n.w/2-14;
+    const accentLeft=accentRight-accentWidth;
+    const accentTop=-n.h/2+10;
+    const accentBottom=accentTop+16;
+    accent.setAttribute('d',`M ${accentLeft} ${accentTop} L ${accentRight-10} ${accentTop} L ${accentRight} ${(accentTop+accentBottom)/2} L ${accentRight-14} ${accentBottom} L ${accentLeft-10} ${accentBottom} Z`);
     accent.setAttribute('fill',selected?'#ffb36f':edgeSeed?'#ff6f2c':(renderPalette.accent||renderPalette.stroke));
     accent.setAttribute('opacity',selected||edgeSeed?'.12':isDoneNode?'.08':'.09');
     accent.setAttribute('pointer-events','none');
@@ -4166,11 +4224,11 @@ function draw(){
     clip.setAttribute('id',clipId);
     clip.setAttribute('clipPathUnits','userSpaceOnUse');
     const clipRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    clipRect.setAttribute('x',-n.w/2+10);
-    clipRect.setAttribute('y',-n.h/2+8);
-    clipRect.setAttribute('width',n.w-20);
-    clipRect.setAttribute('height',n.h-16);
-    clipRect.setAttribute('rx',10);
+    clipRect.setAttribute('x',-n.w/2+6);
+    clipRect.setAttribute('y',-n.h/2+6);
+    clipRect.setAttribute('width',n.w-12);
+    clipRect.setAttribute('height',n.h-12);
+    clipRect.setAttribute('rx',12);
     clip.appendChild(clipRect);
     g.appendChild(clip);
 
@@ -4178,25 +4236,45 @@ function draw(){
     contentGroup.setAttribute('clip-path',`url(#${clipId})`);
 
     const titleLayout=getNodeTitleLayout(n, outlineNumberMap);
+    const contentLeft=-n.w/2+NODE_INNER_PAD_X;
+    const headerTop=-n.h/2+NODE_TOP_PAD-1;
+    const collapseReserve=hasVisibleChildren(n.id) ? 28 : 0;
+
     if(titleLayout.numberLabel){
+      const badgeW=Math.max(36, Math.min(n.w*.34, Math.ceil(estimateTextWidth(titleLayout.numberLabel,10.2)+16)));
+      const badgeRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      badgeRect.setAttribute('x',contentLeft-2);
+      badgeRect.setAttribute('y',headerTop);
+      badgeRect.setAttribute('width',badgeW);
+      badgeRect.setAttribute('height',NODE_NUMBER_BADGE_HEIGHT);
+      badgeRect.setAttribute('rx','9');
+      badgeRect.setAttribute('fill',isDoneNode?'rgba(255,255,255,.045)':'rgba(255,140,92,.12)');
+      badgeRect.setAttribute('stroke',isDoneNode?'rgba(255,255,255,.08)':'rgba(255,160,120,.2)');
+      badgeRect.setAttribute('stroke-width','1');
+      badgeRect.setAttribute('pointer-events','none');
+      contentGroup.appendChild(badgeRect);
+
       const num=document.createElementNS('http://www.w3.org/2000/svg','text');
-      num.setAttribute('x',-n.w/2+12);
-      num.setAttribute('y',-n.h/2+16);
+      num.setAttribute('x',contentLeft-2+badgeW/2);
+      num.setAttribute('y',headerTop+NODE_NUMBER_BADGE_HEIGHT/2+.4);
+      num.setAttribute('text-anchor','middle');
+      num.setAttribute('dominant-baseline','middle');
       num.setAttribute('font-size','10.2');
-      num.setAttribute('font-weight','600');
+      num.setAttribute('font-weight','700');
       num.setAttribute('letter-spacing','.05em');
-      num.setAttribute('fill',isDoneNode?'rgba(222,228,236,.42)':'rgba(255,224,209,.72)');
+      num.setAttribute('fill',isDoneNode?'rgba(222,228,236,.6)':'rgba(255,236,225,.9)');
       num.setAttribute('pointer-events','none');
       num.setAttribute('font-family','Rajdhani, Noto Sans JP, sans-serif');
       num.textContent=titleLayout.numberLabel;
       contentGroup.appendChild(num);
     }
 
-    const titleBaseY=-n.h/2+18+titleLayout.headerHeight;
+    const titleBaseY=-n.h/2+NODE_TOP_PAD+titleLayout.headerHeight+(titleLayout.headerHeight?NODE_HEADER_GAP:0);
     titleLayout.lines.forEach((line,i)=>{
       const title=document.createElementNS('http://www.w3.org/2000/svg','text');
-      title.setAttribute('x',-n.w/2+12);
+      title.setAttribute('x',contentLeft);
       title.setAttribute('y',titleBaseY+i*titleLayout.lineHeight);
+      title.setAttribute('dominant-baseline','hanging');
       title.setAttribute('font-size',String(titleLayout.fontSize));
       title.setAttribute('font-weight','800');
       title.setAttribute('fill',renderPalette.text);
@@ -4207,12 +4285,13 @@ function draw(){
     });
 
     const subLines=showSubtext ? getNodeSubLines(n) : [];
-    const subBaseY=titleBaseY+titleLayout.lines.length*titleLayout.lineHeight+4;
+    const subBaseY=titleBaseY+titleLayout.lines.length*titleLayout.lineHeight+NODE_SECTION_GAP;
     subLines.forEach((line,i)=>{
       const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
-      tx.setAttribute('x',-n.w/2+12);
-      tx.setAttribute('y',subBaseY+i*14);
-      tx.setAttribute('font-size','10.4');
+      tx.setAttribute('x',contentLeft);
+      tx.setAttribute('y',subBaseY+i*NODE_SUB_LINE_HEIGHT);
+      tx.setAttribute('dominant-baseline','hanging');
+      tx.setAttribute('font-size',String(NODE_SUB_FONT_SIZE));
       tx.setAttribute('font-weight','500');
       tx.setAttribute('fill',renderPalette.subtext);
       tx.setAttribute('pointer-events','none');
@@ -4224,9 +4303,9 @@ function draw(){
       const meta=STATUS_META[n.status];
       const chipMetrics=getStatusChipMetrics(n.status);
       const label=chipMetrics.label;
-      const pillW=Math.min(n.w-24,chipMetrics.width);
-      const pillX=n.w/2-pillW-12;
-      const pillY=-n.h/2+8;
+      const pillW=Math.min(n.w-(NODE_INNER_PAD_X*2)-collapseReserve,chipMetrics.width);
+      const pillX=n.w/2-pillW-NODE_INNER_PAD_X-collapseReserve;
+      const pillY=headerTop;
 
       const pill=document.createElementNS('http://www.w3.org/2000/svg','rect');
       pill.setAttribute('x',pillX);
@@ -4242,7 +4321,7 @@ function draw(){
 
       const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
       dot.setAttribute('cx',pillX+11);
-      dot.setAttribute('cy',pillY+9);
+      dot.setAttribute('cy',pillY+chipMetrics.height/2);
       dot.setAttribute('r','3');
       dot.setAttribute('fill',meta.dot);
       dot.setAttribute('pointer-events','none');
@@ -4250,7 +4329,8 @@ function draw(){
 
       const badge=document.createElementNS('http://www.w3.org/2000/svg','text');
       badge.setAttribute('x',pillX+19);
-      badge.setAttribute('y',pillY+12.3);
+      badge.setAttribute('y',pillY+chipMetrics.height/2+.3);
+      badge.setAttribute('dominant-baseline','middle');
       badge.setAttribute('font-size','9.4');
       badge.setAttribute('font-weight','700');
       badge.setAttribute('letter-spacing','.02em');
