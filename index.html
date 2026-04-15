@@ -48,6 +48,12 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 #tb button.primary-action{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;font-weight:700}
 #tb button.secondary-action{background:#f8fafc}
 #tb button.danger-action{color:#dc2626;border-color:#fca5a5;background:#fff7f7}
+.tb-row-main-actions{gap:8px}
+.tb-row-main-actions #layout-mode{min-width:196px;max-width:220px;flex:0 1 220px}
+@media (max-width:900px){
+  .tb-row-main-actions #layout-mode{flex:1 1 220px;max-width:none}
+}
+
 @media (max-width:1100px){
   #tb{gap:10px;padding:10px 12px}
   .tb-group{border-right:none;padding-right:0;min-height:auto}
@@ -175,7 +181,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 .hud-chip .dot{width:8px;height:8px;border-radius:999px;background:#94a3b8;flex-shrink:0}
 .hud-chip.edge .dot{background:#ef4444}
 .hud-chip.select .dot{background:#2563eb}
-#quickbar{position:absolute;display:none;gap:6px;align-items:center;padding:7px;border-radius:14px;background:rgba(255,255,255,.98);border:1px solid #dbe3ef;box-shadow:0 10px 28px rgba(15,23,42,.16);z-index:76;backdrop-filter:blur(10px)}
+#quickbar{position:absolute;display:none;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;padding:7px;border-radius:14px;background:rgba(255,255,255,.98);border:1px solid #dbe3ef;box-shadow:0 10px 28px rgba(15,23,42,.16);z-index:76;backdrop-filter:blur(10px);max-width:min(760px,calc(100% - 16px))}
 #quickbar button{font-size:12px;padding:6px 10px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#334155;cursor:pointer;white-space:nowrap}
 #quickbar button.primary{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
 #quickbar button.danger{color:#dc2626;border-color:#fca5a5}
@@ -890,9 +896,17 @@ svg{background:transparent;position:relative;z-index:1}
 
     <div class="tb-group tb-action-group">
       <span class="tb-label" data-en="ACTION">主な操作</span>
-      <div class="tb-row">
+      <div class="tb-row tb-row-main-actions">
         <button id="b-add" class="primary-action">＋ ノードを追加</button>
         <button id="b-auto" class="primary-action">整える</button>
+        <select id="layout-mode" title="整え方を選ぶ" aria-label="整え方を選ぶ">
+          <option value="radial">放射に広げる</option>
+          <option value="radial_half">右に広げる</option>
+          <option value="radial_fan">扇形に広げる</option>
+          <option value="horizontal">横に並べる</option>
+          <option value="vertical">縦に並べる</option>
+          <option value="outline">リストっぽく並べる</option>
+        </select>
         <button id="b-fit">全体に戻す</button>
       </div>
     </div>
@@ -910,14 +924,6 @@ svg{background:transparent;position:relative;z-index:1}
     <div class="tb-group tb-secondary-group tb-advanced-group tb-layout-group">
       <span class="tb-label" data-en="LAYOUT">配置・書き出し</span>
       <div class="tb-row">
-        <select id="layout-mode" title="並び方を選ぶ">
-          <option value="radial">放射に広げる</option>
-          <option value="radial_half">右に広げる</option>
-          <option value="radial_fan">扇形に広げる</option>
-          <option value="horizontal">横に並べる</option>
-          <option value="vertical">縦に並べる</option>
-          <option value="outline">リストっぽく並べる</option>
-        </select>
         <button id="b-color-depth">ノードを色分け</button>
         <button id="b-color-branch">線を色分け</button>
       </div>
@@ -1038,9 +1044,17 @@ svg{background:transparent;position:relative;z-index:1}
     <div id="quickbar" aria-hidden="true">
       <button id="qb-edit" class="primary" type="button">編集</button>
       <button id="qb-child" type="button">子を追加</button>
-      <button id="qb-connect" type="button" >つなぐ</button>
-      <button id="qb-fit" type="button" >全体に戻す</button>
-      <button id="qb-delete" class="danger" type="button" >消す</button>
+      <button id="qb-connect" type="button">つなぐ</button>
+      <button id="qb-fit" type="button">全体に戻す</button>
+      <button id="qb-align-left" type="button">左揃え</button>
+      <button id="qb-align-center-h" type="button">中央(横)</button>
+      <button id="qb-align-right" type="button">右揃え</button>
+      <button id="qb-align-top" type="button">上揃え</button>
+      <button id="qb-align-middle-v" type="button">中央(縦)</button>
+      <button id="qb-align-bottom" type="button">下揃え</button>
+      <button id="qb-space-h" type="button">横均等</button>
+      <button id="qb-space-v" type="button">縦均等</button>
+      <button id="qb-delete" class="danger" type="button">消す</button>
     </div>
     <div id="toast" aria-live="polite"></div>
     <div id="empty-state" aria-hidden="true" data-empty-variant="default">
@@ -1751,6 +1765,8 @@ let nodes=[],edges=[],nid=1,mode='select',efrom=null;
 let selectedNodeIds=new Set(),activeNodeId=null,selectedEdgeId=null;
 let drag=null;
 let marquee=null;
+let shortcutReadyNodeId=null,shortcutReadyUntil=0;
+
 let pan=false,psx=0,psy=0,vx=0,vy=0,vs=1;
 let cid=null,epid=null,epc=null,eeid=null;
 let undoStack=[],redoStack=[];
@@ -1758,12 +1774,16 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.2.9';
-const APP_UPDATED_AT='2026-04-14 20:28 JST';
+const APP_VERSION='1.3.3';
+const APP_UPDATED_AT='2026-04-15 00:42 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {version:'1.3.3',date:'2026-04-15 00:42 JST',summary:'整えるボタンの右に整え方リストを常設し、放射レイアウトはノード数が多いときも枝が長くなりすぎないよう中心側へ圧縮。',items:['主な操作エリアで「整える」の右に整え方リストを常時表示し、詳細を開かなくても放射・右向き・扇形・横・縦・リストを選べるよう変更','詳細ツール側からは重複する並び方セレクトを外し、色分け系ボタンだけを残してレイアウト選択の場所を一本化','放射レイアウトの評価指標に親子間の総距離を追加し、面積だけでなく線の短さも考慮して向きを選ぶよう改善','放射配置の決定後に各ノードを同じ角度のまま中心側へ寄せる圧縮パスを追加し、重なりを避けつつ余白を詰めるよう調整','放射・右向き・扇形の既定半径とターゲット位置も少し詰め、ノード数が多いケースで広がりすぎないよう再調整']},
+  {version:'1.3.2',date:'2026-04-15 00:20 JST',summary:'Ctrl+Enter で編集モーダルを保存して閉じる操作を全体で拾い、複数選択時は PowerPoint 風の整列と均等配置をクイックバーから実行できるよう追加。',items:['ノード編集パネルと矢印編集パネルで Ctrl/Cmd+Enter をパネル全体のショートカットとして受け取り、その場で保存して閉じるよう統一','複数選択時のクイックバーを左揃え・中央揃え・右揃え・上揃え・縦中央・下揃え・横均等・縦均等の整列メニューへ差し替え','選択中ノードの外接矩形を基準に、各ノードのサイズ差を考慮した位置揃えと等間隔配置をワールド座標で実行する arrangeSelectedNodes を追加','クイックバーは折り返し表示にして、ボタン数が増えても画面内で扱いやすいよう調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+  {version:'1.3.1',date:'2026-04-14 21:40 JST',summary:'親ノード削除時に、その子孫ノードもまとめて削除するよう削除処理を拡張。',items:['deleteNodes で選択ノード配下の子孫IDを再帰的に集めて削除対象へ含めるよう修正','親ノードを削除したとき、関連する子ノードと接続線も一括で除去されるよう整理','複数ノード削除時も、それぞれの配下を重複なくまとめて削除するよう Set ベースで集約','選択状態の解除と残存エッジの除去は従来どおり維持','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+  {version:'1.3.0',date:'2026-04-14 21:10 JST',summary:'Enterの同階層追加をイベントルーターで安定化し、重なりで子にする挙動を判定とフィードバック込みで作り直し。',items:['キャンバス用ショートカットをキャプチャ段階の単一ルーターへ集約し、Enterで同階層追加・Tabで子追加が他の keydown 分岐に阻害されないよう整理','ノード編集確定後は選択ノードを保持したままショートカット待機状態へ戻し、次の Enter で確実に同階層ノードを追加できるよう改善','ドラッグ中に親候補ノードをハイライトし、中心位置または十分な重なりでドロップしたときに重ねたノードが子になるよう判定を見直し','重なり接続の主ノードをドラッグ開始ノードに固定し、複数選択時でも意図したノードが親子接続されるよう調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.9',date:'2026-04-14 20:28 JST',summary:'ノードを約7割重ねてドラッグ終了すると、重ねたノードが相手の子になる自動接続を追加。',items:['ドラッグ終了時に重なり率を判定し、約70%重なった相手ノードへ親子接続するロジックを追加','重ねた側のノードだけを対象にし、相手ノードの子孫へは接続しない安全判定を追加','親変更時は既存の親矢印を差し替えて順番を振り直し、現在のレイアウトに合わせて再整列するよう改善','接続成功時は重ねたノードを選択したままトーストで結果を通知','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.8',date:'2026-04-14 20:08 JST',summary:'ノード編集を Enter で確定したあと、次の Enter で同階層追加しやすいよう編集パネル終了時のフォーカス復帰を修正。',items:['closeEp / closeEep 実行時に開いていた入力欄のフォーカスを明示的に外すよう調整','ノード編集保存後は選択状態を保ったままキャンバスへフォーカスを戻し、次の Enter をショートカットとして拾えるよう修正','編集パネルのキャンセルや矢印編集終了後も同様にショートカット先をキャンバスへ戻すよう統一','隠れた入力欄にフォーカスが残って Enter / Tab の判定を止める状態を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.2.7',date:'2026-04-14 19:55 JST',summary:'ノード選択中の Enter / Tab 系ショートカットが通常キャンバスでも効くようフォーカス判定を修正。',items:['ノード選択時に map-title のフォーカスを外してキャンバスへ戻すよう調整','Enter の同階層追加ショートカットが map-title フォーカス中でも選択ノードに対して動くよう修正','Tab の子ノード追加ショートカットも同様に map-title フォーカス時は許可','他の入力欄・データ欄・編集欄では従来通りショートカットを抑止','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2081,6 +2101,7 @@ function clearSelection(){
   selectedNodeIds.clear();
   activeNodeId=null;
   selectedEdgeId=null;
+  clearCanvasShortcutNode();
   focusCanvasForShortcuts();
 }
 function focusCanvasForShortcuts(){
@@ -2091,11 +2112,71 @@ function focusCanvasForShortcuts(){
   try{ cw?.focus({preventScroll:true}); }
   catch(_){ try{ cw?.focus(); }catch(__){} }
 }
+function armCanvasShortcutNode(id,ms=1800){
+  if(id && nb(id)){
+    shortcutReadyNodeId=id;
+    shortcutReadyUntil=Date.now()+ms;
+  }else{
+    shortcutReadyNodeId=null;
+    shortcutReadyUntil=0;
+  }
+}
+function clearCanvasShortcutNode(){
+  shortcutReadyNodeId=null;
+  shortcutReadyUntil=0;
+}
+function getPrimaryCanvasShortcutNodeId(){
+  const selected=(activeNodeId && nb(activeNodeId))
+    ? activeNodeId
+    : ([...selectedNodeIds].reverse().find(id=>nb(id)) || null);
+  if(selected) return selected;
+  if(shortcutReadyNodeId && Date.now()<=shortcutReadyUntil && nb(shortcutReadyNodeId)) return shortcutReadyNodeId;
+  return null;
+}
+function canvasShortcutBlocked(){
+  if(helpBackdrop?.classList.contains('open')) return true;
+  if(historyBackdrop?.classList.contains('open')) return true;
+  if(outlineBackdrop?.classList.contains('open')) return true;
+  if(ep.style.display==='block' || eep.style.display==='block') return true;
+  const activeEl=document.activeElement;
+  const tag=(activeEl?.tagName||'').toUpperCase();
+  const activeId=activeEl?.id||'';
+  return (tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') && activeId!=='map-title';
+}
+function addSiblingFromCanvasSelection(sourceId){
+  if(!sourceId || !nb(sourceId)) return null;
+  if(!ensureMapTitle()) return null;
+  snapshot();
+  const sibling=createSiblingNode(sourceId,{status:'none',fitMode:'shrink'});
+  renderNow();
+  if(sibling){
+    setSingleSelection(sibling.id);
+    armCanvasShortcutNode(sibling.id);
+    openEp(sibling.id);
+    showToast('同じ階層にノードを追加しました');
+  }
+  return sibling;
+}
+function addChildFromCanvasSelection(sourceId){
+  if(!sourceId || !nb(sourceId)) return null;
+  if(!ensureMapTitle()) return null;
+  snapshot();
+  const child=createChildNode(sourceId,{status:'none',fitMode:'shrink'});
+  renderNow();
+  if(child){
+    setSingleSelection(child.id);
+    armCanvasShortcutNode(child.id);
+    openEp(child.id);
+    showToast('子ノードを追加しました。続けて名前を入力できます');
+  }
+  return child;
+}
 function setSingleSelection(id){
   selectedNodeIds.clear();
   if(id) selectedNodeIds.add(id);
   activeNodeId=id||null;
   selectedEdgeId=null;
+  if(id) armCanvasShortcutNode(id,3600000); else clearCanvasShortcutNode();
   focusCanvasForShortcuts();
 }
 function toggleNodeSelection(id){
@@ -2103,6 +2184,7 @@ function toggleNodeSelection(id){
   if(selectedNodeIds.has(id)) selectedNodeIds.delete(id);
   else selectedNodeIds.add(id);
   activeNodeId=id;
+  if(selectedNodeIds.size) armCanvasShortcutNode(id,3600000); else clearCanvasShortcutNode();
   focusCanvasForShortcuts();
 }
 function getChildrenMap(){
@@ -2160,7 +2242,13 @@ function toggleCollapse(id){
   showToast(n.collapsed ? (n.label+' を折りたたみました') : (n.label+' を展開しました'));
 }
 function deleteNodes(ids){
-  const idSet=new Set(ids);
+  const childMap=getChildrenMap();
+  const idSet=new Set();
+  (ids||[]).forEach(id=>{
+    if(!id || idSet.has(id)) return;
+    idSet.add(id);
+    getDescendantIds(id, childMap).forEach(descId=>idSet.add(descId));
+  });
   nodes=nodes.filter(n=>!idSet.has(n.id));
   edges=edges.filter(e=>!idSet.has(e.from)&&!idSet.has(e.to));
   clearSelection();
@@ -2365,6 +2453,41 @@ function createChildNode(parentId, options={}){
   edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
   setSingleSelection(newId);
   return child;
+}
+function createSiblingNode(sourceId, options={}){
+  const source=nb(sourceId);
+  if(!source) return null;
+  const parentId=getParentId(sourceId);
+  if(parentId){
+    // 親がいる場合: 親の子として追加（同階層）
+    const draft=createNewNodeDraft({
+      label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
+    });
+    const pos=findBestInsertPosition({parentId,templateNode:draft});
+    const newId='n'+(nid++);
+    const sibling=normalizeNode({
+      id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+      fitMode:draft.fitMode,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
+    });
+    nodes.push(sibling);
+    edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
+    setSingleSelection(newId);
+    return sibling;
+  }else{
+    // ルートノードの場合: 新しいルートノードとして追加
+    const draft=createNewNodeDraft({
+      label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
+    });
+    const pos=findBestInsertPosition({anchor:{x:source.x,y:source.y+(source.h||60)+40},templateNode:draft});
+    const newId='n'+(nid++);
+    const sibling=normalizeNode({
+      id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+      fitMode:draft.fitMode,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
+    });
+    nodes.push(sibling);
+    setSingleSelection(newId);
+    return sibling;
+  }
 }
 function createStandaloneNode(options={}){
   const draft=createNewNodeDraft(options);
@@ -2743,10 +2866,10 @@ function buildVisibleTreeForest(){
     return sum;
   }
   roots.forEach(calcWeight);
-  return {visibleNodes,visibleEdges,roots,treeChildren,weights,depth};
+  return {visibleNodes,visibleEdges,roots,treeChildren,weights,depth,parentMap:hierarchy.parentMap};
 }
 function layoutRadialVisible(options={}){
-  const {visibleNodes,roots,treeChildren,weights,depth}=buildVisibleTreeForest();
+  const {visibleNodes,roots,treeChildren,weights,depth,parentMap}=buildVisibleTreeForest();
   if(!visibleNodes.length) return;
 
   const angleStart=options.angleStart ?? (-Math.PI/2);
@@ -2929,8 +3052,92 @@ function layoutRadialVisible(options={}){
     };
   }
 
+  function getLayoutEdgeLength(layout){
+    let total=0;
+    for(const node of visibleNodes){
+      const pid=parentMap[node.id];
+      if(!pid) continue;
+      const from=layout.positions[pid];
+      const to=layout.positions[node.id];
+      if(!from || !to) continue;
+      total+=Math.hypot(to.x-from.x,to.y-from.y);
+    }
+    return total;
+  }
+
   function scoreLayout(layout){
-    return layout.area + Math.max(layout.width,layout.height)*10 + Math.abs(layout.width-layout.height)*1.5;
+    const edgeLength=getLayoutEdgeLength(layout);
+    return layout.area + Math.max(layout.width,layout.height)*10 + Math.abs(layout.width-layout.height)*1.5 + edgeLength*0.45;
+  }
+
+  function compactLayoutTowardCenter(layout){
+    const rectById={};
+    for(const node of visibleNodes){
+      const pos=layout.positions[node.id]||{x:0,y:0};
+      rectById[node.id]=inflateRect(node,pos.x,pos.y,baseGap/2);
+    }
+    const ids=[...visibleNodes]
+      .sort((a,b)=>((depth[b.id]||0)-(depth[a.id]||0)) || (Math.hypot((layout.positions[b.id]||{x:0}).x||0,(layout.positions[b.id]||{y:0}).y||0)-Math.hypot((layout.positions[a.id]||{x:0}).x||0,(layout.positions[a.id]||{y:0}).y||0)));
+
+    function overlapsAny(id,candidateRect){
+      for(const other of visibleNodes){
+        if(other.id===id) continue;
+        const otherRect=rectById[other.id];
+        if(otherRect && rectOverlap(candidateRect,otherRect)) return true;
+      }
+      return false;
+    }
+
+    for(const node of ids){
+      const pid=parentMap[node.id];
+      if(!pid) continue;
+      const current=layout.positions[node.id];
+      const parentPos=layout.positions[pid];
+      if(!current || !parentPos) continue;
+      const currentRadius=Math.hypot(current.x,current.y);
+      if(currentRadius<1) continue;
+      const angle=Math.atan2(current.y,current.x);
+      const parentRadius=Math.hypot(parentPos.x,parentPos.y);
+      const minRadius=Math.max(
+        parentRadius + Math.max(baseGap+10, Math.max(node.w,node.h)*0.24 + Math.max(nb(pid)?.w||0, nb(pid)?.h||0)*0.18),
+        parentRadius + 18
+      );
+      if(currentRadius-minRadius<6) continue;
+      let lo=minRadius;
+      let hi=currentRadius;
+      for(let iter=0;iter<20;iter++){
+        const mid=(lo+hi)/2;
+        const x=Math.cos(angle)*mid;
+        const y=Math.sin(angle)*mid;
+        const rect=inflateRect(node,x,y,baseGap/2);
+        if(overlapsAny(node.id,rect)) lo=mid;
+        else hi=mid;
+      }
+      if(hi<currentRadius-2){
+        const x=Math.cos(angle)*hi;
+        const y=Math.sin(angle)*hi;
+        const rect=inflateRect(node,x,y,baseGap/2);
+        if(!overlapsAny(node.id,rect)){
+          layout.positions[node.id]={x,y};
+          rectById[node.id]=rect;
+        }
+      }
+    }
+
+    const xs=[], ys=[];
+    visibleNodes.forEach(node=>{
+      const pos=layout.positions[node.id]||{x:0,y:0};
+      xs.push(pos.x-node.w/2, pos.x+node.w/2);
+      ys.push(pos.y-node.h/2, pos.y+node.h/2);
+    });
+    layout.minX=Math.min(...xs);
+    layout.maxX=Math.max(...xs);
+    layout.minY=Math.min(...ys);
+    layout.maxY=Math.max(...ys);
+    layout.width=layout.maxX-layout.minX;
+    layout.height=layout.maxY-layout.minY;
+    layout.area=layout.width*layout.height;
+    return layout;
   }
 
   let bestLayout=null;
@@ -2960,6 +3167,8 @@ function layoutRadialVisible(options={}){
   if(!bestLayout) bestLayout=computeLayout(0);
   if(!bestLayout) return;
 
+  bestLayout=compactLayoutTowardCenter(bestLayout);
+
   const cx=(bestLayout.minX+bestLayout.maxX)/2;
   const cy=(bestLayout.minY+bestLayout.maxY)/2;
   visibleNodes.forEach(node=>{
@@ -2973,9 +3182,9 @@ function applyAutoLayout(mode){
   document.getElementById('layout-mode').value=meta.layoutMode;
   if(meta.layoutMode==='vertical') layoutTreeVisible('vertical');
   else if(meta.layoutMode==='outline') layoutOutlineVisible();
-  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:128,targetY:180,radiusStep:64,nodeGap:10,optimizeRotation:false});
-  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:120,targetY:182,radiusStep:62,nodeGap:10,optimizeRotation:false});
-  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:196,targetY:176,radiusStep:66,nodeGap:10,optimizeRotation:true});
+  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:124,targetY:176,radiusStep:56,nodeGap:10,optimizeRotation:false});
+  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:118,targetY:178,radiusStep:54,nodeGap:10,optimizeRotation:false});
+  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:182,targetY:168,radiusStep:58,nodeGap:10,optimizeRotation:true});
   else layoutTreeVisible('horizontal');
 }
 function getNodeNumberLabel(node, numberMap=null){
@@ -3122,38 +3331,54 @@ function reparentNode(nodeId,newParentId){
   ensureOutlineOrders();
   return true;
 }
-function maybeAttachDraggedNodesByOverlap(dragState, threshold=0.7){
+function pointInRect(x,y,rect,inset=0){
+  return x>=rect.x+inset && x<=rect.x+rect.w-inset && y>=rect.y+inset && y<=rect.y+rect.h-inset;
+}
+function getBestOverlapAttachTarget(dragState,{overlapThreshold=0.4,centerThreshold=0.14}={}){
   if(!dragState?.moved) return null;
   const draggedIds=(dragState.ids||[]).filter(id=>nb(id));
   if(!draggedIds.length) return null;
-  const sourceId=(activeNodeId && draggedIds.includes(activeNodeId)) ? activeNodeId : draggedIds[draggedIds.length-1];
+  const sourceId=(dragState.primaryId && draggedIds.includes(dragState.primaryId) && nb(dragState.primaryId))
+    ? dragState.primaryId
+    : ((activeNodeId && draggedIds.includes(activeNodeId) && nb(activeNodeId)) ? activeNodeId : draggedIds[draggedIds.length-1]);
   const source=nb(sourceId);
   if(!source) return null;
   const numberMap=getOutlineNumberMap();
   updateNodeMetrics(source, numberMap);
   const sourceRect=getNodeWorldRect(source);
   const sourceArea=Math.max(1, sourceRect.w*sourceRect.h);
+  const sourceCenter={x:source.x,y:source.y};
   let best=null;
   getVisibleNodes().forEach(target=>{
     if(!target || target.id===sourceId || draggedIds.includes(target.id)) return;
-    updateNodeMetrics(target, numberMap);
     if(isDescendantNode(target.id, sourceId)) return;
-    const overlapArea=getRectIntersectionArea(sourceRect, getNodeWorldRect(target));
+    updateNodeMetrics(target, numberMap);
+    const targetRect=getNodeWorldRect(target);
+    const targetArea=Math.max(1, targetRect.w*targetRect.h);
+    const overlapArea=getRectIntersectionArea(sourceRect,targetRect);
     if(overlapArea<=0) return;
-    const ratio=overlapArea/sourceArea;
-    if(ratio < threshold) return;
+    const coverage=overlapArea/Math.min(sourceArea,targetArea);
+    const inset=Math.min(targetRect.w,targetRect.h)*0.08;
+    const centerInside=pointInRect(sourceCenter.x,sourceCenter.y,targetRect,inset);
+    const qualifies=coverage>=overlapThreshold || (centerInside && coverage>=centerThreshold);
+    if(!qualifies) return;
     const distance=Math.hypot(source.x-target.x, source.y-target.y);
-    if(!best || ratio>best.ratio || (Math.abs(ratio-best.ratio)<0.001 && distance<best.distance)){
-      best={sourceId,targetId:target.id,ratio,distance};
+    if(!best || coverage>best.coverage || (Math.abs(coverage-best.coverage)<0.001 && distance<best.distance)){
+      best={sourceId,targetId:target.id,coverage,distance,centerInside};
     }
   });
+  return best;
+}
+function maybeAttachDraggedNodesByOverlap(dragState){
+  const best=dragState?.attachTarget || getBestOverlapAttachTarget(dragState);
   if(!best) return null;
   if(!reparentNode(best.sourceId,best.targetId)) return null;
   applyAutoLayout(meta.layoutMode||'horizontal');
   setSingleSelection(best.sourceId);
+  armCanvasShortcutNode(best.sourceId,3600000);
+  renderNow();
   return best;
 }
-
 function shortenText(text,max=16){
   const chars=[...(text||'')];
   return chars.length>max ? chars.slice(0,Math.max(1,max-1)).join('')+'…' : (text||'');
@@ -3291,6 +3516,104 @@ function duplicateActiveNode(){
     showToast('ノードを複製しました');
   }
 }
+function getSelectedNodesForArrange(){
+  const ids=[...selectedNodeIds].filter(id=>nb(id));
+  if(ids.length<2) return [];
+  const numberMap=getOutlineNumberMap();
+  const targetNodes=ids.map(id=>nb(id)).filter(Boolean);
+  targetNodes.forEach(node=>updateNodeMetrics(node, numberMap));
+  return targetNodes;
+}
+function getNodeBoundsWorld(nodeList){
+  if(!nodeList.length) return null;
+  const left=Math.min(...nodeList.map(node=>node.x-node.w/2));
+  const right=Math.max(...nodeList.map(node=>node.x+node.w/2));
+  const top=Math.min(...nodeList.map(node=>node.y-node.h/2));
+  const bottom=Math.max(...nodeList.map(node=>node.y+node.h/2));
+  return {left,right,top,bottom,cx:(left+right)/2,cy:(top+bottom)/2,width:right-left,height:bottom-top};
+}
+function arrangeSelectedNodes(mode){
+  const targetNodes=getSelectedNodesForArrange();
+  if(targetNodes.length<2){
+    showToast('2つ以上選ぶと整列できます','warn');
+    return;
+  }
+  if((mode==='distribute-h' || mode==='distribute-v') && targetNodes.length<3){
+    showToast('間隔をそろえるときは3つ以上選んでください','warn');
+    return;
+  }
+  const bounds=getNodeBoundsWorld(targetNodes);
+  if(!bounds) return;
+  snapshot();
+  const sortedX=[...targetNodes].sort((a,b)=>((a.x-a.w/2)-(b.x-b.w/2)) || (a.y-b.y));
+  const sortedY=[...targetNodes].sort((a,b)=>((a.y-a.h/2)-(b.y-b.h/2)) || (a.x-b.x));
+  let toastMessage='整列しました';
+  switch(mode){
+    case 'align-left':{
+      const targetLeft=bounds.left;
+      targetNodes.forEach(node=>{ node.x=targetLeft+node.w/2; });
+      toastMessage='左揃えにしました';
+      break;
+    }
+    case 'align-center-h':{
+      const targetCx=bounds.cx;
+      targetNodes.forEach(node=>{ node.x=targetCx; });
+      toastMessage='横方向の中央をそろえました';
+      break;
+    }
+    case 'align-right':{
+      const targetRight=bounds.right;
+      targetNodes.forEach(node=>{ node.x=targetRight-node.w/2; });
+      toastMessage='右揃えにしました';
+      break;
+    }
+    case 'align-top':{
+      const targetTop=bounds.top;
+      targetNodes.forEach(node=>{ node.y=targetTop+node.h/2; });
+      toastMessage='上揃えにしました';
+      break;
+    }
+    case 'align-middle-v':{
+      const targetCy=bounds.cy;
+      targetNodes.forEach(node=>{ node.y=targetCy; });
+      toastMessage='縦方向の中央をそろえました';
+      break;
+    }
+    case 'align-bottom':{
+      const targetBottom=bounds.bottom;
+      targetNodes.forEach(node=>{ node.y=targetBottom-node.h/2; });
+      toastMessage='下揃えにしました';
+      break;
+    }
+    case 'distribute-h':{
+      const totalWidth=sortedX.reduce((sum,node)=>sum+node.w,0);
+      const gap=(bounds.width-totalWidth)/(sortedX.length-1);
+      let cursor=bounds.left;
+      sortedX.forEach(node=>{
+        node.x=cursor+node.w/2;
+        cursor+=node.w+gap;
+      });
+      toastMessage='横の間隔をそろえました';
+      break;
+    }
+    case 'distribute-v':{
+      const totalHeight=sortedY.reduce((sum,node)=>sum+node.h,0);
+      const gap=(bounds.height-totalHeight)/(sortedY.length-1);
+      let cursor=bounds.top;
+      sortedY.forEach(node=>{
+        node.y=cursor+node.h/2;
+        cursor+=node.h+gap;
+      });
+      toastMessage='縦の間隔をそろえました';
+      break;
+    }
+    default:
+      return;
+  }
+  renderNow();
+  focusCanvasForShortcuts();
+  showToast(toastMessage);
+}
 function runQuickbarAction(action){
   switch(action){
     case 'add':
@@ -3332,6 +3655,30 @@ function runQuickbarAction(action){
       break;
     case 'duplicate':
       duplicateActiveNode();
+      break;
+    case 'align-left':
+      arrangeSelectedNodes('align-left');
+      break;
+    case 'align-center-h':
+      arrangeSelectedNodes('align-center-h');
+      break;
+    case 'align-right':
+      arrangeSelectedNodes('align-right');
+      break;
+    case 'align-top':
+      arrangeSelectedNodes('align-top');
+      break;
+    case 'align-middle-v':
+      arrangeSelectedNodes('align-middle-v');
+      break;
+    case 'align-bottom':
+      arrangeSelectedNodes('align-bottom');
+      break;
+    case 'distribute-h':
+      arrangeSelectedNodes('distribute-h');
+      break;
+    case 'distribute-v':
+      arrangeSelectedNodes('distribute-v');
       break;
     case 'mark-progress':
       markSelectedNodesStatus('in_progress');
@@ -3384,9 +3731,14 @@ function getQuickbarConfig(){
   }
   if(selectedNodeIds.size>1){
     return [
-      {id:'qb-edit',label:'整える',action:'auto',tone:'primary'},
-      {id:'qb-child',label:'着手',action:'mark-progress'},
-      {id:'qb-connect',label:'完了切替',action:'mark-done'},
+      {id:'qb-align-left',label:'左揃え',action:'align-left',tone:'primary'},
+      {id:'qb-align-center-h',label:'中央(横)',action:'align-center-h'},
+      {id:'qb-align-right',label:'右揃え',action:'align-right'},
+      {id:'qb-align-top',label:'上揃え',action:'align-top'},
+      {id:'qb-align-middle-v',label:'中央(縦)',action:'align-middle-v'},
+      {id:'qb-align-bottom',label:'下揃え',action:'align-bottom'},
+      {id:'qb-space-h',label:'横均等',action:'distribute-h'},
+      {id:'qb-space-v',label:'縦均等',action:'distribute-v'},
       {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
     ];
   }
@@ -3455,8 +3807,8 @@ function updateHint(){
     payload={
       title:'複数選択中',
       subtitle:`${selectedNodeIds.size}件をまとめて操作`,
-      body:'まとめて触るときは <b>整える / 状態をそろえる / 消す</b> の3択だけで進めます。',
-      items:[{key:'A',label:'整える'},{key:'Delete',label:'消す'},{key:'Ctrl+Click',label:'追加選択'}],
+      body:'まとめて触るときは <b>左右上下をそろえる / 横縦の間隔をそろえる / 消す</b> の3択で十分です。',
+      items:[{key:'左/右/上/下',label:'位置をそろえる'},{key:'横均等 / 縦均等',label:'間隔をそろえる'},{key:'Delete',label:'消す'}],
       visible:true
     };
   }else if(activeNodeId && nb(activeNodeId)){
@@ -3558,6 +3910,14 @@ function updateQuickbar(){
     'qb-child':document.getElementById('qb-child'),
     'qb-connect':document.getElementById('qb-connect'),
     'qb-fit':document.getElementById('qb-fit'),
+    'qb-align-left':document.getElementById('qb-align-left'),
+    'qb-align-center-h':document.getElementById('qb-align-center-h'),
+    'qb-align-right':document.getElementById('qb-align-right'),
+    'qb-align-top':document.getElementById('qb-align-top'),
+    'qb-align-middle-v':document.getElementById('qb-align-middle-v'),
+    'qb-align-bottom':document.getElementById('qb-align-bottom'),
+    'qb-space-h':document.getElementById('qb-space-h'),
+    'qb-space-v':document.getElementById('qb-space-v'),
     'qb-delete':document.getElementById('qb-delete')
   };
   Object.values(map).forEach(btn=>{
@@ -3708,6 +4068,21 @@ function draw(){
     shadow.setAttribute('fill','rgba(0,0,0,.16)');
     shadow.setAttribute('pointer-events','none');
     g.appendChild(shadow);
+
+    if(drag?.attachTarget?.targetId===n.id){
+      const attachHalo=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      attachHalo.setAttribute('x',-n.w/2-8);
+      attachHalo.setAttribute('y',-n.h/2-8);
+      attachHalo.setAttribute('width',n.w+16);
+      attachHalo.setAttribute('height',n.h+16);
+      attachHalo.setAttribute('rx',20);
+      attachHalo.setAttribute('fill','none');
+      attachHalo.setAttribute('stroke','rgba(255,179,111,.92)');
+      attachHalo.setAttribute('stroke-width','2.4');
+      attachHalo.setAttribute('stroke-dasharray','8 5');
+      attachHalo.setAttribute('pointer-events','none');
+      g.appendChild(attachHalo);
+    }
 
     if(selected){
       const focusBack=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -4121,7 +4496,9 @@ function tryCommitNodeEdit(){
   }
 
   closeEp();
-  draw();
+  setSingleSelection(n.id);
+  armCanvasShortcutNode(n.id);
+  renderNow();
   focusCanvasForShortcuts();
   showToast(n.label+' を更新しました');
   return true;
@@ -4239,6 +4616,8 @@ NL.addEventListener('mousedown',e=>{
   const ids=[...(selectedNodeIds.size?selectedNodeIds:new Set([id]))];
   drag={
     ids,
+    primaryId:id,
+    attachTarget:null,
     startMouse:pt,
     startPositions:Object.fromEntries(ids.map(nodeId=>[nodeId,{x:nb(nodeId).x,y:nb(nodeId).y}])),
     moved:false
@@ -4378,6 +4757,7 @@ document.addEventListener('mousemove',e=>{
         node.y=start.y+dy;
       }
     });
+    drag.attachTarget=getBestOverlapAttachTarget(drag);
     draw();
   }else if(marquee){
     const wr=cw.getBoundingClientRect();
@@ -4417,11 +4797,12 @@ document.addEventListener('mouseup',()=>{
   drag=null;
   pan=false;
   if(finishedDrag?.moved){
-    const attached=maybeAttachDraggedNodesByOverlap(finishedDrag,0.7);
+    const attached=maybeAttachDraggedNodesByOverlap(finishedDrag);
     if(attached){
-      draw();
       const parentLabel=nb(attached.targetId)?.label||'このノード';
       showToast(parentLabel+' の子として接続しました');
+    }else{
+      renderNow();
     }
   }
 });
@@ -4477,6 +4858,20 @@ epp.addEventListener('input',e=>{
   epc=cfh(e.target.value);
   eph.textContent=e.target.value;
   document.querySelectorAll('#ep-sw .sw').forEach(x=>x.classList.remove('on'));
+});
+ep.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){
+    e.preventDefault();
+    e.stopPropagation();
+    commitNodeEdit();
+  }
+});
+eep.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){
+    e.preventDefault();
+    e.stopPropagation();
+    commitEdgeEdit();
+  }
 });
 epl.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commitNodeEdit();}
@@ -4623,6 +5018,25 @@ function applyLayoutShortcut(layoutValue){
   meta.layoutMode=layoutValue;
   document.getElementById('b-auto').click();
 }
+
+document.addEventListener('keydown',e=>{
+  if(canvasShortcutBlocked()) return;
+  const sourceId=getPrimaryCanvasShortcutNodeId();
+  if(!sourceId) return;
+  if(e.key==='Enter' && !e.shiftKey && !e.altKey){
+    if(e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    addSiblingFromCanvasSelection(sourceId);
+    return;
+  }
+  if(e.key==='Tab' && !e.altKey && !e.ctrlKey && !e.metaKey){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    addChildFromCanvasSelection(sourceId);
+    return;
+  }
+}, true);
 
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();document.getElementById('b-undo').click();}
@@ -5047,7 +5461,7 @@ function setIoOpen(open){
 function toggleIo(){
   setIoOpen(!appEl.classList.contains('io-open'));
 }
-['qb-edit','qb-child','qb-connect','qb-fit','qb-delete'].forEach(id=>{
+['qb-edit','qb-child','qb-connect','qb-fit','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
   const btn=document.getElementById(id);
   if(!btn) return;
   btn.addEventListener('click',()=>{
