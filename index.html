@@ -2142,6 +2142,12 @@ function updateFocusModeUi(){
   focusModeSideBtn.textContent=active?'集中モードON':'集中モード';
   focusModeSideBtn.setAttribute('aria-pressed',active?'true':'false');
 }
+
+if(focusModeSideBtn){
+  focusModeSideBtn.addEventListener('click',()=>{
+    toggleFocusMode();
+  });
+}
 function getExportFormattingOptions(){
   return {omitNumbering:!!exportOmitNumberingToggle?.checked};
 }
