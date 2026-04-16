@@ -1913,12 +1913,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.5.3';
-const APP_UPDATED_AT='2026-04-16 23:59 JST';
+const APP_VERSION='1.6.0';
+const APP_UPDATED_AT='2026-04-16 13:17 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.0',date:'2026-04-16 13:17 JST',summary:'左インボックス、現在地HUD、ミニマップ、出力時のインボックス切替を追加し、構造化前のメモと構造化後のマップを同じ画面で往復しやすく改善。',items:['左側に常設インボックスを追加し、1行入力・複数行分割・カード管理・幅変更に対応','インボックスカードをルート化 / 子化できる変換導線を追加し、カードのドラッグ&ドロップでキャンバス上へノード化できるよう拡張','テキスト / Markdown 出力ではインボックスをデフォルト非表示にし、チェックを入れたときだけ末尾セクションとして含めるよう変更','現在地の把握用にビューポート位置・パス表示・右下ミニマップを追加し、クリックで見たい場所へジャンプできるよう改善','インボックス→マップ変換時の軽いフライト演出と到着パルスを追加し、整理した手応えが残るよう調整','JSON 保存 / 読み込み・Undo / Redo でもインボックス状態と関連UI設定を保持するよう更新']},
 {version:'1.5.3',date:'2026-04-16 23:59 JST',summary:'同階層追加でも右優先の初期配置を採用し、右側が詰まっている場合は時計回りに空きを探すよう統一。',items:['createSiblingNode の配置基準を親中心ではなく選択中ノード基準へ変更し、同階層追加でもまず右側に出るよう調整','同階層追加でも子ノード追加と同じ方向ベクトルと方向バイアスを使い、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう統一','親を持つノードは従来どおり同じ親へ接続したまま、配置だけを右優先のルールへ変更','ルートノード同士の同階層追加も同じ右優先ロジックで配置し、下方向へずれる旧挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.2',date:'2026-04-16 23:53 JST',summary:'Tabで追加する子ノードの初期配置を右優先に見直し、右側が詰まっている場合は時計回りで空きを探すよう改善。',items:['子ノード追加専用の方向ベクトルを追加し、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう変更','findBestInsertPosition に方向配列と方向バイアスの指定を追加し、用途ごとに初期配置の優先順位を切り替えられるよう整理','Tab などで使う createChildNode は右方向の優先度を強め、右側に十分な空きがある限りまず右へ生えるよう調整','右側がノードや線で詰まっている場合は従来の衝突回避ロジックを保ったまま、時計回りに近い位置へ自動で逃がすよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.1',date:'2026-04-16 23:36 JST',summary:'テキスト/Markdown書き出しの初期設定と先頭行を整理し、番号なしをデフォルトにしたうえでマップ名と（選択中）を出力しないよう調整。',items:['「ナンバリングを含めない」チェックを初期状態でONに変更','テキスト書き出しからマップ名の先頭行を削除し、選択時も「（選択中）」を出さないよう修正','Markdown書き出しから先頭の H1 マップ名行を削除し、選択時も「（選択中）」を出さないよう修正','書き出し本体はノード構造だけをそのまま出力する形にそろえた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -6072,5 +6073,768 @@ if(document.readyState==='complete'){
   window.addEventListener('load',()=>requestAnimationFrame(()=>requestAnimationFrame(runInitialBoot)),{once:true});
 }
 </script>
+
+<script>
+(function(){
+  const styleCss = `
+  #main{align-items:stretch}
+  #inbox-wrap{
+    flex:0 0 340px;
+    width:340px;
+    min-width:220px;
+    max-width:min(42vw,520px);
+    position:relative;
+    border-right:1px solid rgba(255,255,255,.06);
+    background:linear-gradient(180deg, rgba(14,18,25,.98), rgba(9,12,18,.98));
+    display:flex;
+    z-index:4;
+  }
+  #inbox-panel{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    position:relative;
+    overflow:hidden;
+  }
+  #inbox-head{
+    padding:12px 12px 10px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    background:linear-gradient(180deg, rgba(22,28,38,.98), rgba(13,17,24,.98));
+  }
+  #inbox-head .inbox-title{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:8px
+  }
+  #inbox-head .inbox-title strong{
+    font-family:var(--font-display-en), var(--font-ui-ja);
+    font-size:22px;letter-spacing:.06em;color:var(--sf-text-0);line-height:1
+  }
+  #inbox-head .inbox-sub{font-size:11px;line-height:1.5;color:var(--sf-text-2)}
+  #inbox-input{
+    width:100%;min-height:92px;resize:vertical;padding:10px 12px;border-radius:14px;
+    border:1px solid rgba(132,145,164,.22);background:rgba(5,8,12,.58);color:var(--sf-text-0);
+    font-size:12px;line-height:1.55;outline:none
+  }
+  #inbox-input:focus{border-color:rgba(18,198,255,.48);box-shadow:0 0 0 3px rgba(18,198,255,.12)}
+  #inbox-actions{display:flex;gap:8px;flex-wrap:wrap}
+  #inbox-actions button,#inbox-toolbar button,.inbox-card button{
+    position:relative;overflow:hidden;font-weight:700;color:var(--sf-text-0);
+    border:1px solid var(--sf-stroke);background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    cursor:pointer
+  }
+  #inbox-actions button{font-size:12px;padding:8px 12px}
+  #inbox-actions button.primary{background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64)}
+  #inbox-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.05)}
+  #inbox-stats{font-size:11px;color:var(--sf-text-2)}
+  #inbox-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .inbox-empty{
+    padding:14px;border:1px dashed rgba(132,145,164,.24);border-radius:16px;color:var(--sf-text-2);
+    font-size:12px;line-height:1.7;background:rgba(255,255,255,.02)
+  }
+  .inbox-card{
+    position:relative;padding:12px;border-radius:18px;border:1px solid rgba(132,145,164,.18);
+    background:linear-gradient(180deg, rgba(19,24,33,.92), rgba(10,14,20,.98));
+    box-shadow:0 10px 24px rgba(0,0,0,.16);display:flex;flex-direction:column;gap:9px
+  }
+  .inbox-card[data-state="converted"]{border-color:rgba(152,245,123,.22);background:linear-gradient(180deg, rgba(19,31,24,.92), rgba(10,16,12,.98))}
+  .inbox-card[data-state="hold"]{border-color:rgba(255,227,109,.22)}
+  .inbox-card.dragging{opacity:.5;transform:scale(.98)}
+  .inbox-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .inbox-badges{display:flex;flex-wrap:wrap;gap:6px}
+  .inbox-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;border:1px solid rgba(132,145,164,.18);background:rgba(255,255,255,.04);color:var(--sf-text-1)}
+  .inbox-badge.converted{background:rgba(152,245,123,.12);border-color:rgba(152,245,123,.24);color:#eaffdf}
+  .inbox-badge.hold{background:rgba(255,227,109,.10);border-color:rgba(255,227,109,.22);color:#fff5c7}
+  .inbox-badge.star{background:rgba(255,196,157,.12);border-color:rgba(255,160,120,.18);color:#ffd8c4}
+  .inbox-time{font-size:10px;color:var(--sf-text-3);white-space:nowrap}
+  .inbox-text{font-size:12px;line-height:1.65;color:var(--sf-text-0);white-space:pre-wrap;word-break:break-word}
+  .inbox-card-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .inbox-card button{font-size:10.5px;padding:5px 8px}
+  .inbox-card button.primary{background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98));border-color:rgba(18,198,255,.48)}
+  #inbox-resizer{
+    position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:6;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.08), transparent)
+  }
+  #inbox-drop-hint{
+    position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(18,198,255,.08);border:2px dashed rgba(18,198,255,.38);border-radius:18px;pointer-events:none;z-index:6
+  }
+  #inbox-drop-hint.open{display:flex}
+  #inbox-drop-hint span{
+    padding:10px 14px;border-radius:12px;background:rgba(9,12,18,.94);border:1px solid rgba(18,198,255,.28);
+    color:#effcff;font-size:12px;font-weight:700
+  }
+  #location-chip,#path-chip{max-width:min(520px,calc(100% - 24px))}
+  #location-chip span:last-child,#path-chip span:last-child{max-width:44ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #location-chip strong,#path-chip strong{font-size:12px}
+  #minimap-panel{
+    position:absolute;right:12px;bottom:12px;width:188px;height:128px;z-index:64;
+    border:1px solid rgba(132,145,164,.2);background:linear-gradient(180deg, rgba(16,21,30,.92), rgba(8,12,18,.95));
+    box-shadow:var(--sf-shadow-1);border-radius:14px;overflow:hidden;backdrop-filter:blur(10px)
+  }
+  #minimap-head{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+  #minimap-head strong{font-family:var(--font-display-en),var(--font-ui-ja);font-size:12px;letter-spacing:.08em;color:var(--sf-text-0)}
+  #minimap-head span{font-size:10px;color:var(--sf-text-2)}
+  #minimap-canvas{display:block;width:100%;height:94px;cursor:pointer}
+  #minimap-ping{
+    position:absolute;width:18px;height:18px;border-radius:999px;border:2px solid rgba(18,198,255,.62);
+    box-shadow:0 0 0 0 rgba(18,198,255,.2);pointer-events:none;display:none;z-index:65
+  }
+  #minimap-ping.show{display:block;animation:minimap-ping .48s ease-out}
+  .inbox-flight{
+    position:fixed;z-index:9999;pointer-events:none;max-width:180px;padding:8px 10px;border-radius:12px;
+    background:linear-gradient(180deg, rgba(20,25,34,.98), rgba(10,14,20,.98));border:1px solid rgba(18,198,255,.28);
+    color:var(--sf-text-0);font-size:11px;line-height:1.4;box-shadow:0 18px 36px rgba(0,0,0,.28);
+    transform:translate(-50%,-50%) scale(1);opacity:.98;transition:left .34s cubic-bezier(.16,1,.3,1), top .34s cubic-bezier(.16,1,.3,1), transform .34s cubic-bezier(.16,1,.3,1), opacity .34s ease;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .canvas-arrival-pulse{
+    position:absolute;width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,111,44,.7);
+    background:rgba(255,111,44,.08);pointer-events:none;z-index:66;transform:translate(-50%,-50%);animation:canvas-arrival .45s ease-out forwards
+  }
+  @keyframes minimap-ping{
+    0%{transform:translate(-50%,-50%) scale(.5);opacity:0}
+    30%{opacity:1}
+    100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}
+  }
+  @keyframes canvas-arrival{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
+    25%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(2.5)}
+  }
+  @media (max-width:1100px){
+    #inbox-wrap{flex-basis:300px;width:300px}
+    #minimap-panel{width:170px;height:120px}
+  }
+  @media (max-width:820px){
+    #inbox-wrap{display:none}
+    #location-chip,#path-chip{max-width:calc(100% - 24px)}
+  }
+  `;
+  const styleEl=document.createElement('style');
+  styleEl.id='inbox-current-style';
+  styleEl.textContent=styleCss;
+  document.head.appendChild(styleEl);
+
+  const main=document.getElementById('main');
+  const cw=document.getElementById('cw');
+  const hud=document.getElementById('hud');
+  const exportOptions=document.getElementById('io-export-options');
+
+  if(main && cw){
+    const inboxWrap=document.createElement('div');
+    inboxWrap.id='inbox-wrap';
+    inboxWrap.innerHTML=`
+      <div id="inbox-panel">
+        <div id="inbox-head">
+          <div class="inbox-title">
+            <div>
+              <strong>INBOX</strong>
+              <div class="inbox-sub">構造化前のメモを置く場所。ドラッグで右へ、ボタンでルート/子ノードへ変換できます。</div>
+            </div>
+          </div>
+          <textarea id="inbox-input" placeholder="殴り書き、一時メモ、仮説、断片をここへ。&#10;複数行なら「分割して追加」で1件ずつカードにします。"></textarea>
+          <div id="inbox-actions">
+            <button id="inbox-add" class="primary" type="button">追加</button>
+            <button id="inbox-split" type="button">分割して追加</button>
+            <button id="inbox-clear-input" type="button">入力を消す</button>
+          </div>
+        </div>
+        <div id="inbox-toolbar">
+          <div id="inbox-stats">0件</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button id="inbox-collapse-converted" type="button" style="font-size:10.5px;padding:5px 8px">変換済みだけ隠す</button>
+          </div>
+        </div>
+        <div id="inbox-list"></div>
+      </div>
+      <div id="inbox-resizer" aria-hidden="true"></div>
+    `;
+    main.insertBefore(inboxWrap, cw);
+  }
+
+  if(hud){
+    const locationChip=document.createElement('div');
+    locationChip.id='location-chip';
+    locationChip.className='hud-chip';
+    locationChip.innerHTML='<span class="dot"></span><strong>表示位置</strong><span>全体表示</span>';
+    hud.appendChild(locationChip);
+
+    const pathChip=document.createElement('div');
+    pathChip.id='path-chip';
+    pathChip.className='hud-chip';
+    pathChip.innerHTML='<span class="dot"></span><strong>現在地</strong><span>未選択</span>';
+    hud.appendChild(pathChip);
+  }
+
+  if(cw){
+    const minimap=document.createElement('div');
+    minimap.id='minimap-panel';
+    minimap.innerHTML='<div id="minimap-head"><strong>MINIMAP</strong><span>クリックで移動</span></div><canvas id="minimap-canvas" width="376" height="188"></canvas><div id="minimap-ping"></div><div id="inbox-drop-hint"><span>ここにドロップしてノード化</span></div>';
+    cw.appendChild(minimap);
+  }
+
+  if(exportOptions){
+    const label=document.createElement('label');
+    label.className='tb-check';
+    label.setAttribute('for','export-include-inbox');
+    label.innerHTML='<input id="export-include-inbox" type="checkbox"><span>インボックスを含める</span>';
+    exportOptions.appendChild(label);
+  }
+
+  const inboxInput=document.getElementById('inbox-input');
+  const inboxListEl=document.getElementById('inbox-list');
+  const inboxStatsEl=document.getElementById('inbox-stats');
+  const includeInboxToggle=document.getElementById('export-include-inbox');
+  const inboxWrap=document.getElementById('inbox-wrap');
+  const inboxResizer=document.getElementById('inbox-resizer');
+  const minimapCanvas=document.getElementById('minimap-canvas');
+  const minimapPing=document.getElementById('minimap-ping');
+  const dropHint=document.getElementById('inbox-drop-hint');
+  const collapseConvertedBtn=document.getElementById('inbox-collapse-converted');
+
+  let inboxItems=[];
+  let inboxSeq=1;
+  let inboxWidth=340;
+  let hideConvertedInbox=false;
+  let inboxDragId=null;
+  let minimapBounds=null;
+
+  function nowLabel(){
+    const d=new Date();
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const day=String(d.getDate()).padStart(2,'0');
+    const h=String(d.getHours()).padStart(2,'0');
+    const mm=String(d.getMinutes()).padStart(2,'0');
+    return `${y}-${m}-${day} ${h}:${mm}`;
+  }
+  function escapeHtmlLite(str=''){
+    return String(str).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+  function normalizeInboxItem(raw,opts={}){
+    const text=String(raw||'').replace(/\r/g,'').trim();
+    if(!text) return null;
+    const item={
+      id:opts.id||`ib${inboxSeq++}`,
+      text,
+      state:opts.state||'new',
+      favorite:!!opts.favorite,
+      createdAt:opts.createdAt||nowLabel()
+    };
+    const numeric=Number(String(item.id).replace(/\D/g,''));
+    if(Number.isFinite(numeric) && numeric>=inboxSeq) inboxSeq=numeric+1;
+    return item;
+  }
+  function splitInboxRaw(raw,split=false){
+    const text=String(raw||'').replace(/\r/g,'').trim();
+    if(!text) return [];
+    if(!split){
+      const blocks=text.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
+      return blocks.length>1 ? blocks : [text];
+    }
+    const lines=text.split('\n').map(line=>line.trim()).filter(Boolean);
+    if(lines.length<=1) return text.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
+    return lines.map(line=>line.replace(/^[-*•]\s+/,'').replace(/^\d+[.)]\s+/,'').trim()).filter(Boolean);
+  }
+  function inboxTextToNodePayload(text=''){
+    const rawLines=String(text||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
+    const lines=rawLines.map(line=>line.replace(/^[-*•]\s+/,'').replace(/^\d+[.)]\s+/,'').trim()).filter(Boolean);
+    const label=(lines[0]||'新規案件').slice(0,120);
+    const subtext=lines.slice(1).join('\n');
+    return {label,subtext,status:'none',fitMode:'wrap'};
+  }
+  function getInboxExportItems(){
+    return inboxItems.filter(item=>item && String(item.text||'').trim());
+  }
+  function renderInbox(){
+    if(!inboxListEl) return;
+    const items=hideConvertedInbox ? inboxItems.filter(item=>item.state!=='converted') : inboxItems.slice();
+    if(inboxStatsEl){
+      const activeCount=inboxItems.filter(item=>item.state!=='converted').length;
+      inboxStatsEl.textContent=`${inboxItems.length}件（未変換 ${activeCount}件）`;
+    }
+    if(collapseConvertedBtn){
+      collapseConvertedBtn.textContent=hideConvertedInbox?'変換済みも表示':'変換済みだけ隠す';
+    }
+    if(!items.length){
+      inboxListEl.innerHTML='<div class="inbox-empty">まだメモがありません。左で思いつきを雑に置いて、必要になったものだけ右へ構造化できます。</div>';
+      return;
+    }
+    inboxListEl.innerHTML=items.map(item=>`
+      <div class="inbox-card" data-id="${escapeHtmlLite(item.id)}" data-state="${escapeHtmlLite(item.state)}" draggable="true">
+        <div class="inbox-card-top">
+          <div class="inbox-badges">
+            ${item.state==='converted'?'<span class="inbox-badge converted">変換済み</span>':''}
+            ${item.state==='hold'?'<span class="inbox-badge hold">保留</span>':''}
+            ${item.favorite?'<span class="inbox-badge star">★</span>':''}
+          </div>
+          <div class="inbox-time">${escapeHtmlLite(item.createdAt||'')}</div>
+        </div>
+        <div class="inbox-text">${escapeHtmlLite(item.text)}</div>
+        <div class="inbox-card-actions">
+          <button type="button" class="primary" data-inbox-action="to-root">ルートへ</button>
+          <button type="button" data-inbox-action="to-child" ${activeNodeId && nb(activeNodeId)?'':'disabled'}>選択ノードの子へ</button>
+          <button type="button" data-inbox-action="toggle-favorite">${item.favorite?'★を外す':'★を付ける'}</button>
+          <button type="button" data-inbox-action="toggle-state">${item.state==='hold'?'保留を外す':'保留'}</button>
+          <button type="button" data-inbox-action="delete">削除</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  function writeExportBoxIfNeeded(){
+    if(currentExportKind==='text' || currentExportKind==='md') writeCurrentExportToBox(currentExportKind,{silent:true});
+  }
+  function addInboxItems(raw,split=false){
+    const blocks=splitInboxRaw(raw,split);
+    if(!blocks.length) return 0;
+    snapshot();
+    let added=0;
+    blocks.forEach(block=>{
+      const item=normalizeInboxItem(block);
+      if(item){ inboxItems.unshift(item); added+=1; }
+    });
+    renderInbox();
+    renderNow();
+    writeExportBoxIfNeeded();
+    return added;
+  }
+  function setInboxData(payload){
+    const rawItems=(payload&&payload.inbox&&payload.inbox.items) || (payload&&payload.uiState&&payload.uiState.inboxItems) || [];
+    inboxItems=rawItems.map(item=>normalizeInboxItem(item.text||item.label||'',item)).filter(Boolean);
+    inboxSeq=(payload&&payload.inbox&&payload.inbox.seq)|| (inboxItems.reduce((max,item)=>Math.max(max,Number(String(item.id).replace(/\D/g,''))||0),0)+1) || 1;
+    inboxWidth=Math.max(220,Math.min(520,Number((payload&&payload.uiState&&payload.uiState.inboxWidth)||(payload&&payload.inbox&&payload.inbox.width)||inboxWidth)||340));
+    hideConvertedInbox=!!((payload&&payload.uiState&&payload.uiState.hideConvertedInbox) || false);
+    if(inboxWrap) inboxWrap.style.width=`${inboxWidth}px`;
+    if(includeInboxToggle){
+      includeInboxToggle.checked=!!((payload&&payload.uiState&&payload.uiState.includeInboxInExport) || false);
+    }
+    renderInbox();
+    writeExportBoxIfNeeded();
+  }
+  function animateInboxFlight(fromEl,toClientPoint,label){
+    if(!fromEl || !toClientPoint) return;
+    const rect=fromEl.getBoundingClientRect();
+    const ghost=document.createElement('div');
+    ghost.className='inbox-flight';
+    ghost.textContent=(label||'ノード化').slice(0,28);
+    ghost.style.left=(rect.left+rect.width/2)+'px';
+    ghost.style.top=(rect.top+Math.min(rect.height/2,48))+'px';
+    document.body.appendChild(ghost);
+    requestAnimationFrame(()=>{
+      ghost.style.left=toClientPoint.x+'px';
+      ghost.style.top=toClientPoint.y+'px';
+      ghost.style.transform='translate(-50%,-50%) scale(.76)';
+      ghost.style.opacity='.08';
+    });
+    setTimeout(()=>ghost.remove(),380);
+  }
+  function showCanvasArrival(clientPoint){
+    if(!cw || !clientPoint) return;
+    const rect=cw.getBoundingClientRect();
+    const pulse=document.createElement('div');
+    pulse.className='canvas-arrival-pulse';
+    pulse.style.left=(clientPoint.x-rect.left)+'px';
+    pulse.style.top=(clientPoint.y-rect.top)+'px';
+    cw.appendChild(pulse);
+    setTimeout(()=>pulse.remove(),500);
+  }
+  function convertInboxItem(itemId,target='root',options={}){
+    const item=inboxItems.find(entry=>entry.id===itemId);
+    if(!item) return null;
+    const payload=inboxTextToNodePayload(item.text);
+    let node=null;
+    const beforeActive=activeNodeId;
+    if(target==='child' && beforeActive && nb(beforeActive)){
+      snapshot();
+      node=createChildNode(beforeActive,payload);
+    }else{
+      snapshot();
+      node=createStandaloneNode({...payload, anchor:options.anchor || getViewportCenterWorld()});
+    }
+    if(!node) return null;
+    item.state='converted';
+    renderInbox();
+    renderNow();
+    writeExportBoxIfNeeded();
+    const screen=toS(node.x,node.y);
+    const rect=cw.getBoundingClientRect();
+    const clientPoint={x:rect.left+screen.x, y:rect.top+screen.y};
+    if(options.fromEl) animateInboxFlight(options.fromEl,clientPoint,payload.label);
+    showCanvasArrival(clientPoint);
+    showToast(target==='child'?'インボックスから子ノードへ変換しました':'インボックスからノード化しました');
+    return node;
+  }
+  function getViewportRegionLabel(){
+    const visible=getVisibleNodes();
+    if(!visible.length) return '表示位置なし';
+    const xs=[],ys=[];
+    visible.forEach(n=>{ xs.push(n.x-n.w/2,n.x+n.w/2); ys.push(n.y-n.h/2,n.y+n.h/2); });
+    const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+    const worldLeft=vx, worldTop=vy, worldRight=vx+(cw.clientWidth||0)*vs, worldBottom=vy+(cw.clientHeight||0)*vs;
+    const spanX=Math.max(1,maxX-minX), spanY=Math.max(1,maxY-minY);
+    const coversWhole=(worldRight-worldLeft)>=spanX*0.9 && (worldBottom-worldTop)>=spanY*0.9;
+    if(coversWhole) return '全体表示';
+    const cx=(worldLeft+worldRight)/2, cy=(worldTop+worldBottom)/2;
+    const rx=(cx-minX)/spanX, ry=(cy-minY)/spanY;
+    const hx=rx<0.33?'左':rx>0.66?'右':'中央';
+    const hy=ry<0.33?'上':ry>0.66?'下':'中央';
+    return hy==='中央' && hx==='中央' ? '中央付近' : `${hy}${hx==='中央'?'':hx}`;
+  }
+  function getCurrentPathSummary(){
+    const id=activeNodeId && nb(activeNodeId) ? activeNodeId : ([...selectedNodeIds].find(candidate=>nb(candidate))||null);
+    if(!id) return '未選択';
+    const numberMap=getOutlineNumberMap();
+    const path=[];
+    let cur=id;
+    let loop=0;
+    while(cur && loop<100){
+      const node=nb(cur);
+      if(!node) break;
+      const num=(numberMap[cur]||'').trim();
+      path.push([num,node.label].filter(Boolean).join(' '));
+      cur=getParentId(cur);
+      loop+=1;
+    }
+    return path.reverse().join(' › ');
+  }
+  function updateCurrentLocationUi(){
+    const locationChip=document.getElementById('location-chip');
+    const pathChip=document.getElementById('path-chip');
+    if(locationChip){
+      const zoom=`${Math.round(vs*100)}%`;
+      const region=getViewportRegionLabel();
+      locationChip.innerHTML=`<span class="dot"></span><strong>表示位置 ${zoom}</strong><span>${escapeHtml(region)}</span>`;
+    }
+    if(pathChip){
+      const path=getCurrentPathSummary();
+      pathChip.innerHTML=`<span class="dot"></span><strong>現在地</strong><span>${escapeHtml(path)}</span>`;
+    }
+  }
+  function renderMinimap(){
+    if(!minimapCanvas || !cw) return;
+    const ctx=minimapCanvas.getContext('2d');
+    if(!ctx) return;
+    const width=minimapCanvas.width, height=minimapCanvas.height;
+    ctx.clearRect(0,0,width,height);
+    ctx.fillStyle='rgba(6,9,14,.98)';
+    ctx.fillRect(0,0,width,height);
+    const visible=getVisibleNodes();
+    if(!visible.length){
+      ctx.fillStyle='rgba(154,168,186,.7)';
+      ctx.font='12px sans-serif';
+      ctx.fillText('No map', 14, 22);
+      minimapBounds=null;
+      return;
+    }
+    const allNodes=nodes.slice();
+    const xs=[], ys=[];
+    allNodes.forEach(n=>{
+      updateNodeMetrics(n, getOutlineNumberMap());
+      xs.push(n.x-n.w/2,n.x+n.w/2);
+      ys.push(n.y-n.h/2,n.y+n.h/2);
+    });
+    const pad=60;
+    const minX=Math.min(...xs)-pad, maxX=Math.max(...xs)+pad, minY=Math.min(...ys)-pad, maxY=Math.max(...ys)+pad;
+    const spanX=Math.max(1,maxX-minX), spanY=Math.max(1,maxY-minY);
+    const scale=Math.min((width-12)/spanX,(height-12)/spanY);
+    const ox=(width-spanX*scale)/2;
+    const oy=(height-spanY*scale)/2;
+    minimapBounds={minX,maxX,minY,maxY,scale,ox,oy,width,height};
+    const focusActive=isFocusModeActive();
+    const focusSet=focusActive ? getFocusBranchNodeIds() : null;
+
+    edges.forEach(edge=>{
+      const from=nb(edge.from), to=nb(edge.to);
+      if(!from || !to) return;
+      ctx.strokeStyle=(focusActive && !(focusSet.has(edge.from)&&focusSet.has(edge.to))) ? 'rgba(130,140,150,.12)' : 'rgba(116,156,180,.22)';
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(ox+(from.x-minX)*scale, oy+(from.y-minY)*scale);
+      ctx.lineTo(ox+(to.x-minX)*scale, oy+(to.y-minY)*scale);
+      ctx.stroke();
+    });
+    allNodes.forEach(node=>{
+      const x=ox+(node.x-node.w/2-minX)*scale;
+      const y=oy+(node.y-node.h/2-minY)*scale;
+      const w=Math.max(3,node.w*scale);
+      const h=Math.max(3,node.h*scale);
+      const dim=focusActive && !focusSet.has(node.id);
+      ctx.fillStyle=node.id===activeNodeId ? 'rgba(255,111,44,.9)' : dim ? 'rgba(140,146,156,.2)' : (node.favorite ? 'rgba(255,196,157,.76)' : 'rgba(214,222,232,.45)');
+      ctx.fillRect(x,y,w,h);
+    });
+    const viewLeft=vx, viewTop=vy, viewWidth=(cw.clientWidth||0)*vs, viewHeight=(cw.clientHeight||0)*vs;
+    ctx.strokeStyle='rgba(18,198,255,.92)';
+    ctx.lineWidth=2;
+    ctx.strokeRect(ox+(viewLeft-minX)*scale, oy+(viewTop-minY)*scale, Math.max(8,viewWidth*scale), Math.max(8,viewHeight*scale));
+  }
+
+  if(minimapCanvas){
+    minimapCanvas.addEventListener('click',ev=>{
+      if(!minimapBounds) return;
+      const rect=minimapCanvas.getBoundingClientRect();
+      const x=(ev.clientX-rect.left)*(minimapCanvas.width/rect.width);
+      const y=(ev.clientY-rect.top)*(minimapCanvas.height/rect.height);
+      const worldX=minimapBounds.minX + ((x-minimapBounds.ox)/Math.max(0.0001,minimapBounds.scale));
+      const worldY=minimapBounds.minY + ((y-minimapBounds.oy)/Math.max(0.0001,minimapBounds.scale));
+      vx=worldX - (cw.clientWidth/2)*vs;
+      vy=worldY - (cw.clientHeight/2)*vs;
+      applyT();
+      renderNow();
+      if(minimapPing){
+        minimapPing.classList.remove('show');
+        minimapPing.style.left=x+'px';
+        minimapPing.style.top=y+'px';
+        void minimapPing.offsetWidth;
+        minimapPing.classList.add('show');
+      }
+    });
+  }
+
+  function patchUndoPayload(rawJson){
+    try{
+      const payload=JSON.parse(rawJson);
+      payload.inbox={items:inboxItems,seq:inboxSeq,width:inboxWidth};
+      payload.uiState={...(payload.uiState||{}),inboxWidth,hideConvertedInbox,includeInboxInExport:!!includeInboxToggle?.checked};
+      return JSON.stringify(payload);
+    }catch(_){
+      return rawJson;
+    }
+  }
+
+  const _snapshot=snapshot;
+  snapshot=function(){
+    _snapshot();
+    if(undoStack.length) undoStack[undoStack.length-1]=patchUndoPayload(undoStack[undoStack.length-1]);
+  };
+  const _restoreState=restoreState;
+  restoreState=function(payload){
+    _restoreState(payload);
+    setInboxData(payload||{});
+    updateCurrentLocationUi();
+    renderMinimap();
+  };
+  const _buildExportObject=buildExportObject;
+  buildExportObject=function(){
+    const out=_buildExportObject();
+    out.inbox={items:inboxItems.map(item=>({...item})),seq:inboxSeq,width:inboxWidth};
+    out.uiState={...(out.uiState||{}),inboxWidth,hideConvertedInbox,includeInboxInExport:!!includeInboxToggle?.checked};
+    return out;
+  };
+  const _getExportFormattingOptions=getExportFormattingOptions;
+  getExportFormattingOptions=function(){
+    const opts=_getExportFormattingOptions();
+    opts.includeInbox=!!includeInboxToggle?.checked;
+    return opts;
+  };
+  const _buildOutlineText=buildOutlineText;
+  buildOutlineText=function(onlySelection=false,options={}){
+    let out=_buildOutlineText(onlySelection,options);
+    if(options.includeInbox){
+      const items=getInboxExportItems();
+      if(items.length){
+        const body=items.map(item=>{
+          const stateLabel=item.state==='converted'?' [変換済み]':item.state==='hold'?' [保留]':'';
+          return `- ${item.text.replace(/\n/g,' / ')}${stateLabel}`;
+        }).join('\n');
+        out=[out,'','■インボックス',body].filter(Boolean).join('\n');
+      }
+    }
+    return out.trim();
+  };
+  const _buildMarkdownText=buildMarkdownText;
+  buildMarkdownText=function(onlySelection=false,options={}){
+    let out=_buildMarkdownText(onlySelection,options);
+    if(options.includeInbox){
+      const items=getInboxExportItems();
+      if(items.length){
+        const body=items.map(item=>{
+          const first=String(item.text||'').split('\n')[0]||'メモ';
+          const rest=String(item.text||'').split('\n').slice(1).join(' / ');
+          return rest ? `- ${first}\n  ${rest}` : `- ${first}`;
+        }).join('\n');
+        out=[out,'','## インボックス',body].filter(Boolean).join('\n');
+      }
+    }
+    return out.trim();
+  };
+  const _parseImportData=parseImportData;
+  parseImportData=function(raw,{kind}={}){
+    const result=_parseImportData(raw,{kind});
+    try{
+      const detected=detectImportKind(raw,kind||currentExportKind);
+      if(detected==='json'){
+        const parsed=JSON.parse(String(raw||'').trim());
+        if(parsed.inbox) result.inbox=parsed.inbox;
+        if(parsed.uiState) result.uiState=parsed.uiState;
+      }
+    }catch(_){}
+    return result;
+  };
+  const _replaceMapData=replaceMapData;
+  replaceMapData=function(d,opts){
+    _replaceMapData(d,opts||{});
+    setInboxData(d||{});
+    updateCurrentLocationUi();
+    renderMinimap();
+  };
+  const _draw=draw;
+  draw=function(){
+    _draw();
+    updateCurrentLocationUi();
+    renderMinimap();
+    renderInbox();
+  };
+
+  if(includeInboxToggle){
+    includeInboxToggle.addEventListener('change',()=>{
+      writeExportBoxIfNeeded();
+      markDirty();
+    });
+  }
+
+  document.getElementById('inbox-add')?.addEventListener('click',()=>{
+    const count=addInboxItems(inboxInput?.value||'',false);
+    if(count){
+      if(inboxInput) inboxInput.value='';
+      showToast(`${count}件をインボックスへ追加しました`);
+    }
+  });
+  document.getElementById('inbox-split')?.addEventListener('click',()=>{
+    const count=addInboxItems(inboxInput?.value||'',true);
+    if(count){
+      if(inboxInput) inboxInput.value='';
+      showToast(`${count}件を分割して追加しました`);
+    }
+  });
+  document.getElementById('inbox-clear-input')?.addEventListener('click',()=>{ if(inboxInput) inboxInput.value=''; });
+  collapseConvertedBtn?.addEventListener('click',()=>{ hideConvertedInbox=!hideConvertedInbox; renderInbox(); });
+
+  inboxListEl?.addEventListener('click',ev=>{
+    const btn=ev.target.closest('button[data-inbox-action]');
+    if(!btn) return;
+    const card=ev.target.closest('.inbox-card');
+    const id=card?.dataset.id;
+    if(!id) return;
+    const item=inboxItems.find(entry=>entry.id===id);
+    if(!item) return;
+    const action=btn.dataset.inboxAction;
+    if(action==='delete'){
+      snapshot();
+      inboxItems=inboxItems.filter(entry=>entry.id!==id);
+      renderInbox();
+      renderNow();
+      writeExportBoxIfNeeded();
+      showToast('インボックスから削除しました');
+      return;
+    }
+    if(action==='toggle-favorite'){
+      snapshot();
+      item.favorite=!item.favorite;
+      renderInbox();
+      writeExportBoxIfNeeded();
+      markDirty();
+      return;
+    }
+    if(action==='toggle-state'){
+      snapshot();
+      item.state=item.state==='hold'?'new':'hold';
+      renderInbox();
+      writeExportBoxIfNeeded();
+      markDirty();
+      return;
+    }
+    if(action==='to-root'){
+      convertInboxItem(id,'root',{fromEl:card});
+      return;
+    }
+    if(action==='to-child'){
+      if(!(activeNodeId && nb(activeNodeId))){
+        showToast('先に親にしたいノードを選択してください','warn');
+        return;
+      }
+      convertInboxItem(id,'child',{fromEl:card});
+      return;
+    }
+  });
+
+  inboxListEl?.addEventListener('dragstart',ev=>{
+    const card=ev.target.closest('.inbox-card');
+    if(!card) return;
+    inboxDragId=card.dataset.id||null;
+    card.classList.add('dragging');
+    try{
+      ev.dataTransfer.effectAllowed='copyMove';
+      ev.dataTransfer.setData('text/plain', inboxDragId||'');
+    }catch(_){}
+  });
+  inboxListEl?.addEventListener('dragend',ev=>{
+    const card=ev.target.closest('.inbox-card');
+    if(card) card.classList.remove('dragging');
+    inboxDragId=null;
+    dropHint?.classList.remove('open');
+  });
+
+  if(cw){
+    cw.addEventListener('dragover',ev=>{
+      if(!inboxDragId) return;
+      ev.preventDefault();
+      dropHint?.classList.add('open');
+      try{ ev.dataTransfer.dropEffect='copy'; }catch(_){}
+    });
+    cw.addEventListener('dragleave',ev=>{
+      if(!inboxDragId) return;
+      if(ev.relatedTarget && cw.contains(ev.relatedTarget)) return;
+      dropHint?.classList.remove('open');
+    });
+    cw.addEventListener('drop',ev=>{
+      if(!inboxDragId) return;
+      ev.preventDefault();
+      dropHint?.classList.remove('open');
+      const card=inboxListEl?.querySelector(`.inbox-card[data-id="${CSS.escape(inboxDragId)}"]`);
+      const rect=cw.getBoundingClientRect();
+      const localX=ev.clientX-rect.left;
+      const localY=ev.clientY-rect.top;
+      const anchor=toW(localX,localY);
+      convertInboxItem(inboxDragId,'root',{anchor,fromEl:card});
+      inboxDragId=null;
+    });
+  }
+
+  if(inboxResizer && inboxWrap){
+    let resizing=false;
+    function onMove(ev){
+      if(!resizing) return;
+      const rect=main.getBoundingClientRect();
+      inboxWidth=Math.max(220,Math.min(520,ev.clientX-rect.left));
+      inboxWrap.style.width=`${inboxWidth}px`;
+      renderMinimap();
+      markDirty();
+    }
+    function onUp(){
+      resizing=false;
+      document.body.style.cursor='';
+      window.removeEventListener('pointermove',onMove);
+      window.removeEventListener('pointerup',onUp);
+    }
+    inboxResizer.addEventListener('pointerdown',ev=>{
+      ev.preventDefault();
+      resizing=true;
+      document.body.style.cursor='col-resize';
+      window.addEventListener('pointermove',onMove);
+      window.addEventListener('pointerup',onUp);
+    });
+  }
+
+  setInboxData({});
+  renderInbox();
+  updateCurrentLocationUi();
+  renderMinimap();
+})();
+</script>
+
 </body>
 </html>
