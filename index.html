@@ -239,6 +239,8 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #app[data-adaptive-phase="starter"] .tb-group.tb-secondary-group{opacity:1}
 #app .tb-group.tb-advanced-group{display:none}
 #app[data-advanced="open"] .tb-group.tb-advanced-group{display:flex}
+#app .tb-group.tb-layout-group,#app .tb-group.tb-export-group{display:flex}
+#b-more{display:none !important}
 #app .tb-primary-utility-group{display:flex;flex-direction:column;gap:5px;padding-right:12px;border-right:1px solid rgba(255,255,255,.06);min-height:52px;justify-content:flex-end}
 #app[data-adaptive-phase="empty"] .tb-group.tb-secondary-group button,
 #app[data-adaptive-phase="starter"] .tb-group.tb-secondary-group button,
@@ -2562,10 +2564,12 @@ function getClockwiseChildInsertDirections(){
     {x:1,y:-1}
   ];
 }
-function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,anchor=null}={}){
+function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,anchor=null,ignoreNodeIds=null}={}){
+  const ignored=ignoreNodeIds instanceof Set ? ignoreNodeIds : null;
   const rect=makeRect(cx,cy,templateNode.w,templateNode.h,16);
   let score=2000-directionRank*65;
   for(const node of nodes){
+    if(ignored && ignored.has(node.id)) continue;
     const nodeRect=makeRect(node.x,node.y,node.w,node.h,10);
     if(rectsOverlapWorld(rect,nodeRect)) return -Infinity;
     const dist=rectDistance(rect,nodeRect);
@@ -2573,6 +2577,7 @@ function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,
     else if(dist<80) score-=(80-dist)*1.6;
   }
   for(const edge of edges){
+    if(ignored && (ignored.has(edge.from) || ignored.has(edge.to))) continue;
     const from=nb(edge.from), to=nb(edge.to);
     if(!from || !to) continue;
     if(parentId && (edge.from===parentId || edge.to===parentId)) continue;
@@ -2587,6 +2592,7 @@ function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,
     score-=Math.hypot(cx-parent.x,cy-parent.y)*0.18;
     for(const node of nodes){
       if(node.id===parentId) continue;
+      if(ignored && ignored.has(node.id)) continue;
       const nodeRect=makeRect(node.x,node.y,node.w,node.h,8);
       if(rectsOverlapWorld(nodeRect,parentRect)) continue;
       const d=distanceSegmentToRect(parent.x,parent.y,cx,cy,nodeRect);
@@ -2594,6 +2600,7 @@ function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,
       else if(d<16) score-=(16-d)*36;
     }
     for(const edge of edges){
+      if(ignored && (ignored.has(edge.from) || ignored.has(edge.to))) continue;
       const from=nb(edge.from), to=nb(edge.to);
       if(!from || !to) continue;
       if(edge.from===parentId || edge.to===parentId) continue;
@@ -2607,7 +2614,7 @@ function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,
   }
   return score;
 }
-function findBestInsertPosition({parentId=null,anchor=null,templateNode,directions=null,directionBiasWeight=65}){
+function findBestInsertPosition({parentId=null,anchor=null,templateNode,directions=null,directionBiasWeight=65,ignoreNodeIds=null}={}){
   const baseAnchor=anchor || (parentId && nb(parentId) ? {x:nb(parentId).x,y:nb(parentId).y} : getViewportCenterWorld());
   const dirs=directions || (parentId ? getInsertDirectionVectors(parentId) : [
     {x:0,y:0},{x:1,y:0},{x:0,y:1},{x:-1,y:0},{x:0,y:-1},
@@ -2622,7 +2629,7 @@ function findBestInsertPosition({parentId=null,anchor=null,templateNode,directio
       const x=baseAnchor.x+dir.x*stepX*radius;
       const y=baseAnchor.y+dir.y*stepY*radius;
       const directionRank=(di+ri*dirs.length)*directionBiasWeight/65;
-      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank,anchor:baseAnchor});
+      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank,anchor:baseAnchor,ignoreNodeIds});
       if(!best || score>best.score) best={x,y,score};
     });
   });
@@ -2635,11 +2642,42 @@ function findBestInsertPosition({parentId=null,anchor=null,templateNode,directio
       const ang=(Math.PI*2*i)/18;
       const x=center.x+Math.cos(ang)*radiusX;
       const y=center.y+Math.sin(ang)*radiusY;
-      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank:80+ring*18+i,anchor:center});
+      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank:80+ring*18+i,anchor:center,ignoreNodeIds});
       if(score>-Infinity) return {x,y};
     }
   }
   return {x:center.x+stepX,y:center.y+stepY};
+}
+function moveNodeSubtree(nodeId,dx,dy){
+  const root=nb(nodeId);
+  if(!root || (!dx && !dy)) return false;
+  const ids=[nodeId,...getDescendantIds(nodeId)];
+  ids.forEach(id=>{
+    const node=nb(id);
+    if(!node) return;
+    node.x+=dx;
+    node.y+=dy;
+  });
+  return true;
+}
+function positionNodeSubtreeNearParent(nodeId,parentId,{anchor=null}={}){
+  const node=nb(nodeId);
+  const parent=nb(parentId);
+  if(!node || !parent) return false;
+  const numberMap=getOutlineNumberMap();
+  updateNodeMetrics(node, numberMap);
+  updateNodeMetrics(parent, numberMap);
+  const ignoreNodeIds=new Set([nodeId,...getDescendantIds(nodeId)]);
+  const pos=findBestInsertPosition({
+    parentId,
+    anchor:anchor || {x:node.x,y:node.y},
+    templateNode:node,
+    directions:getClockwiseChildInsertDirections(),
+    directionBiasWeight:220,
+    ignoreNodeIds
+  });
+  if(!pos) return false;
+  return moveNodeSubtree(nodeId,pos.x-node.x,pos.y-node.y);
 }
 function createNewNodeDraft(options={}){
   const favorite=Object.prototype.hasOwnProperty.call(options,'favorite') ? !!options.favorite : shouldAutoFavoriteNewNodes();
@@ -3599,8 +3637,10 @@ function getBestOverlapAttachTarget(dragState,{overlapThreshold=0.4,centerThresh
 function maybeAttachDraggedNodesByOverlap(dragState){
   const best=dragState?.attachTarget || getBestOverlapAttachTarget(dragState);
   if(!best) return null;
+  const source=nb(best.sourceId);
+  const anchor=source ? {x:source.x,y:source.y} : null;
   if(!reparentNode(best.sourceId,best.targetId)) return null;
-  applyAutoLayout(meta.layoutMode||'horizontal');
+  positionNodeSubtreeNearParent(best.sourceId,best.targetId,{anchor});
   setSingleSelection(best.sourceId);
   armCanvasShortcutNode(best.sourceId,3600000);
   renderNow();
@@ -6081,13 +6121,52 @@ if(document.readyState==='complete'){
   #inbox-wrap{
     flex:0 0 340px;
     width:340px;
-    min-width:220px;
+    min-width:0;
     max-width:min(42vw,520px);
     position:relative;
     border-right:1px solid rgba(255,255,255,.06);
     background:linear-gradient(180deg, rgba(14,18,25,.98), rgba(9,12,18,.98));
     display:flex;
     z-index:4;
+    transition:width .22s ease, flex-basis .22s ease, border-color .22s ease;
+    overflow:visible;
+  }
+  #inbox-wrap.collapsed{
+    flex-basis:0 !important;
+    width:0 !important;
+    border-right-color:transparent;
+  }
+  #inbox-wrap.collapsed #inbox-panel,
+  #inbox-wrap.collapsed #inbox-resizer{
+    opacity:0;
+    pointer-events:none;
+  }
+  #inbox-toggle-side{
+    position:absolute;
+    left:100%;
+    top:14px;
+    transform:translateX(0);
+    min-width:86px;
+    padding:8px 10px;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(132,145,164,.22);
+    border-left:none;
+    border-radius:0 12px 12px 0;
+    background:linear-gradient(180deg, rgba(20,25,34,.96), rgba(11,15,22,.98));
+    color:var(--sf-text-0);
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.04em;
+    box-shadow:var(--sf-shadow-1);
+    cursor:pointer;
+    z-index:7;
+  }
+  #inbox-wrap.collapsed #inbox-toggle-side{display:flex}
+  #inbox-toggle-inline{
+    font-size:10.5px;
+    padding:5px 8px;
   }
   #inbox-panel{
     width:100%;
@@ -6170,33 +6249,6 @@ if(document.readyState==='complete'){
   #location-chip,#path-chip{max-width:min(520px,calc(100% - 24px))}
   #location-chip span:last-child,#path-chip span:last-child{max-width:44ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #location-chip strong,#path-chip strong{font-size:12px}
-  #minimap-panel{
-    position:absolute;right:12px;bottom:12px;width:188px;height:128px;z-index:64;
-    border:1px solid rgba(132,145,164,.2);background:linear-gradient(180deg, rgba(16,21,30,.92), rgba(8,12,18,.95));
-    box-shadow:var(--sf-shadow-1);border-radius:14px;overflow:hidden;backdrop-filter:blur(10px)
-  }
-  #minimap-head{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
-  #minimap-head strong{font-family:var(--font-display-en),var(--font-ui-ja);font-size:12px;letter-spacing:.08em;color:var(--sf-text-0)}
-  #minimap-head span{font-size:10px;color:var(--sf-text-2)}
-  #minimap-canvas{display:block;width:100%;height:94px;cursor:pointer}
-  #minimap-ping{
-    position:absolute;width:18px;height:18px;border-radius:999px;border:2px solid rgba(18,198,255,.62);
-    box-shadow:0 0 0 0 rgba(18,198,255,.2);pointer-events:none;display:none;z-index:65
-  }
-  #minimap-ping.show{display:block;animation:minimap-ping .48s ease-out}
-  .inbox-flight{
-    position:fixed;z-index:9999;pointer-events:none;max-width:180px;padding:8px 10px;border-radius:12px;
-    background:linear-gradient(180deg, rgba(20,25,34,.98), rgba(10,14,20,.98));border:1px solid rgba(18,198,255,.28);
-    color:var(--sf-text-0);font-size:11px;line-height:1.4;box-shadow:0 18px 36px rgba(0,0,0,.28);
-    transform:translate(-50%,-50%) scale(1);opacity:.98;transition:left .34s cubic-bezier(.16,1,.3,1), top .34s cubic-bezier(.16,1,.3,1), transform .34s cubic-bezier(.16,1,.3,1), opacity .34s ease;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-  }
-  .canvas-arrival-pulse{
-    position:absolute;width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,111,44,.7);
-    background:rgba(255,111,44,.08);pointer-events:none;z-index:66;transform:translate(-50%,-50%);animation:canvas-arrival .45s ease-out forwards
-  }
-  @keyframes minimap-ping{
-    0%{transform:translate(-50%,-50%) scale(.5);opacity:0}
     30%{opacity:1}
     100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}
   }
@@ -6207,10 +6259,9 @@ if(document.readyState==='complete'){
   }
   @media (max-width:1100px){
     #inbox-wrap{flex-basis:300px;width:300px}
-    #minimap-panel{width:170px;height:120px}
   }
   @media (max-width:820px){
-    #inbox-wrap{display:none}
+    #inbox-wrap{flex-basis:min(70vw,280px);width:min(70vw,280px)}
     #location-chip,#path-chip{max-width:calc(100% - 24px)}
   }
   `;
@@ -6235,6 +6286,7 @@ if(document.readyState==='complete'){
               <strong>INBOX</strong>
               <div class="inbox-sub">構造化前のメモを置く場所。ドラッグで右へ、ボタンでルート/子ノードへ変換できます。</div>
             </div>
+            <button id="inbox-toggle-inline" type="button">閉じる</button>
           </div>
           <textarea id="inbox-input" placeholder="殴り書き、一時メモ、仮説、断片をここへ。&#10;複数行なら「分割して追加」で1件ずつカードにします。"></textarea>
           <div id="inbox-actions">
@@ -6252,6 +6304,7 @@ if(document.readyState==='complete'){
         <div id="inbox-list"></div>
       </div>
       <div id="inbox-resizer" aria-hidden="true"></div>
+      <button id="inbox-toggle-side" type="button">INBOX</button>
     `;
     main.insertBefore(inboxWrap, cw);
   }
@@ -6270,12 +6323,6 @@ if(document.readyState==='complete'){
     hud.appendChild(pathChip);
   }
 
-  if(cw){
-    const minimap=document.createElement('div');
-    minimap.id='minimap-panel';
-    minimap.innerHTML='<div id="minimap-head"><strong>MINIMAP</strong><span>クリックで移動</span></div><canvas id="minimap-canvas" width="376" height="188"></canvas><div id="minimap-ping"></div><div id="inbox-drop-hint"><span>ここにドロップしてノード化</span></div>';
-    cw.appendChild(minimap);
-  }
 
   if(exportOptions){
     const label=document.createElement('label');
@@ -6291,18 +6338,29 @@ if(document.readyState==='complete'){
   const includeInboxToggle=document.getElementById('export-include-inbox');
   const inboxWrap=document.getElementById('inbox-wrap');
   const inboxResizer=document.getElementById('inbox-resizer');
-  const minimapCanvas=document.getElementById('minimap-canvas');
-  const minimapPing=document.getElementById('minimap-ping');
+  const inboxToggleInline=document.getElementById('inbox-toggle-inline');
+  const inboxToggleSide=document.getElementById('inbox-toggle-side');
   const dropHint=document.getElementById('inbox-drop-hint');
   const collapseConvertedBtn=document.getElementById('inbox-collapse-converted');
 
   let inboxItems=[];
   let inboxSeq=1;
   let inboxWidth=340;
+  let inboxOpen=true;
   let hideConvertedInbox=false;
   let inboxDragId=null;
-  let minimapBounds=null;
 
+  function applyInboxOpenState(){
+    if(!inboxWrap) return;
+    inboxWrap.classList.toggle('collapsed', !inboxOpen);
+    inboxWrap.style.width = inboxOpen ? `${inboxWidth}px` : '0px';
+    if(inboxToggleInline) inboxToggleInline.textContent = inboxOpen ? '閉じる' : '開く';
+    if(inboxToggleSide) inboxToggleSide.textContent = inboxOpen ? 'INBOXを閉じる' : 'INBOX';
+  }
+  function toggleInbox(force){
+    inboxOpen = typeof force==='boolean' ? force : !inboxOpen;
+    applyInboxOpenState();
+  }
   function nowLabel(){
     const d=new Date();
     const y=d.getFullYear();
@@ -6407,8 +6465,9 @@ if(document.readyState==='complete'){
     inboxItems=rawItems.map(item=>normalizeInboxItem(item.text||item.label||'',item)).filter(Boolean);
     inboxSeq=(payload&&payload.inbox&&payload.inbox.seq)|| (inboxItems.reduce((max,item)=>Math.max(max,Number(String(item.id).replace(/\D/g,''))||0),0)+1) || 1;
     inboxWidth=Math.max(220,Math.min(520,Number((payload&&payload.uiState&&payload.uiState.inboxWidth)||(payload&&payload.inbox&&payload.inbox.width)||inboxWidth)||340));
+    inboxOpen=((payload&&payload.uiState&&typeof payload.uiState.inboxOpen==='boolean') ? payload.uiState.inboxOpen : inboxOpen);
     hideConvertedInbox=!!((payload&&payload.uiState&&payload.uiState.hideConvertedInbox) || false);
-    if(inboxWrap) inboxWrap.style.width=`${inboxWidth}px`;
+    applyInboxOpenState();
     if(includeInboxToggle){
       includeInboxToggle.checked=!!((payload&&payload.uiState&&payload.uiState.includeInboxInExport) || false);
     }
@@ -6514,91 +6573,13 @@ if(document.readyState==='complete'){
       pathChip.innerHTML=`<span class="dot"></span><strong>現在地</strong><span>${escapeHtml(path)}</span>`;
     }
   }
-  function renderMinimap(){
-    if(!minimapCanvas || !cw) return;
-    const ctx=minimapCanvas.getContext('2d');
-    if(!ctx) return;
-    const width=minimapCanvas.width, height=minimapCanvas.height;
-    ctx.clearRect(0,0,width,height);
-    ctx.fillStyle='rgba(6,9,14,.98)';
-    ctx.fillRect(0,0,width,height);
-    const visible=getVisibleNodes();
-    if(!visible.length){
-      ctx.fillStyle='rgba(154,168,186,.7)';
-      ctx.font='12px sans-serif';
-      ctx.fillText('No map', 14, 22);
-      minimapBounds=null;
-      return;
-    }
-    const allNodes=nodes.slice();
-    const xs=[], ys=[];
-    allNodes.forEach(n=>{
-      updateNodeMetrics(n, getOutlineNumberMap());
-      xs.push(n.x-n.w/2,n.x+n.w/2);
-      ys.push(n.y-n.h/2,n.y+n.h/2);
-    });
-    const pad=60;
-    const minX=Math.min(...xs)-pad, maxX=Math.max(...xs)+pad, minY=Math.min(...ys)-pad, maxY=Math.max(...ys)+pad;
-    const spanX=Math.max(1,maxX-minX), spanY=Math.max(1,maxY-minY);
-    const scale=Math.min((width-12)/spanX,(height-12)/spanY);
-    const ox=(width-spanX*scale)/2;
-    const oy=(height-spanY*scale)/2;
-    minimapBounds={minX,maxX,minY,maxY,scale,ox,oy,width,height};
-    const focusActive=isFocusModeActive();
-    const focusSet=focusActive ? getFocusBranchNodeIds() : null;
 
-    edges.forEach(edge=>{
-      const from=nb(edge.from), to=nb(edge.to);
-      if(!from || !to) return;
-      ctx.strokeStyle=(focusActive && !(focusSet.has(edge.from)&&focusSet.has(edge.to))) ? 'rgba(130,140,150,.12)' : 'rgba(116,156,180,.22)';
-      ctx.lineWidth=1;
-      ctx.beginPath();
-      ctx.moveTo(ox+(from.x-minX)*scale, oy+(from.y-minY)*scale);
-      ctx.lineTo(ox+(to.x-minX)*scale, oy+(to.y-minY)*scale);
-      ctx.stroke();
-    });
-    allNodes.forEach(node=>{
-      const x=ox+(node.x-node.w/2-minX)*scale;
-      const y=oy+(node.y-node.h/2-minY)*scale;
-      const w=Math.max(3,node.w*scale);
-      const h=Math.max(3,node.h*scale);
-      const dim=focusActive && !focusSet.has(node.id);
-      ctx.fillStyle=node.id===activeNodeId ? 'rgba(255,111,44,.9)' : dim ? 'rgba(140,146,156,.2)' : (node.favorite ? 'rgba(255,196,157,.76)' : 'rgba(214,222,232,.45)');
-      ctx.fillRect(x,y,w,h);
-    });
-    const viewLeft=vx, viewTop=vy, viewWidth=(cw.clientWidth||0)*vs, viewHeight=(cw.clientHeight||0)*vs;
-    ctx.strokeStyle='rgba(18,198,255,.92)';
-    ctx.lineWidth=2;
-    ctx.strokeRect(ox+(viewLeft-minX)*scale, oy+(viewTop-minY)*scale, Math.max(8,viewWidth*scale), Math.max(8,viewHeight*scale));
-  }
-
-  if(minimapCanvas){
-    minimapCanvas.addEventListener('click',ev=>{
-      if(!minimapBounds) return;
-      const rect=minimapCanvas.getBoundingClientRect();
-      const x=(ev.clientX-rect.left)*(minimapCanvas.width/rect.width);
-      const y=(ev.clientY-rect.top)*(minimapCanvas.height/rect.height);
-      const worldX=minimapBounds.minX + ((x-minimapBounds.ox)/Math.max(0.0001,minimapBounds.scale));
-      const worldY=minimapBounds.minY + ((y-minimapBounds.oy)/Math.max(0.0001,minimapBounds.scale));
-      vx=worldX - (cw.clientWidth/2)*vs;
-      vy=worldY - (cw.clientHeight/2)*vs;
-      applyT();
-      renderNow();
-      if(minimapPing){
-        minimapPing.classList.remove('show');
-        minimapPing.style.left=x+'px';
-        minimapPing.style.top=y+'px';
-        void minimapPing.offsetWidth;
-        minimapPing.classList.add('show');
-      }
-    });
-  }
 
   function patchUndoPayload(rawJson){
     try{
       const payload=JSON.parse(rawJson);
       payload.inbox={items:inboxItems,seq:inboxSeq,width:inboxWidth};
-      payload.uiState={...(payload.uiState||{}),inboxWidth,hideConvertedInbox,includeInboxInExport:!!includeInboxToggle?.checked};
+      payload.uiState={...(payload.uiState||{}),inboxWidth,inboxOpen,hideConvertedInbox,includeInboxInExport:!!includeInboxToggle?.checked};
       return JSON.stringify(payload);
     }catch(_){
       return rawJson;
@@ -6615,13 +6596,12 @@ if(document.readyState==='complete'){
     _restoreState(payload);
     setInboxData(payload||{});
     updateCurrentLocationUi();
-    renderMinimap();
   };
   const _buildExportObject=buildExportObject;
   buildExportObject=function(){
     const out=_buildExportObject();
     out.inbox={items:inboxItems.map(item=>({...item})),seq:inboxSeq,width:inboxWidth};
-    out.uiState={...(out.uiState||{}),inboxWidth,hideConvertedInbox,includeInboxInExport:!!includeInboxToggle?.checked};
+    out.uiState={...(out.uiState||{}),inboxWidth,inboxOpen,hideConvertedInbox,includeInboxInExport:!!includeInboxToggle?.checked};
     return out;
   };
   const _getExportFormattingOptions=getExportFormattingOptions;
@@ -6679,13 +6659,11 @@ if(document.readyState==='complete'){
     _replaceMapData(d,opts||{});
     setInboxData(d||{});
     updateCurrentLocationUi();
-    renderMinimap();
   };
   const _draw=draw;
   draw=function(){
     _draw();
     updateCurrentLocationUi();
-    renderMinimap();
     renderInbox();
   };
 
@@ -6711,6 +6689,8 @@ if(document.readyState==='complete'){
     }
   });
   document.getElementById('inbox-clear-input')?.addEventListener('click',()=>{ if(inboxInput) inboxInput.value=''; });
+  inboxToggleInline?.addEventListener('click',()=>toggleInbox());
+  inboxToggleSide?.addEventListener('click',()=>toggleInbox(true));
   collapseConvertedBtn?.addEventListener('click',()=>{ hideConvertedInbox=!hideConvertedInbox; renderInbox(); });
 
   inboxListEl?.addEventListener('click',ev=>{
@@ -6810,8 +6790,7 @@ if(document.readyState==='complete'){
       if(!resizing) return;
       const rect=main.getBoundingClientRect();
       inboxWidth=Math.max(220,Math.min(520,ev.clientX-rect.left));
-      inboxWrap.style.width=`${inboxWidth}px`;
-      renderMinimap();
+      if(inboxOpen) inboxWrap.style.width=`${inboxWidth}px`;
       markDirty();
     }
     function onUp(){
@@ -6832,7 +6811,6 @@ if(document.readyState==='complete'){
   setInboxData({});
   renderInbox();
   updateCurrentLocationUi();
-  renderMinimap();
 })();
 </script>
 
