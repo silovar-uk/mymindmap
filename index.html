@@ -1904,12 +1904,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.5.2';
-const APP_UPDATED_AT='2026-04-16 23:53 JST';
+const APP_VERSION='1.5.3';
+const APP_UPDATED_AT='2026-04-16 23:59 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.5.3',date:'2026-04-16 23:59 JST',summary:'同階層追加でも右優先の初期配置を採用し、右側が詰まっている場合は時計回りに空きを探すよう統一。',items:['createSiblingNode の配置基準を親中心ではなく選択中ノード基準へ変更し、同階層追加でもまず右側に出るよう調整','同階層追加でも子ノード追加と同じ方向ベクトルと方向バイアスを使い、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう統一','親を持つノードは従来どおり同じ親へ接続したまま、配置だけを右優先のルールへ変更','ルートノード同士の同階層追加も同じ右優先ロジックで配置し、下方向へずれる旧挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.2',date:'2026-04-16 23:53 JST',summary:'Tabで追加する子ノードの初期配置を右優先に見直し、右側が詰まっている場合は時計回りで空きを探すよう改善。',items:['子ノード追加専用の方向ベクトルを追加し、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう変更','findBestInsertPosition に方向配列と方向バイアスの指定を追加し、用途ごとに初期配置の優先順位を切り替えられるよう整理','Tab などで使う createChildNode は右方向の優先度を強め、右側に十分な空きがある限りまず右へ生えるよう調整','右側がノードや線で詰まっている場合は従来の衝突回避ロジックを保ったまま、時計回りに近い位置へ自動で逃がすよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.1',date:'2026-04-16 23:36 JST',summary:'テキスト/Markdown書き出しの初期設定と先頭行を整理し、番号なしをデフォルトにしたうえでマップ名と（選択中）を出力しないよう調整。',items:['「ナンバリングを含めない」チェックを初期状態でONに変更','テキスト書き出しからマップ名の先頭行を削除し、選択時も「（選択中）」を出さないよう修正','Markdown書き出しから先頭の H1 マップ名行を削除し、選択時も「（選択中）」を出さないよう修正','書き出し本体はノード構造だけをそのまま出力する形にそろえた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.1',date:'2026-04-16 23:45 JST',summary:'集中モード中の非★ノードをさらに目立ちにくくし、★がある状態で追加したノードは自動で★を引き継ぐよう改善。',items:['集中モード中に非★ノードと関連線をより薄いグレーで描画し、全体として目に入りづらくなるよう調整','非★ノードは完全非表示にせず、クリックや★追加ができる程度の視認性は維持するようノード全体の不透明度も調整','新規ノード作成時、既に★付きノードが1つでもある場合は追加ノードにも自動で★が入るよう既定値を変更','favorite を明示指定した複製など既存挙動は壊さないよう、明示値がある場合だけそちらを優先するよう整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2663,36 +2664,27 @@ function createSiblingNode(sourceId, options={}){
   const source=nb(sourceId);
   if(!source) return null;
   const parentId=getParentId(sourceId);
+  const draft=createNewNodeDraft({
+    label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
+  });
+  const pos=findBestInsertPosition({
+    parentId,
+    anchor:{x:source.x,y:source.y},
+    templateNode:draft,
+    directions:getClockwiseChildInsertDirections(),
+    directionBiasWeight:220
+  });
+  const newId='n'+(nid++);
+  const sibling=normalizeNode({
+    id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
+  });
+  nodes.push(sibling);
   if(parentId){
-    // 親がいる場合: 親の子として追加（同階層）
-    const draft=createNewNodeDraft({
-      label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
-    });
-    const pos=findBestInsertPosition({parentId,templateNode:draft});
-    const newId='n'+(nid++);
-    const sibling=normalizeNode({
-      id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-      fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
-    });
-    nodes.push(sibling);
     edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
-    setSingleSelection(newId);
-    return sibling;
-  }else{
-    // ルートノードの場合: 新しいルートノードとして追加
-    const draft=createNewNodeDraft({
-      label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
-    });
-    const pos=findBestInsertPosition({anchor:{x:source.x,y:source.y+(source.h||60)+40},templateNode:draft});
-    const newId='n'+(nid++);
-    const sibling=normalizeNode({
-      id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-      fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
-    });
-    nodes.push(sibling);
-    setSingleSelection(newId);
-    return sibling;
   }
+  setSingleSelection(newId);
+  return sibling;
 }
 function createStandaloneNode(options={}){
   const draft=createNewNodeDraft(options);
