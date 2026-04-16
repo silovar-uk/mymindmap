@@ -6157,48 +6157,52 @@ if(document.readyState==='complete'){
   }
   #inbox-toggle-side{
     position:absolute;
-    left:100%;
+    left:8px;
     top:14px;
-    transform:translateX(0);
-    min-width:86px;
-    padding:8px 10px;
+    min-width:96px;
+    padding:8px 12px;
     display:none;
     align-items:center;
     justify-content:center;
-    border:1px solid rgba(132,145,164,.22);
-    border-left:none;
-    border-radius:0 12px 12px 0;
-    background:linear-gradient(180deg, rgba(20,25,34,.96), rgba(11,15,22,.98));
-    color:var(--sf-text-0);
+    border:1px solid rgba(132,145,164,.24);
+    border-radius:10px;
+    background:linear-gradient(180deg, rgba(20,25,34,.94), rgba(11,15,22,.96));
+    color:var(--sf-text-1);
     font-size:12px;
-    font-weight:800;
-    letter-spacing:.04em;
-    box-shadow:var(--sf-shadow-1);
+    font-weight:700;
+    letter-spacing:.02em;
+    white-space:nowrap;
+    writing-mode:horizontal-tb;
+    text-orientation:mixed;
+    box-shadow:0 8px 18px rgba(0,0,0,.22);
     cursor:pointer;
-    z-index:7;
+    z-index:10;
   }
   #inbox-wrap.collapsed #inbox-toggle-side{display:flex}
   #inbox-toggle-inline{
     font-size:10.5px;
-    padding:3px 6px;
-    border:none;
-    background:transparent;
-    color:var(--sf-text-3);
+    padding:4px 8px;
+    border:1px solid rgba(132,145,164,.18);
+    background:rgba(255,255,255,.02);
+    color:var(--sf-text-2);
     box-shadow:none;
     clip-path:none;
     border-radius:8px;
     letter-spacing:.02em;
     font-weight:600;
-    opacity:.78;
+    opacity:.92;
+    white-space:nowrap;
+    writing-mode:horizontal-tb;
+    text-orientation:mixed;
   }
   #inbox-toggle-inline::before{
     display:none;
   }
   #inbox-toggle-inline:hover{
     transform:none;
-    background:rgba(255,255,255,.04);
-    color:var(--sf-text-2);
-    border:none;
+    background:rgba(255,255,255,.045);
+    color:var(--sf-text-1);
+    border:1px solid rgba(132,145,164,.24);
     box-shadow:none;
   }
   #inbox-panel{
@@ -6388,7 +6392,7 @@ if(document.readyState==='complete'){
     inboxWrap.classList.toggle('collapsed', !inboxOpen);
     inboxWrap.style.width = inboxOpen ? `${inboxWidth}px` : '0px';
     if(inboxToggleInline) inboxToggleInline.textContent = inboxOpen ? '閉じる' : '開く';
-    if(inboxToggleSide) inboxToggleSide.textContent = inboxOpen ? 'INBOXを閉じる' : 'INBOX';
+    if(inboxToggleSide) inboxToggleSide.textContent = inboxOpen ? 'INBOXを閉じる' : 'INBOXを開く';
   }
   function toggleInbox(force){
     inboxOpen = typeof force==='boolean' ? force : !inboxOpen;
