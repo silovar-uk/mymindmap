@@ -822,6 +822,10 @@ svg{background:transparent;position:relative;z-index:1}
 .outline-status.done{color:#e9ffe7;border-color:rgba(152,245,123,.24);background:rgba(152,245,123,.10)}
 .outline-status.paused{color:#ffe8ec;border-color:rgba(255,107,120,.24);background:rgba(255,107,120,.10)}
 .outline-note{font-size:12px;line-height:1.6;color:var(--sf-text-2);margin-top:14px}
+.outline-row.focus-dim{opacity:.42;filter:saturate(.18)}
+.outline-row.focus-hit{border-color:rgba(255,196,157,.24);box-shadow:0 0 0 1px rgba(255,111,44,.08), inset 0 1px 0 rgba(255,255,255,.02)}
+.outline-title-line{display:flex;align-items:center;gap:6px;min-width:0}
+.outline-favorite{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:rgba(255,196,157,.12);border:1px solid rgba(255,160,120,.18);color:#ffd8c4;font-size:10px;font-weight:800;line-height:1}
 #map-title.required-empty{border-color:rgba(255,111,44,.58) !important;box-shadow:0 0 0 3px rgba(255,111,44,.12) !important}
 .tb-check{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(132,145,164,.18);border-radius:12px;background:rgba(255,255,255,.03);color:var(--sf-text-1);font-size:11px;font-weight:700;line-height:1.2;cursor:pointer;user-select:none;white-space:nowrap}
 .tb-check input{width:14px;height:14px;accent-color:#ff8a4c;cursor:pointer}
@@ -881,6 +885,67 @@ svg{background:transparent;position:relative;z-index:1}
   }
   #b-io-side{left:-104px !important;}
   #b-outline-side{left:-104px !important; top:42px !important;}
+}
+
+#b-focus-side{
+  position:absolute;
+  left:-116px !important;
+  top:82px !important;
+  min-width:116px !important;
+  width:116px !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 14px !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  line-height:1.15 !important;
+  text-align:center !important;
+  z-index:18;
+  overflow:hidden;
+  font-family:var(--font-ui-ja);
+  font-size:12px;
+  font-weight:700;
+  color:var(--sf-text-0);
+  border:1px solid rgba(132,145,164,.22);
+  background:linear-gradient(180deg, rgba(20,25,34,.95), rgba(11,15,22,.98));
+  box-shadow:var(--sf-shadow-1);
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+  cursor:pointer;
+  transition:transform .16s var(--sf-ease-standard), background .16s var(--sf-ease-standard), border-color .16s var(--sf-ease-standard), box-shadow .16s var(--sf-ease-standard), color .16s var(--sf-ease-standard);
+}
+#b-focus-side::before{
+  content:"";
+  position:absolute;
+  inset:auto 0 0 0;
+  height:2px;
+  background:linear-gradient(90deg, rgba(255,111,44,.0) 0, rgba(255,111,44,.7) 22%, rgba(18,198,255,.5) 100%);
+  opacity:.7;
+}
+#b-focus-side:hover{
+  transform:translateY(-1px);
+  border-color:rgba(255,255,255,.18);
+  background:linear-gradient(180deg, rgba(35,43,57,.96), rgba(17,23,31,.98));
+  box-shadow:0 10px 18px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.05);
+}
+#b-focus-side.act{
+  background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98)) !important;
+  color:#fff7f1 !important;
+  border-color:rgba(255,122,57,.64) !important;
+  box-shadow:0 0 0 1px rgba(255,111,44,.12), 0 14px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+#b-focus-side.act::before{
+  background:linear-gradient(90deg, rgba(255,210,188,.18), rgba(255,111,44,.92) 28%, rgba(18,198,255,.32) 100%);
+}
+@media (max-width:720px){
+  #b-focus-side{
+    left:-104px !important;
+    top:78px !important;
+    min-width:104px !important;
+    width:104px !important;
+    padding:8px 12px !important;
+    font-size:11px !important;
+  }
 }
 
 </style>
@@ -1192,6 +1257,7 @@ svg{background:transparent;position:relative;z-index:1}
   <div id="io-wrap">
     <button id="b-io-side" type="button" aria-label="データの開閉">データ</button>
     <button id="b-outline-side" type="button" aria-label="アウトライナーの開閉">アウトライナー</button>
+    <button id="b-focus-side" type="button" aria-label="集中モードの切り替え" aria-pressed="false">集中モード</button>
     <div id="io">
       <div class="io-panel">
         <div class="io-head">
@@ -1441,6 +1507,7 @@ function clearOutlineDropState(){
 }
 function renderOutlineEditor(){
   if(!outlineListEl) return;
+  const focusSet=isFocusModeActive() ? getFocusBranchNodeIds() : null;
   const sourceNodes=(meta?.hideDone ? nodes.filter(node=>node.status!=='done') : nodes);
   const visibleIdsSet=new Set(sourceNodes.map(node=>node.id));
   const sourceEdges=edges.filter(edge=>visibleIdsSet.has(edge.from)&&visibleIdsSet.has(edge.to));
@@ -1462,10 +1529,13 @@ function renderOutlineEditor(){
 
       const row=document.createElement('div');
       row.className='outline-row'+(isSelected(id)?' active':'');
+      const dimmed=!!(focusSet && !focusSet.has(id));
+      if(dimmed) row.classList.add('focus-dim');
+      else if(focusSet && focusSet.has(id)) row.classList.add('focus-hit');
       row.dataset.id=id;
       row.dataset.parent=parentId||'';
       row.draggable=true;
-      row.innerHTML=`<span class="outline-handle" aria-hidden="true">⋮⋮</span><span class="outline-number">${escapeHtml(numberMap[id]||'')}</span><div class="outline-main"><div class="outline-title-text">${escapeHtml(node.label||'新規案件')}</div>${node.subtext?`<div class="outline-subtext">${escapeHtml(shortenText(node.subtext,84))}</div>`:''}<div class="outline-actions"><button class="outline-action" type="button" data-outline-action="edit">編集</button><button class="outline-action" type="button" data-outline-action="add-sibling">＋同階層</button><button class="outline-action" type="button" data-outline-action="add-child">＋子</button><button class="outline-action" type="button" data-outline-action="outdent">←</button><button class="outline-action" type="button" data-outline-action="indent">→</button><button class="outline-action" type="button" data-outline-action="up">↑</button><button class="outline-action" type="button" data-outline-action="down">↓</button></div></div>${node.status&&node.status!=='none'?`<span class="outline-status ${escapeHtml(node.status)}">${escapeHtml(STATUS_META[node.status].label)}</span>`:''}`;
+      row.innerHTML=`<span class="outline-handle" aria-hidden="true">⋮⋮</span><span class="outline-number">${escapeHtml(numberMap[id]||'')}</span><div class="outline-main"><div class="outline-title-line">${node.favorite?'<span class="outline-favorite" aria-label="集中対象">★</span>':''}<div class="outline-title-text">${escapeHtml(node.label||'新規案件')}</div></div>${node.subtext?`<div class="outline-subtext">${escapeHtml(shortenText(node.subtext,84))}</div>`:''}<div class="outline-actions"><button class="outline-action" type="button" data-outline-action="edit">編集</button><button class="outline-action" type="button" data-outline-action="toggle-favorite">${node.favorite?'★を外す':'★を付ける'}</button><button class="outline-action" type="button" data-outline-action="add-sibling">＋同階層</button><button class="outline-action" type="button" data-outline-action="add-child">＋子</button><button class="outline-action" type="button" data-outline-action="outdent">←</button><button class="outline-action" type="button" data-outline-action="indent">→</button><button class="outline-action" type="button" data-outline-action="up">↑</button><button class="outline-action" type="button" data-outline-action="down">↓</button></div></div>${node.status&&node.status!=='none'?`<span class="outline-status ${escapeHtml(node.status)}">${escapeHtml(STATUS_META[node.status].label)}</span>`:''}`;
       row.addEventListener('click',ev=>{
         const actionBtn=ev.target.closest('[data-outline-action]');
         if(actionBtn){
@@ -1475,6 +1545,10 @@ function renderOutlineEditor(){
             setSingleSelection(id);
             draw();
             openEp(id);
+            return;
+          }
+          if(action==='toggle-favorite'){
+            toggleNodeFavorite(id);
             return;
           }
           if(action==='add-sibling'){
@@ -1720,6 +1794,8 @@ const NODE_H_MIN=68;
 const SUBTEXT_MAX_LINES=99;
 const TITLE_WRAP_MAX_LINES=99;
 const NODE_INNER_PAD_X=16;
+const NODE_TEXT_SAFE_PAD_RIGHT=16;
+const NODE_TEXT_LAYOUT_SAFE_WIDTH=12;
 const NODE_TOP_PAD=14;
 const NODE_BOTTOM_PAD=16;
 const NODE_HEADER_BAND_HEIGHT=22;
@@ -1731,7 +1807,7 @@ const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
-let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false};
+let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,focusMode:false};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -1790,6 +1866,7 @@ function normalizeNode(n){
   const status=STATUS_META[n.status] ? n.status : 'none';
   const collapsed=!!n.collapsed;
   const fitMode=n.fitMode==='wrap' ? 'wrap' : 'shrink';
+  const favorite=!!n.favorite;
   const subLines=wrapText(subtext,22,SUBTEXT_MAX_LINES).filter(Boolean);
   const h=Math.max(NODE_H_MIN, NODE_TOP_PAD + 18 + (subLines.length ? NODE_SECTION_GAP + subLines.length*NODE_SUB_LINE_HEIGHT : 0) + NODE_BOTTOM_PAD);
   return {
@@ -1802,6 +1879,7 @@ function normalizeNode(n){
     x:Number.isFinite(n.x)?n.x:0,
     y:Number.isFinite(n.y)?n.y:0,
     order:normalizeOrderValue(n.order,1),
+    favorite,
     w:n.w||NODE_W_MIN,
     h:n.h||h,
     color:ensureDarkThemeColor(n.color,{...PRESETS[0]})
@@ -1824,12 +1902,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.4.0';
-const APP_UPDATED_AT='2026-04-15 12:40 JST';
+const APP_VERSION='1.5.0';
+const APP_UPDATED_AT='2026-04-16 23:25 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.5.0',date:'2026-04-16 23:25 JST',summary:'★を起点にした集中モードを追加し、集中対象だけ色を残して他をグレーで弱く見せられるよう改善。',items:['右側のデータ / アウトライナーボタンの近くに「集中モード」ボタンを追加し、★付きノードがあるときだけONできるよう変更','各ノード左下に★トグルを追加し、アウトライナーとクイックバーからも★の付け外しができるよう改善','集中モード中は★付きノードとその子孫だけ通常の色を保ち、それ以外のノードと線はグレーで弱く表示するよう描画を調整','ノードの favorite 状態と集中モード設定を JSON 入出力へ含め、保存・再読み込み後も状態を引き継げるよう更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.4.0',date:'2026-04-15 12:40 JST',summary:'テキストとMarkdownの書き出しでナンバリングを含めないチェックを追加し、表示内容と保存内容の両方に反映。',items:['データパネルに「ナンバリングを含めない」チェックを追加し、テキストとMarkdownタブ選択時だけ表示されるよう変更','テキスト書き出しとMarkdown書き出しで番号の有無を切り替えられるよう buildOutlineText / buildMarkdownText にオプションを追加','チェック切り替え時は現在のテキスト/Markdown表示をその場で再生成し、コピー内容にも即反映するよう調整','上部の「Markdownで保存」ボタンも同じ書き出しオプションを使うよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.3.8',date:'2026-04-15 11:58 JST',summary:'Enter キーを編集モーダルでは確定に専念させ、通常キャンバスでは同階層追加として扱うようショートカットの優先順位を整理。',items:['ノード編集モーダルと線編集モーダルで Enter / Escape を stopImmediatePropagation 付きで処理し、モーダル確定後に背後のキャンバスショートカットが暴発しないよう修正','通常キャンバスでの Enter を同階層追加に戻し、Tab のみ子ノード追加になるよう整理','ショートカットのヒント文言も Enter=子追加 に合わせて更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.3.4',date:'2026-04-15 01:15 JST',summary:'ノード内の文字レイアウトを上から再設計し、補足の収まりと左上のナンバリング欠けを解消。',items:['タイトル・補足・番号・状態の各領域を分けるノード内レイアウトへ作り直し、補足が図形内で折り返しやすいよう余白と高さ計算を見直し','文字折り返しを文字数ベースから表示幅ベースへ変更し、日本語と英数字が混ざる補足でも幅推定に合わせて行分割できるよう改善','ノード幅の自動計算に補足の最長行も反映し、タイトルだけでなく補足の長さに応じても横幅が広がるよう調整','左上の番号は独立した小さなバッジ表示へ変更し、透かしアクセントやクリップで欠けないよう位置と描画順を整理','右上アクセントは番号帯に重ならない形へ変更し、状態バッジも折りたたみボタンのぶんだけ逃がして干渉しにくく調整']},
@@ -1937,7 +2016,7 @@ const STARTER_PRESETS={
     schemaVersion:'1.0',
     meta:{title:'サンプルマップ',layoutMode:'horizontal'},
     nodes:[
-      {id:'n1',label:'サンプル',subtext:'',status:'none',collapsed:false,fitMode:'shrink',order:1,x:0,y:0,color:{...PRESETS[0]}}
+      {id:'n1',label:'サンプル',subtext:'',status:'none',collapsed:false,fitMode:'shrink',favorite:false,order:1,x:0,y:0,color:{...PRESETS[0]}}
     ],
     edges:[]
   },
@@ -1946,8 +2025,8 @@ const STARTER_PRESETS={
     meta:{title:'企画整理マップ',layoutMode:'horizontal'},
     nodes:[
       {id:'n1',label:'新しい企画',subtext:'中心テーマ',status:'in_progress',collapsed:false,fitMode:'shrink',order:1,x:0,y:0,color:{...PRESETS[0]}},
-      {id:'n2',label:'目的',subtext:'何を達成したいか',status:'none',collapsed:false,fitMode:'shrink',order:1,x:240,y:-110,color:{...PRESETS[1]}},
-      {id:'n3',label:'やること',subtext:'最初のアクション',status:'none',collapsed:false,fitMode:'shrink',order:2,x:240,y:110,color:{...PRESETS[2]}}
+      {id:'n2',label:'目的',subtext:'何を達成したいか',status:'none',collapsed:false,fitMode:'shrink',favorite:false,order:1,x:240,y:-110,color:{...PRESETS[1]}},
+      {id:'n3',label:'やること',subtext:'最初のアクション',status:'none',collapsed:false,fitMode:'shrink',favorite:false,order:2,x:240,y:110,color:{...PRESETS[2]}}
     ],
     edges:[
       {id:'e1',from:'n1',to:'n2',label:'整理する'},
@@ -1993,6 +2072,7 @@ const shortcutTitleEl=document.getElementById('shortcut-title');
 const shortcutBodyEl=document.getElementById('shortcut-body');
 const coachToggleBtn=document.getElementById('coach-toggle');
 const hideDoneToggle=document.getElementById('hide-done-toggle');
+const focusModeSideBtn=document.getElementById('b-focus-side');
 const exportOptionsEl=document.getElementById('io-export-options');
 const exportOmitNumberingToggle=document.getElementById('export-omit-numbering');
 let toastTimer=null;
@@ -2018,6 +2098,29 @@ function updateDocumentTitle(){
 }
 function updateHideDoneUi(){
   if(hideDoneToggle) hideDoneToggle.checked=!!meta?.hideDone;
+}
+function hasFavoriteNodes(){
+  return nodes.some(node=>!!node.favorite);
+}
+function getFocusBranchNodeIds(){
+  const focusSet=new Set();
+  const childMap=getChildrenMap();
+  nodes.forEach(node=>{
+    if(!node.favorite) return;
+    focusSet.add(node.id);
+    getDescendantIds(node.id,childMap).forEach(childId=>focusSet.add(childId));
+  });
+  return focusSet;
+}
+function isFocusModeActive(){
+  return !!meta?.focusMode && hasFavoriteNodes();
+}
+function updateFocusModeUi(){
+  if(!focusModeSideBtn) return;
+  const active=isFocusModeActive();
+  focusModeSideBtn.classList.toggle('act',active);
+  focusModeSideBtn.textContent=active?'集中モードON':'集中モード';
+  focusModeSideBtn.setAttribute('aria-pressed',active?'true':'false');
 }
 function getExportFormattingOptions(){
   return {omitNumbering:!!exportOmitNumberingToggle?.checked};
@@ -2055,6 +2158,7 @@ function renderNow(){
   applyT();
   updateDocumentTitle();
   updateHideDoneUi();
+  updateFocusModeUi();
   updateUndoUI();
   updateHUD();
   updateQuickbar();
@@ -2099,7 +2203,7 @@ function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone)};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),focusMode:!!(payload.meta&&payload.meta.focusMode) && (payload.nodes||[]).some(node=>!!node.favorite)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   setInitialTitleNodeSyncArmed(false);
@@ -2509,7 +2613,7 @@ function findBestInsertPosition({parentId=null,anchor=null,templateNode}){
 function createNewNodeDraft(options={}){
   return normalizeNode({
     id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',status:options.status||'none',collapsed:false,
-    fitMode:options.fitMode||'shrink',x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
+    fitMode:options.fitMode||'shrink',favorite:!!options.favorite,x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
   });
 }
 function createChildNode(parentId, options={}){
@@ -2522,7 +2626,7 @@ function createChildNode(parentId, options={}){
   const newId='n'+(nid++);
   const child=normalizeNode({
     id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-    fitMode:draft.fitMode,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
+    fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(child);
   edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
@@ -2542,7 +2646,7 @@ function createSiblingNode(sourceId, options={}){
     const newId='n'+(nid++);
     const sibling=normalizeNode({
       id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-      fitMode:draft.fitMode,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
+      fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
     });
     nodes.push(sibling);
     edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
@@ -2557,7 +2661,7 @@ function createSiblingNode(sourceId, options={}){
     const newId='n'+(nid++);
     const sibling=normalizeNode({
       id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-      fitMode:draft.fitMode,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
+      fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
     });
     nodes.push(sibling);
     setSingleSelection(newId);
@@ -2570,7 +2674,7 @@ function createStandaloneNode(options={}){
   const id='n'+(nid++);
   const node=normalizeNode({
     id,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-    fitMode:draft.fitMode,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
+    fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
   });
   nodes.push(node);
   setSingleSelection(id);
@@ -2787,7 +2891,8 @@ function parseImportData(raw,{kind}={}){
   const metaNorm={
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial',
-    hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone)
+    hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone),
+    focusMode:!!((parsed.meta&&parsed.meta.focusMode)??parsed.focusMode)
   };
   ensureOutlineOrders(nodesNorm,edgesNorm);
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm,importKind:'json'};
@@ -3281,14 +3386,14 @@ function getNodePreferredInnerWidth(n, numberMap=null){
   const titleWidth=Math.ceil(estimateTextWidth(String(n.label||'新規案件'),titleFont));
   const subLines=String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
   const subWidth=subLines.length ? Math.max(...subLines.map(line=>Math.ceil(estimateTextWidth(line,NODE_SUB_FONT_SIZE)))) : 0;
-  return Math.max(144, Math.min(NODE_W_MAX-NODE_INNER_PAD_X*2, Math.max(headerWidth, titleWidth, subWidth)));
+  return Math.max(144, Math.min(NODE_W_MAX-NODE_INNER_PAD_X*2, Math.max(headerWidth, titleWidth + NODE_TEXT_SAFE_PAD_RIGHT, subWidth + NODE_TEXT_SAFE_PAD_RIGHT)));
 }
 function getNodeTitleLayout(n, numberMap=null){
   const statusMetrics=getStatusChipMetrics(n.status);
   const numberLabel=getNodeNumberLabel(n, numberMap);
   const headerHeight=numberLabel || statusMetrics ? NODE_HEADER_BAND_HEIGHT : 0;
   const label=String(n?.label||'新規案件');
-  const usable=Math.max(104, n.w-NODE_INNER_PAD_X*2);
+  const usable=Math.max(96, n.w-NODE_INNER_PAD_X*2-NODE_TEXT_LAYOUT_SAFE_WIDTH);
   const baseFont=n.fitMode==='wrap' ? 13.4 : 14;
   const minFont=n.fitMode==='wrap' ? 12 : 10.8;
   let fontSize=baseFont;
@@ -3327,7 +3432,7 @@ function updateNodeMetrics(n, numberMap=null){
   n.h=Math.max(NODE_H_MIN, NODE_TOP_PAD + titleLayout.headerHeight + headerGap + titleHeight + subGap + subHeight + NODE_BOTTOM_PAD);
 }
 function getNodeSubLines(n){
-  const usable=Math.max(112, n.w-NODE_INNER_PAD_X*2);
+  const usable=Math.max(104, n.w-NODE_INNER_PAD_X*2-NODE_TEXT_LAYOUT_SAFE_WIDTH);
   const maxUnits=Math.max(12, usable/Math.max(6.2,NODE_SUB_FONT_SIZE*.9));
   return wrapText(n.subtext||'',maxUnits,SUBTEXT_MAX_LINES).filter(Boolean);
 }
@@ -3549,7 +3654,7 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   nodes=(d.nodes||[]).map(normalizeNode);
   edges=(d.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone)};
+  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone),focusMode:!!(d.meta&&d.meta.focusMode) && (d.nodes||[]).some(node=>!!node.favorite)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   setInitialTitleNodeSyncArmed(false);
@@ -3592,6 +3697,36 @@ function toggleNodeDone(id,{withHistory=true}={}){
   showToast(node.status==='done'?'完了にしました':'未完了に戻しました');
   return true;
 }
+function toggleNodeFavorite(id,{withHistory=true}={}){
+  const node=nb(id);
+  if(!node) return false;
+  if(withHistory) snapshot();
+  node.favorite=!node.favorite;
+  if(meta.focusMode && !hasFavoriteNodes()) meta.focusMode=false;
+  renderNow();
+  if(node.favorite) showToast('★を付けました');
+  else if(meta.focusMode) showToast('★を外しました');
+  else showToast('★を外したので集中モードもOFFにしました','warn');
+  return true;
+}
+function toggleFocusMode(force){
+  const next=typeof force==='boolean' ? force : !meta.focusMode;
+  if(next && !hasFavoriteNodes()){
+    meta.focusMode=false;
+    updateFocusModeUi();
+    showToast('先に★を付けたノードを1つ以上作ってください','warn');
+    return false;
+  }
+  if(meta.focusMode===next){
+    updateFocusModeUi();
+    return true;
+  }
+  snapshot();
+  meta.focusMode=next;
+  renderNow();
+  showToast(next?'集中モードをONにしました':'集中モードをOFFにしました');
+  return true;
+}
 function cycleSingleNodeStatus(){
   const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
   if(!node) return;
@@ -3607,7 +3742,7 @@ function duplicateActiveNode(){
   const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
   if(!node) return;
   snapshot();
-  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,status:node.status,fitMode:node.fitMode,color:{...node.color}});
+  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,status:node.status,fitMode:node.fitMode,favorite:false,color:{...node.color}});
   if(copy){
     copy.x=node.x+Math.max(180,node.w+30);
     copy.y=node.y+30;
@@ -3749,6 +3884,9 @@ function runQuickbarAction(action){
       draw();
       showToast('終点ノードをクリックしてください');
       break;
+    case 'toggle-focus':
+      if(activeNodeId && nb(activeNodeId)) toggleNodeFavorite(activeNodeId);
+      break;
     case 'cycle-status':
       cycleSingleNodeStatus();
       break;
@@ -3846,6 +3984,7 @@ function getQuickbarConfig(){
       {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
       {id:'qb-child',label:'子を追加',action:'add-child'},
       {id:'qb-connect',label:'つなぐ',action:'connect'},
+      {id:'qb-fit',label:(nb(activeNodeId)?.favorite?'★を外す':'★を付ける'),action:'toggle-focus'},
       {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
     ];
   }
@@ -4079,12 +4218,15 @@ function draw(){
   const visibleNodes=getVisibleNodes();
   const visibleEdges=getVisibleEdges();
   const outlineNumberMap=getOutlineNumberMap();
+  const focusModeActive=isFocusModeActive();
+  const focusSet=focusModeActive ? getFocusBranchNodeIds() : null;
 
   EL.innerHTML='';
   visibleEdges.forEach(e=>{
     const f=nb(e.from),t=nb(e.to); if(!f||!t) return;
     const info=getPathInfo(f,t);
     const selected=selectedEdgeId===e.id;
+    const edgeInFocus=!focusModeActive || (focusSet?.has(e.from) && focusSet?.has(e.to));
     const showEdgeLabel=selected || vs>=0.46;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-eid',e.id);
@@ -4100,9 +4242,10 @@ function draw(){
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',info.d);
     p.setAttribute('fill','none');
-    p.setAttribute('stroke',selected?'#12c6ff':'rgba(143,155,173,.54)');
-    p.setAttribute('stroke-width',selected?'2.8':'1.9');
+    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(124,132,142,.18)');
+    p.setAttribute('stroke-width',selected?'2.8':edgeInFocus?'1.9':'1.4');
     p.setAttribute('marker-end',selected?'url(#ars)':'url(#ar)');
+    if(!edgeInFocus) p.setAttribute('opacity','0.52');
     p.style.cursor='pointer';
     g.appendChild(p);
 
@@ -4116,8 +4259,8 @@ function draw(){
       bg.setAttribute('width',txW);
       bg.setAttribute('height',22);
       bg.setAttribute('rx',11);
-      bg.setAttribute('fill','rgba(16,21,29,.96)');
-      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':'rgba(132,145,164,.22)');
+      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.68)');
+      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.12)');
       bg.setAttribute('stroke-width','1');
       g.appendChild(bg);
 
@@ -4128,7 +4271,7 @@ function draw(){
       tx.setAttribute('dominant-baseline','middle');
       tx.setAttribute('font-size','11');
       tx.setAttribute('font-weight','700');
-      tx.setAttribute('fill',selected?'#eefcff':'#d6dee8');
+      tx.setAttribute('fill',selected?'#eefcff':edgeInFocus?'#d6dee8':'rgba(214,222,232,.46)');
       tx.setAttribute('pointer-events','none');
       tx.setAttribute('font-family','Rajdhani, Noto Sans JP, sans-serif');
       tx.textContent=label;
@@ -4148,9 +4291,12 @@ function draw(){
     const selected=isSelected(n.id);
     const edgeSeed=mode==='edge'&&efrom===n.id;
     const isDoneNode=n.status==='done';
+    const nodeInFocus=!focusModeActive || focusSet?.has(n.id);
     const renderPalette=isDoneNode
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
-      : {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'};
+      : nodeInFocus
+        ? {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'}
+        : {fill:'rgba(67,74,83,.18)',stroke:'rgba(118,127,138,.26)',text:'rgba(221,227,234,.42)',accent:null,subtext:'rgba(214,222,232,.28)'};
     const showSubtext=showSubtextGlobal || selected || edgeSeed;
     const showStatus=showStatusGlobal || selected || edgeSeed;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -4236,8 +4382,9 @@ function draw(){
     base.setAttribute('rx',14);
     base.setAttribute('fill',renderPalette.fill);
     base.setAttribute('stroke',selected?'rgba(255,247,236,.94)':edgeSeed?'#ff6f2c':renderPalette.stroke);
-    base.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.8':'1.55');
-    base.setAttribute('filter',selected?'url(#nodeSelectGlow)':edgeSeed?'url(#nodeWarmGlow)':'url(#nodeShadow)');
+    base.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.8':nodeInFocus?'1.55':'1.2');
+    base.setAttribute('filter',selected?'url(#nodeSelectGlow)':edgeSeed?'url(#nodeWarmGlow)':nodeInFocus?'url(#nodeShadow)':'none');
+    if(!nodeInFocus) base.setAttribute('opacity','0.56');
     g.appendChild(base);
 
     const inner=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -4246,8 +4393,8 @@ function draw(){
     inner.setAttribute('width',n.w-8);
     inner.setAttribute('height',n.h-8);
     inner.setAttribute('rx',11);
-    inner.setAttribute('fill','rgba(255,255,255,.014)');
-    inner.setAttribute('stroke','rgba(255,255,255,.028)');
+    inner.setAttribute('fill',nodeInFocus?'rgba(255,255,255,.014)':'rgba(255,255,255,.008)');
+    inner.setAttribute('stroke',nodeInFocus?'rgba(255,255,255,.028)':'rgba(255,255,255,.016)');
     inner.setAttribute('stroke-width','1');
     inner.setAttribute('pointer-events','none');
     g.appendChild(inner);
@@ -4257,10 +4404,10 @@ function draw(){
     clip.setAttribute('id',clipId);
     clip.setAttribute('clipPathUnits','userSpaceOnUse');
     const clipRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    clipRect.setAttribute('x',-n.w/2+6);
-    clipRect.setAttribute('y',-n.h/2+6);
-    clipRect.setAttribute('width',n.w-12);
-    clipRect.setAttribute('height',n.h-12);
+    clipRect.setAttribute('x',-n.w/2+4);
+    clipRect.setAttribute('y',-n.h/2+4);
+    clipRect.setAttribute('width',n.w-8);
+    clipRect.setAttribute('height',n.h-8);
     clipRect.setAttribute('rx',12);
     clip.appendChild(clipRect);
     g.appendChild(clip);
@@ -4303,6 +4450,32 @@ function draw(){
     }
 
     const titleBaseY=-n.h/2+NODE_TOP_PAD+titleLayout.headerHeight+(titleLayout.headerHeight?NODE_HEADER_GAP:0);
+
+    if(n.favorite){
+      const starBg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      starBg.setAttribute('x',contentLeft-2);
+      starBg.setAttribute('y',n.h/2-26);
+      starBg.setAttribute('width','18');
+      starBg.setAttribute('height','18');
+      starBg.setAttribute('rx','9');
+      starBg.setAttribute('fill',nodeInFocus?'rgba(255,160,120,.16)':'rgba(255,255,255,.06)');
+      starBg.setAttribute('stroke',nodeInFocus?'rgba(255,160,120,.24)':'rgba(255,255,255,.12)');
+      starBg.setAttribute('stroke-width','1');
+      starBg.setAttribute('pointer-events','none');
+      contentGroup.appendChild(starBg);
+
+      const starText=document.createElementNS('http://www.w3.org/2000/svg','text');
+      starText.setAttribute('x',contentLeft+7);
+      starText.setAttribute('y',n.h/2-16.8);
+      starText.setAttribute('text-anchor','middle');
+      starText.setAttribute('dominant-baseline','middle');
+      starText.setAttribute('font-size','11.4');
+      starText.setAttribute('font-weight','800');
+      starText.setAttribute('fill',nodeInFocus?'#ffd9c7':'rgba(255,255,255,.7)');
+      starText.setAttribute('pointer-events','none');
+      starText.textContent='★';
+      contentGroup.appendChild(starText);
+    }
     titleLayout.lines.forEach((line,i)=>{
       const title=document.createElementNS('http://www.w3.org/2000/svg','text');
       title.setAttribute('x',contentLeft);
@@ -4443,6 +4616,49 @@ function draw(){
 
       g.appendChild(cg);
     }
+
+    const favoriteGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
+    favoriteGroup.setAttribute('data-id',n.id);
+    favoriteGroup.setAttribute('data-action','toggle-favorite');
+    favoriteGroup.style.cursor='pointer';
+
+    const favoriteSize=16;
+    const favoriteX=-n.w/2+10;
+    const favoriteY=n.h/2-favoriteSize-10;
+
+    const favoriteTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    favoriteTap.setAttribute('x',favoriteX-4);
+    favoriteTap.setAttribute('y',favoriteY-4);
+    favoriteTap.setAttribute('width',favoriteSize+8);
+    favoriteTap.setAttribute('height',favoriteSize+8);
+    favoriteTap.setAttribute('rx','8');
+    favoriteTap.setAttribute('fill','rgba(0,0,0,0)');
+    favoriteGroup.appendChild(favoriteTap);
+
+    const favoriteBox=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    favoriteBox.setAttribute('x',favoriteX);
+    favoriteBox.setAttribute('y',favoriteY);
+    favoriteBox.setAttribute('width',favoriteSize);
+    favoriteBox.setAttribute('height',favoriteSize);
+    favoriteBox.setAttribute('rx','5');
+    favoriteBox.setAttribute('fill',n.favorite?'rgba(255,160,120,.22)':'rgba(10,14,20,.94)');
+    favoriteBox.setAttribute('stroke',n.favorite?'rgba(255,196,157,.56)':'rgba(143,155,173,.42)');
+    favoriteBox.setAttribute('stroke-width','1.2');
+    favoriteGroup.appendChild(favoriteBox);
+
+    const favoriteText=document.createElementNS('http://www.w3.org/2000/svg','text');
+    favoriteText.setAttribute('x',favoriteX+favoriteSize/2);
+    favoriteText.setAttribute('y',favoriteY+favoriteSize/2+0.3);
+    favoriteText.setAttribute('text-anchor','middle');
+    favoriteText.setAttribute('dominant-baseline','middle');
+    favoriteText.setAttribute('font-size','10.4');
+    favoriteText.setAttribute('font-weight','800');
+    favoriteText.setAttribute('fill',n.favorite?'#ffe6d9':'rgba(214,222,232,.52)');
+    favoriteText.setAttribute('pointer-events','none');
+    favoriteText.textContent='★';
+    favoriteGroup.appendChild(favoriteText);
+
+    g.appendChild(favoriteGroup);
 
     const doneGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
     doneGroup.setAttribute('data-id',n.id);
@@ -4672,6 +4888,12 @@ NL.addEventListener('mousedown',e=>{
   if(doneToggle){
     e.stopPropagation();
     toggleNodeDone(doneToggle.dataset.id);
+    return;
+  }
+  const favoriteToggle=e.target.closest('[data-action="toggle-favorite"]');
+  if(favoriteToggle){
+    e.stopPropagation();
+    toggleNodeFavorite(favoriteToggle.dataset.id);
     return;
   }
   const g=e.target.closest('[data-id]');
@@ -5445,9 +5667,10 @@ document.getElementById('b-clear').addEventListener('click',()=>{
 document.getElementById('confirm-yes').addEventListener('click',()=>{
   closeTransientUi();
   snapshot();
-  nodes=[normalizeNode({id:'n1',label:'サンプル',subtext:'',status:'none',collapsed:false,order:1,x:0,y:0,color:{...PRESETS[0]}})];
+  nodes=[normalizeNode({id:'n1',label:'サンプル',subtext:'',status:'none',collapsed:false,favorite:false,order:1,x:0,y:0,color:{...PRESETS[0]}})];
   edges=[];
   meta.title='';
+  meta.focusMode=false;
   document.getElementById('map-title').value='';
   document.getElementById('map-title').placeholder='まずマップ名を入力';
   setInitialTitleNodeSyncArmed(true);
@@ -5467,7 +5690,7 @@ function buildExportObject(){
     schemaVersion:'1.0',
     meta,
     nodes:nodes.map(n=>({
-      id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,
+      id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,
       x:Math.round(n.x),y:Math.round(n.y),color:n.color
     })),
     edges:edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
