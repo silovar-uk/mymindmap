@@ -1797,6 +1797,8 @@ const NODE_INNER_PAD_X=16;
 const NODE_TEXT_SAFE_PAD_RIGHT=16;
 const NODE_TEXT_LAYOUT_SAFE_WIDTH=12;
 const NODE_TOP_PAD=14;
+const NODE_FAVORITE_ICON_SIZE=16;
+const NODE_FAVORITE_HEADER_RESERVE=24;
 const NODE_BOTTOM_PAD=16;
 const NODE_HEADER_BAND_HEIGHT=22;
 const NODE_HEADER_GAP=8;
@@ -1902,14 +1904,15 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.5.1';
-const APP_UPDATED_AT='2026-04-16 23:36 JST';
+const APP_VERSION='1.5.2';
+const APP_UPDATED_AT='2026-04-16 23:53 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.5.2',date:'2026-04-16 23:53 JST',summary:'Tabで追加する子ノードの初期配置を右優先に見直し、右側が詰まっている場合は時計回りで空きを探すよう改善。',items:['子ノード追加専用の方向ベクトルを追加し、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう変更','findBestInsertPosition に方向配列と方向バイアスの指定を追加し、用途ごとに初期配置の優先順位を切り替えられるよう整理','Tab などで使う createChildNode は右方向の優先度を強め、右側に十分な空きがある限りまず右へ生えるよう調整','右側がノードや線で詰まっている場合は従来の衝突回避ロジックを保ったまま、時計回りに近い位置へ自動で逃がすよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.1',date:'2026-04-16 23:36 JST',summary:'テキスト/Markdown書き出しの初期設定と先頭行を整理し、番号なしをデフォルトにしたうえでマップ名と（選択中）を出力しないよう調整。',items:['「ナンバリングを含めない」チェックを初期状態でONに変更','テキスト書き出しからマップ名の先頭行を削除し、選択時も「（選択中）」を出さないよう修正','Markdown書き出しから先頭の H1 マップ名行を削除し、選択時も「（選択中）」を出さないよう修正','書き出し本体はノード構造だけをそのまま出力する形にそろえた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.5.0',date:'2026-04-16 23:25 JST',summary:'★を起点にした集中モードを追加し、集中対象だけ色を残して他をグレーで弱く見せられるよう改善。',items:['右側のデータ / アウトライナーボタンの近くに「集中モード」ボタンを追加し、★付きノードがあるときだけONできるよう変更','各ノード左下に★トグルを追加し、アウトライナーとクイックバーからも★の付け外しができるよう改善','集中モード中は★付きノードとその子孫だけ通常の色を保ち、それ以外のノードと線はグレーで弱く表示するよう描画を調整','ノードの favorite 状態と集中モード設定を JSON 入出力へ含め、保存・再読み込み後も状態を引き継げるよう更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.5.1',date:'2026-04-16 23:45 JST',summary:'集中モード中の非★ノードをさらに目立ちにくくし、★がある状態で追加したノードは自動で★を引き継ぐよう改善。',items:['集中モード中に非★ノードと関連線をより薄いグレーで描画し、全体として目に入りづらくなるよう調整','非★ノードは完全非表示にせず、クリックや★追加ができる程度の視認性は維持するようノード全体の不透明度も調整','新規ノード作成時、既に★付きノードが1つでもある場合は追加ノードにも自動で★が入るよう既定値を変更','favorite を明示指定した複製など既存挙動は壊さないよう、明示値がある場合だけそちらを優先するよう整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.4.0',date:'2026-04-15 12:40 JST',summary:'テキストとMarkdownの書き出しでナンバリングを含めないチェックを追加し、表示内容と保存内容の両方に反映。',items:['データパネルに「ナンバリングを含めない」チェックを追加し、テキストとMarkdownタブ選択時だけ表示されるよう変更','テキスト書き出しとMarkdown書き出しで番号の有無を切り替えられるよう buildOutlineText / buildMarkdownText にオプションを追加','チェック切り替え時は現在のテキスト/Markdown表示をその場で再生成し、コピー内容にも即反映するよう調整','上部の「Markdownで保存」ボタンも同じ書き出しオプションを使うよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.3.8',date:'2026-04-15 11:58 JST',summary:'Enter キーを編集モーダルでは確定に専念させ、通常キャンバスでは同階層追加として扱うようショートカットの優先順位を整理。',items:['ノード編集モーダルと線編集モーダルで Enter / Escape を stopImmediatePropagation 付きで処理し、モーダル確定後に背後のキャンバスショートカットが暴発しないよう修正','通常キャンバスでの Enter を同階層追加に戻し、Tab のみ子ノード追加になるよう整理','ショートカットのヒント文言も Enter=子追加 に合わせて更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.3.4',date:'2026-04-15 01:15 JST',summary:'ノード内の文字レイアウトを上から再設計し、補足の収まりと左上のナンバリング欠けを解消。',items:['タイトル・補足・番号・状態の各領域を分けるノード内レイアウトへ作り直し、補足が図形内で折り返しやすいよう余白と高さ計算を見直し','文字折り返しを文字数ベースから表示幅ベースへ変更し、日本語と英数字が混ざる補足でも幅推定に合わせて行分割できるよう改善','ノード幅の自動計算に補足の最長行も反映し、タイトルだけでなく補足の長さに応じても横幅が広がるよう調整','左上の番号は独立した小さなバッジ表示へ変更し、透かしアクセントやクリップで欠けないよう位置と描画順を整理','右上アクセントは番号帯に重ならない形へ変更し、状態バッジも折りたたみボタンのぶんだけ逃がして干渉しにくく調整']},
@@ -2102,6 +2105,9 @@ function updateHideDoneUi(){
 }
 function hasFavoriteNodes(){
   return nodes.some(node=>!!node.favorite);
+}
+function shouldAutoFavoriteNewNodes(){
+  return hasFavoriteNodes();
 }
 function getFocusBranchNodeIds(){
   const focusSet=new Set();
@@ -2533,6 +2539,18 @@ function getInsertDirectionVectors(parentId=null){
   }
   return [{x:1,y:0},{x:1,y:1},{x:1,y:-1},{x:0,y:1},{x:0,y:-1},{x:-1,y:0}];
 }
+function getClockwiseChildInsertDirections(){
+  return [
+    {x:1,y:0},
+    {x:1,y:1},
+    {x:0,y:1},
+    {x:-1,y:1},
+    {x:-1,y:0},
+    {x:-1,y:-1},
+    {x:0,y:-1},
+    {x:1,y:-1}
+  ];
+}
 function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,anchor=null}={}){
   const rect=makeRect(cx,cy,templateNode.w,templateNode.h,16);
   let score=2000-directionRank*65;
@@ -2578,12 +2596,12 @@ function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,
   }
   return score;
 }
-function findBestInsertPosition({parentId=null,anchor=null,templateNode}){
+function findBestInsertPosition({parentId=null,anchor=null,templateNode,directions=null,directionBiasWeight=65}){
   const baseAnchor=anchor || (parentId && nb(parentId) ? {x:nb(parentId).x,y:nb(parentId).y} : getViewportCenterWorld());
-  const dirs=parentId ? getInsertDirectionVectors(parentId) : [
+  const dirs=directions || (parentId ? getInsertDirectionVectors(parentId) : [
     {x:0,y:0},{x:1,y:0},{x:0,y:1},{x:-1,y:0},{x:0,y:-1},
     {x:1,y:1},{x:-1,y:1},{x:-1,y:-1},{x:1,y:-1}
-  ];
+  ]);
   const stepX=Math.max(170, templateNode.w+82);
   const stepY=Math.max(120, templateNode.h+72);
   const radii=parentId ? [1,1.35,1.75,2.15,2.7] : [0,1,1.45,1.95,2.55,3.2];
@@ -2592,7 +2610,8 @@ function findBestInsertPosition({parentId=null,anchor=null,templateNode}){
     dirs.forEach((dir,di)=>{
       const x=baseAnchor.x+dir.x*stepX*radius;
       const y=baseAnchor.y+dir.y*stepY*radius;
-      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank:di+ri*dirs.length,anchor:baseAnchor});
+      const directionRank=(di+ri*dirs.length)*directionBiasWeight/65;
+      const score=scoreInsertCandidate(x,y,templateNode,{parentId,directionRank,anchor:baseAnchor});
       if(!best || score>best.score) best={x,y,score};
     });
   });
@@ -2612,9 +2631,10 @@ function findBestInsertPosition({parentId=null,anchor=null,templateNode}){
   return {x:center.x+stepX,y:center.y+stepY};
 }
 function createNewNodeDraft(options={}){
+  const favorite=Object.prototype.hasOwnProperty.call(options,'favorite') ? !!options.favorite : shouldAutoFavoriteNewNodes();
   return normalizeNode({
     id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',status:options.status||'none',collapsed:false,
-    fitMode:options.fitMode||'shrink',favorite:!!options.favorite,x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
+    fitMode:options.fitMode||'shrink',favorite,x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
   });
 }
 function createChildNode(parentId, options={}){
@@ -2623,7 +2643,12 @@ function createChildNode(parentId, options={}){
   const draft=createNewNodeDraft({
     label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...parent.color}
   });
-  const pos=findBestInsertPosition({parentId,templateNode:draft});
+  const pos=findBestInsertPosition({
+    parentId,
+    templateNode:draft,
+    directions:getClockwiseChildInsertDirections(),
+    directionBiasWeight:220
+  });
   const newId='n'+(nid++);
   const child=normalizeNode({
     id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
@@ -3377,8 +3402,9 @@ function getNodePreferredInnerWidth(n, numberMap=null){
   const statusMetrics=getStatusChipMetrics(n.status);
   const numberLabel=getNodeNumberLabel(n, numberMap);
   const collapseReserve=hasVisibleChildren(n.id) ? 28 : 0;
+  const headerActionReserve=NODE_FAVORITE_HEADER_RESERVE + collapseReserve;
   const numberWidth=numberLabel ? Math.max(36, Math.ceil(estimateTextWidth(numberLabel,10.2)+18)) : 0;
-  const headerWidth=numberWidth + (statusMetrics ? statusMetrics.width + (numberWidth?8:0) : 0) + collapseReserve;
+  const headerWidth=numberWidth + (statusMetrics ? statusMetrics.width + (numberWidth?8:0) : 0) + headerActionReserve;
   const titleFont=n.fitMode==='wrap' ? 13.4 : 14;
   const titleWidth=Math.ceil(estimateTextWidth(String(n.label||'新規案件'),titleFont));
   const subLines=String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
@@ -4239,10 +4265,10 @@ function draw(){
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',info.d);
     p.setAttribute('fill','none');
-    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(124,132,142,.18)');
-    p.setAttribute('stroke-width',selected?'2.8':edgeInFocus?'1.9':'1.4');
+    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(118,126,136,.10)');
+    p.setAttribute('stroke-width',selected?'2.8':edgeInFocus?'1.9':'1.2');
     p.setAttribute('marker-end',selected?'url(#ars)':'url(#ar)');
-    if(!edgeInFocus) p.setAttribute('opacity','0.52');
+    if(!edgeInFocus) p.setAttribute('opacity','0.26');
     p.style.cursor='pointer';
     g.appendChild(p);
 
@@ -4256,8 +4282,8 @@ function draw(){
       bg.setAttribute('width',txW);
       bg.setAttribute('height',22);
       bg.setAttribute('rx',11);
-      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.68)');
-      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.12)');
+      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.42)');
+      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.08)');
       bg.setAttribute('stroke-width','1');
       g.appendChild(bg);
 
@@ -4268,7 +4294,7 @@ function draw(){
       tx.setAttribute('dominant-baseline','middle');
       tx.setAttribute('font-size','11');
       tx.setAttribute('font-weight','700');
-      tx.setAttribute('fill',selected?'#eefcff':edgeInFocus?'#d6dee8':'rgba(214,222,232,.46)');
+      tx.setAttribute('fill',selected?'#eefcff':edgeInFocus?'#d6dee8':'rgba(214,222,232,.22)');
       tx.setAttribute('pointer-events','none');
       tx.setAttribute('font-family','Rajdhani, Noto Sans JP, sans-serif');
       tx.textContent=label;
@@ -4289,17 +4315,19 @@ function draw(){
     const edgeSeed=mode==='edge'&&efrom===n.id;
     const isDoneNode=n.status==='done';
     const nodeInFocus=!focusModeActive || focusSet?.has(n.id);
+    const dimmedByFocus=focusModeActive && !nodeInFocus;
     const renderPalette=isDoneNode
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
       : nodeInFocus
         ? {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'}
-        : {fill:'rgba(67,74,83,.18)',stroke:'rgba(118,127,138,.26)',text:'rgba(221,227,234,.42)',accent:null,subtext:'rgba(214,222,232,.28)'};
+        : {fill:'rgba(54,60,68,.10)',stroke:'rgba(112,121,132,.16)',text:'rgba(221,227,234,.24)',accent:null,subtext:'rgba(214,222,232,.14)'};
     const showSubtext=showSubtextGlobal || selected || edgeSeed;
     const showStatus=showStatusGlobal || selected || edgeSeed;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-id',n.id);
     g.setAttribute('transform',`translate(${n.x},${n.y})`);
     g.style.cursor='grab';
+    if(dimmedByFocus) g.setAttribute('opacity',selected?'0.82':'0.54');
 
     const shadow=document.createElementNS('http://www.w3.org/2000/svg','rect');
     shadow.setAttribute('x',-n.w/2);
@@ -4416,6 +4444,7 @@ function draw(){
     const contentLeft=-n.w/2+NODE_INNER_PAD_X;
     const headerTop=-n.h/2+NODE_TOP_PAD-1;
     const collapseReserve=hasVisibleChildren(n.id) ? 28 : 0;
+    const headerActionReserve=NODE_FAVORITE_HEADER_RESERVE + collapseReserve;
 
     if(titleLayout.numberLabel){
       const badgeW=Math.max(36, Math.min(n.w*.34, Math.ceil(estimateTextWidth(titleLayout.numberLabel,10.2)+16)));
@@ -4448,31 +4477,6 @@ function draw(){
 
     const titleBaseY=-n.h/2+NODE_TOP_PAD+titleLayout.headerHeight+(titleLayout.headerHeight?NODE_HEADER_GAP:0);
 
-    if(n.favorite){
-      const starBg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      starBg.setAttribute('x',contentLeft-2);
-      starBg.setAttribute('y',n.h/2-26);
-      starBg.setAttribute('width','18');
-      starBg.setAttribute('height','18');
-      starBg.setAttribute('rx','9');
-      starBg.setAttribute('fill',nodeInFocus?'rgba(255,160,120,.16)':'rgba(255,255,255,.06)');
-      starBg.setAttribute('stroke',nodeInFocus?'rgba(255,160,120,.24)':'rgba(255,255,255,.12)');
-      starBg.setAttribute('stroke-width','1');
-      starBg.setAttribute('pointer-events','none');
-      contentGroup.appendChild(starBg);
-
-      const starText=document.createElementNS('http://www.w3.org/2000/svg','text');
-      starText.setAttribute('x',contentLeft+7);
-      starText.setAttribute('y',n.h/2-16.8);
-      starText.setAttribute('text-anchor','middle');
-      starText.setAttribute('dominant-baseline','middle');
-      starText.setAttribute('font-size','11.4');
-      starText.setAttribute('font-weight','800');
-      starText.setAttribute('fill',nodeInFocus?'#ffd9c7':'rgba(255,255,255,.7)');
-      starText.setAttribute('pointer-events','none');
-      starText.textContent='★';
-      contentGroup.appendChild(starText);
-    }
     titleLayout.lines.forEach((line,i)=>{
       const title=document.createElementNS('http://www.w3.org/2000/svg','text');
       title.setAttribute('x',contentLeft);
@@ -4506,8 +4510,8 @@ function draw(){
       const meta=STATUS_META[n.status];
       const chipMetrics=getStatusChipMetrics(n.status);
       const label=chipMetrics.label;
-      const pillW=Math.min(n.w-(NODE_INNER_PAD_X*2)-collapseReserve,chipMetrics.width);
-      const pillX=n.w/2-pillW-NODE_INNER_PAD_X-collapseReserve;
+      const pillW=Math.min(n.w-(NODE_INNER_PAD_X*2)-headerActionReserve,chipMetrics.width);
+      const pillX=n.w/2-pillW-NODE_INNER_PAD_X-headerActionReserve;
       const pillY=headerTop;
 
       const pill=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -4619,9 +4623,9 @@ function draw(){
     favoriteGroup.setAttribute('data-action','toggle-favorite');
     favoriteGroup.style.cursor='pointer';
 
-    const favoriteSize=16;
-    const favoriteX=-n.w/2+10;
-    const favoriteY=n.h/2-favoriteSize-10;
+    const favoriteSize=NODE_FAVORITE_ICON_SIZE;
+    const favoriteX=n.w/2-NODE_INNER_PAD_X-favoriteSize-(hasVisibleChildren(n.id)?28:0);
+    const favoriteY=headerTop+Math.max(0,(NODE_NUMBER_BADGE_HEIGHT-favoriteSize)/2);
 
     const favoriteTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
     favoriteTap.setAttribute('x',favoriteX-4);
