@@ -1050,6 +1050,15 @@ svg{background:transparent;position:relative;z-index:1}
           <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#ffb36f" flood-opacity=".16"/>
           <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#000000" flood-opacity=".22"/>
         </filter>
+        <filter id="nodeDim" x="-20%" y="-20%" width="140%" height="140%">
+          <feColorMatrix type="saturate" values="0.05"/>
+          <feComponentTransfer>
+            <feFuncR type="linear" slope="0.82" intercept="0.01"/>
+            <feFuncG type="linear" slope="0.82" intercept="0.01"/>
+            <feFuncB type="linear" slope="0.82" intercept="0.01"/>
+            <feFuncA type="linear" slope="0.72"/>
+          </feComponentTransfer>
+        </filter>
       </defs>
       <g id="EL"></g>
       <g id="NL"></g>
@@ -1913,7 +1922,7 @@ const APP_CHANGELOG=[
 {version:'1.5.3',date:'2026-04-16 23:59 JST',summary:'同階層追加でも右優先の初期配置を採用し、右側が詰まっている場合は時計回りに空きを探すよう統一。',items:['createSiblingNode の配置基準を親中心ではなく選択中ノード基準へ変更し、同階層追加でもまず右側に出るよう調整','同階層追加でも子ノード追加と同じ方向ベクトルと方向バイアスを使い、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう統一','親を持つノードは従来どおり同じ親へ接続したまま、配置だけを右優先のルールへ変更','ルートノード同士の同階層追加も同じ右優先ロジックで配置し、下方向へずれる旧挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.2',date:'2026-04-16 23:53 JST',summary:'Tabで追加する子ノードの初期配置を右優先に見直し、右側が詰まっている場合は時計回りで空きを探すよう改善。',items:['子ノード追加専用の方向ベクトルを追加し、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう変更','findBestInsertPosition に方向配列と方向バイアスの指定を追加し、用途ごとに初期配置の優先順位を切り替えられるよう整理','Tab などで使う createChildNode は右方向の優先度を強め、右側に十分な空きがある限りまず右へ生えるよう調整','右側がノードや線で詰まっている場合は従来の衝突回避ロジックを保ったまま、時計回りに近い位置へ自動で逃がすよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.1',date:'2026-04-16 23:36 JST',summary:'テキスト/Markdown書き出しの初期設定と先頭行を整理し、番号なしをデフォルトにしたうえでマップ名と（選択中）を出力しないよう調整。',items:['「ナンバリングを含めない」チェックを初期状態でONに変更','テキスト書き出しからマップ名の先頭行を削除し、選択時も「（選択中）」を出さないよう修正','Markdown書き出しから先頭の H1 マップ名行を削除し、選択時も「（選択中）」を出さないよう修正','書き出し本体はノード構造だけをそのまま出力する形にそろえた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.5.1',date:'2026-04-16 23:45 JST',summary:'集中モード中の非★ノードをさらに目立ちにくくし、★がある状態で追加したノードは自動で★を引き継ぐよう改善。',items:['集中モード中に非★ノードと関連線をより薄いグレーで描画し、全体として目に入りづらくなるよう調整','非★ノードは完全非表示にせず、クリックや★追加ができる程度の視認性は維持するようノード全体の不透明度も調整','新規ノード作成時、既に★付きノードが1つでもある場合は追加ノードにも自動で★が入るよう既定値を変更','favorite を明示指定した複製など既存挙動は壊さないよう、明示値がある場合だけそちらを優先するよう整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.5.2',date:'2026-04-16 23:58 JST',summary:'集中モード時の非★ノードの減衰が弱かったため、SVG全体でより強く背景化されるよう描画を補正。',items:['非★ノードの塗り・枠線・文字色をさらに弱め、ノード全体の不透明度も大きく下げて視線を奪いにくく調整','SVG用の nodeDim フィルターを追加し、非★ノードをほぼグレースケールで沈めるよう補強','非★ノードの影を大幅に弱め、背景に引っ込む見た目へ変更','非★ノード同士を結ぶ線・ラベルもさらに薄くし、キャンバス全体で集中対象以外が目立ちにくいよう整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.4.0',date:'2026-04-15 12:40 JST',summary:'テキストとMarkdownの書き出しでナンバリングを含めないチェックを追加し、表示内容と保存内容の両方に反映。',items:['データパネルに「ナンバリングを含めない」チェックを追加し、テキストとMarkdownタブ選択時だけ表示されるよう変更','テキスト書き出しとMarkdown書き出しで番号の有無を切り替えられるよう buildOutlineText / buildMarkdownText にオプションを追加','チェック切り替え時は現在のテキスト/Markdown表示をその場で再生成し、コピー内容にも即反映するよう調整','上部の「Markdownで保存」ボタンも同じ書き出しオプションを使うよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.3.8',date:'2026-04-15 11:58 JST',summary:'Enter キーを編集モーダルでは確定に専念させ、通常キャンバスでは同階層追加として扱うようショートカットの優先順位を整理。',items:['ノード編集モーダルと線編集モーダルで Enter / Escape を stopImmediatePropagation 付きで処理し、モーダル確定後に背後のキャンバスショートカットが暴発しないよう修正','通常キャンバスでの Enter を同階層追加に戻し、Tab のみ子ノード追加になるよう整理','ショートカットのヒント文言も Enter=子追加 に合わせて更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.3.4',date:'2026-04-15 01:15 JST',summary:'ノード内の文字レイアウトを上から再設計し、補足の収まりと左上のナンバリング欠けを解消。',items:['タイトル・補足・番号・状態の各領域を分けるノード内レイアウトへ作り直し、補足が図形内で折り返しやすいよう余白と高さ計算を見直し','文字折り返しを文字数ベースから表示幅ベースへ変更し、日本語と英数字が混ざる補足でも幅推定に合わせて行分割できるよう改善','ノード幅の自動計算に補足の最長行も反映し、タイトルだけでなく補足の長さに応じても横幅が広がるよう調整','左上の番号は独立した小さなバッジ表示へ変更し、透かしアクセントやクリップで欠けないよう位置と描画順を整理','右上アクセントは番号帯に重ならない形へ変更し、状態バッジも折りたたみボタンのぶんだけ逃がして干渉しにくく調整']},
@@ -4257,10 +4266,10 @@ function draw(){
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',info.d);
     p.setAttribute('fill','none');
-    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(118,126,136,.10)');
+    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(118,126,136,.05)');
     p.setAttribute('stroke-width',selected?'2.8':edgeInFocus?'1.9':'1.2');
     p.setAttribute('marker-end',selected?'url(#ars)':'url(#ar)');
-    if(!edgeInFocus) p.setAttribute('opacity','0.26');
+    if(!edgeInFocus) p.setAttribute('opacity','0.12');
     p.style.cursor='pointer';
     g.appendChild(p);
 
@@ -4274,8 +4283,8 @@ function draw(){
       bg.setAttribute('width',txW);
       bg.setAttribute('height',22);
       bg.setAttribute('rx',11);
-      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.42)');
-      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.08)');
+      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.18)');
+      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.04)');
       bg.setAttribute('stroke-width','1');
       g.appendChild(bg);
 
@@ -4286,7 +4295,7 @@ function draw(){
       tx.setAttribute('dominant-baseline','middle');
       tx.setAttribute('font-size','11');
       tx.setAttribute('font-weight','700');
-      tx.setAttribute('fill',selected?'#eefcff':edgeInFocus?'#d6dee8':'rgba(214,222,232,.22)');
+      tx.setAttribute('fill',selected?'#eefcff':edgeInFocus?'#d6dee8':'rgba(214,222,232,.10)');
       tx.setAttribute('pointer-events','none');
       tx.setAttribute('font-family','Rajdhani, Noto Sans JP, sans-serif');
       tx.textContent=label;
@@ -4312,14 +4321,14 @@ function draw(){
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
       : nodeInFocus
         ? {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'}
-        : {fill:'rgba(54,60,68,.10)',stroke:'rgba(112,121,132,.16)',text:'rgba(221,227,234,.24)',accent:null,subtext:'rgba(214,222,232,.14)'};
+        : {fill:'rgba(36,40,46,.05)',stroke:'rgba(93,101,112,.10)',text:'rgba(214,220,227,.12)',accent:null,subtext:'rgba(214,222,232,.08)'};
     const showSubtext=showSubtextGlobal || selected || edgeSeed;
     const showStatus=showStatusGlobal || selected || edgeSeed;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-id',n.id);
     g.setAttribute('transform',`translate(${n.x},${n.y})`);
     g.style.cursor='grab';
-    if(dimmedByFocus) g.setAttribute('opacity',selected?'0.82':'0.54');
+    if(dimmedByFocus){ g.setAttribute('opacity',selected?'0.5':'0.22'); g.setAttribute('filter','url(#nodeDim)'); }
 
     const shadow=document.createElementNS('http://www.w3.org/2000/svg','rect');
     shadow.setAttribute('x',-n.w/2);
@@ -4327,7 +4336,7 @@ function draw(){
     shadow.setAttribute('width',n.w);
     shadow.setAttribute('height',n.h);
     shadow.setAttribute('rx',14);
-    shadow.setAttribute('fill','rgba(0,0,0,.16)');
+    shadow.setAttribute('fill',dimmedByFocus?'rgba(0,0,0,.03)':'rgba(0,0,0,.16)');
     shadow.setAttribute('pointer-events','none');
     g.appendChild(shadow);
 
@@ -4399,9 +4408,9 @@ function draw(){
     base.setAttribute('rx',14);
     base.setAttribute('fill',renderPalette.fill);
     base.setAttribute('stroke',selected?'rgba(255,247,236,.94)':edgeSeed?'#ff6f2c':renderPalette.stroke);
-    base.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.8':nodeInFocus?'1.55':'1.2');
+    base.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.8':nodeInFocus?'1.55':'1');
     base.setAttribute('filter',selected?'url(#nodeSelectGlow)':edgeSeed?'url(#nodeWarmGlow)':nodeInFocus?'url(#nodeShadow)':'none');
-    if(!nodeInFocus) base.setAttribute('opacity','0.56');
+    if(!nodeInFocus) base.setAttribute('opacity',selected?'0.5':'0.18');
     g.appendChild(base);
 
     const inner=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -4410,8 +4419,8 @@ function draw(){
     inner.setAttribute('width',n.w-8);
     inner.setAttribute('height',n.h-8);
     inner.setAttribute('rx',11);
-    inner.setAttribute('fill',nodeInFocus?'rgba(255,255,255,.014)':'rgba(255,255,255,.008)');
-    inner.setAttribute('stroke',nodeInFocus?'rgba(255,255,255,.028)':'rgba(255,255,255,.016)');
+    inner.setAttribute('fill',nodeInFocus?'rgba(255,255,255,.014)':'rgba(255,255,255,.004)');
+    inner.setAttribute('stroke',nodeInFocus?'rgba(255,255,255,.028)':'rgba(255,255,255,.008)');
     inner.setAttribute('stroke-width','1');
     inner.setAttribute('pointer-events','none');
     g.appendChild(inner);
