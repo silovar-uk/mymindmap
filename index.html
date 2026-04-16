@@ -1276,7 +1276,7 @@ svg{background:transparent;position:relative;z-index:1}
         </div>
 
         <div id="io-export-options" class="io-export-options" hidden>
-          <label class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox"><span>ナンバリングを含めない</span></label>
+          <label class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox" checked><span>ナンバリングを含めない</span></label>
         </div>
 
         <label class="io-label" for="j-io">内容</label>
@@ -1902,12 +1902,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.5.0';
-const APP_UPDATED_AT='2026-04-16 23:25 JST';
+const APP_VERSION='1.5.1';
+const APP_UPDATED_AT='2026-04-16 23:36 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.5.1',date:'2026-04-16 23:36 JST',summary:'テキスト/Markdown書き出しの初期設定と先頭行を整理し、番号なしをデフォルトにしたうえでマップ名と（選択中）を出力しないよう調整。',items:['「ナンバリングを含めない」チェックを初期状態でONに変更','テキスト書き出しからマップ名の先頭行を削除し、選択時も「（選択中）」を出さないよう修正','Markdown書き出しから先頭の H1 マップ名行を削除し、選択時も「（選択中）」を出さないよう修正','書き出し本体はノード構造だけをそのまま出力する形にそろえた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.0',date:'2026-04-16 23:25 JST',summary:'★を起点にした集中モードを追加し、集中対象だけ色を残して他をグレーで弱く見せられるよう改善。',items:['右側のデータ / アウトライナーボタンの近くに「集中モード」ボタンを追加し、★付きノードがあるときだけONできるよう変更','各ノード左下に★トグルを追加し、アウトライナーとクイックバーからも★の付け外しができるよう改善','集中モード中は★付きノードとその子孫だけ通常の色を保ち、それ以外のノードと線はグレーで弱く表示するよう描画を調整','ノードの favorite 状態と集中モード設定を JSON 入出力へ含め、保存・再読み込み後も状態を引き継げるよう更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.4.0',date:'2026-04-15 12:40 JST',summary:'テキストとMarkdownの書き出しでナンバリングを含めないチェックを追加し、表示内容と保存内容の両方に反映。',items:['データパネルに「ナンバリングを含めない」チェックを追加し、テキストとMarkdownタブ選択時だけ表示されるよう変更','テキスト書き出しとMarkdown書き出しで番号の有無を切り替えられるよう buildOutlineText / buildMarkdownText にオプションを追加','チェック切り替え時は現在のテキスト/Markdown表示をその場で再生成し、コピー内容にも即反映するよう調整','上部の「Markdownで保存」ボタンも同じ書き出しオプションを使うよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.3.8',date:'2026-04-15 11:58 JST',summary:'Enter キーを編集モーダルでは確定に専念させ、通常キャンバスでは同階層追加として扱うようショートカットの優先順位を整理。',items:['ノード編集モーダルと線編集モーダルで Enter / Escape を stopImmediatePropagation 付きで処理し、モーダル確定後に背後のキャンバスショートカットが暴発しないよう修正','通常キャンバスでの Enter を同階層追加に戻し、Tab のみ子ノード追加になるよう整理','ショートカットのヒント文言も Enter=子追加 に合わせて更新','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2902,8 +2903,6 @@ function buildOutlineText(onlySelection=false,options={}){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
   const omitNumbering=!!options.omitNumbering;
-  const titleSuffix=onlySelection && ctx.nodes.length ? '（選択中）' : '';
-  if(meta.title) lines.push(meta.title+titleSuffix,'');
   const seen=new Set();
   function walk(id,depth,edgeLabel=''){
     if(seen.has(id)) return;
@@ -2927,8 +2926,6 @@ function buildMarkdownText(onlySelection=false,options={}){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
   const omitNumbering=!!options.omitNumbering;
-  const titleSuffix=onlySelection && ctx.nodes.length ? '（選択中）' : '';
-  if(meta.title) lines.push('# '+meta.title+titleSuffix,'');
   const seen=new Set();
   function walk(id,depth,edgeLabel=''){
     if(seen.has(id)) return;
