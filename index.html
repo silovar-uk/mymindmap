@@ -6100,10 +6100,18 @@ function runInitialBoot(){
   placeGraphAtViewportCenter({resetViewport:true});
   clearSelection();
   draw();
-  focusMapTitle();
+  const starterNode=nodes[0];
+  if(starterNode){
+    setSingleSelection(starterNode.id);
+    updateHUD();
+    updateQuickbar();
+    requestAnimationFrame(()=>openEp(starterNode.id));
+  }else{
+    focusMapTitle();
+    updateHUD();
+    updateQuickbar();
+  }
   updateUndoUI();
-  updateHUD();
-  updateQuickbar();
   if(app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
   markSaved();
 }
