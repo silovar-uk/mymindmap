@@ -825,6 +825,7 @@ svg{background:transparent;position:relative;z-index:1}
 .outline-status.paused{color:#ffe8ec;border-color:rgba(255,107,120,.24);background:rgba(255,107,120,.10)}
 .outline-note{font-size:12px;line-height:1.6;color:var(--sf-text-2);margin-top:14px}
 .outline-row.focus-dim{opacity:.42;filter:saturate(.18)}
+.dimmed{opacity:.15;transition:opacity .2s ease}
 .outline-row.focus-hit{border-color:rgba(255,196,157,.24);box-shadow:0 0 0 1px rgba(255,111,44,.08), inset 0 1px 0 rgba(255,255,255,.02)}
 .outline-title-line{display:flex;align-items:center;gap:6px;min-width:0}
 .outline-favorite{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:rgba(255,196,157,.12);border:1px solid rgba(255,160,120,.18);color:#ffd8c4;font-size:10px;font-weight:800;line-height:1}
@@ -2126,12 +2127,30 @@ function shouldAutoFavoriteNewNodes(){
   return hasFavoriteNodes();
 }
 function getFocusBranchNodeIds(){
+  // 集中モードで「フォーカス内」とみなす範囲:
+  // 1) ★付きノード自身
+  // 2) その祖先(現在地の文脈を残すため)
+  // 3) その子孫(枝全体をまとめて見せるため)
+  // 4) その直近の兄弟(同じ親配下の比較対象を残すため)
+  // ※ 祖先の兄弟やいとこノードまでは含めず、範囲を局所的に保つ。
   const focusSet=new Set();
-  const childMap=getChildrenMap();
+  const {parentMap,childMap,roots}=getHierarchyMaps();
   nodes.forEach(node=>{
     if(!node.favorite) return;
     focusSet.add(node.id);
+
+    let cur=node.id;
+    while(parentMap[cur]){
+      const parentId=parentMap[cur];
+      focusSet.add(parentId);
+      cur=parentId;
+    }
+
     getDescendantIds(node.id,childMap).forEach(childId=>focusSet.add(childId));
+
+    const parentId=parentMap[node.id]??null;
+    const siblingIds=parentId ? (childMap[parentId]||[]) : roots;
+    siblingIds.forEach(siblingId=>focusSet.add(siblingId));
   });
   return focusSet;
 }
@@ -4418,6 +4437,7 @@ function draw(){
     const showEdgeLabel=selected || vs>=0.46;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-eid',e.id);
+    g.classList.toggle('dimmed', !edgeInFocus);
 
     const hit=document.createElementNS('http://www.w3.org/2000/svg','path');
     hit.setAttribute('d',info.d);
@@ -4492,6 +4512,7 @@ function draw(){
     g.setAttribute('data-id',n.id);
     g.setAttribute('transform',`translate(${n.x},${n.y})`);
     g.style.cursor='grab';
+    g.classList.toggle('dimmed', dimmedByFocus);
     if(dimmedByFocus){ g.setAttribute('opacity',selected?'0.5':'0.22'); g.setAttribute('filter','url(#nodeDim)'); }
 
     const shadow=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -5703,6 +5724,7 @@ document.addEventListener('keydown',e=>{
   const tag=(document.activeElement?.tagName||'').toUpperCase();
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
   const key=(e.key||'').toLowerCase();
+  const hasShortcutModifier=!!(e.ctrlKey || e.metaKey || e.altKey);
   const layoutShortcutMap={
     '1':'radial',
     '2':'radial_half',
@@ -5717,6 +5739,7 @@ document.addEventListener('keydown',e=>{
     if(mode==='edge' || efrom){ e.preventDefault(); sm('select'); showToast('選ぶに戻しました'); return; }
     if(selectedNodeIds.size || selectedEdgeId){ e.preventDefault(); clearSelection(); draw(); showToast('選択を解除しました'); return; }
   }
+  if(hasShortcutModifier) return;
   if(key==='h'){ e.preventDefault(); setHelpOpen(true); return; }
   if(key==='r'){ e.preventDefault(); setHistoryOpen(true); return; }
   if(key==='o'){ e.preventDefault(); setOutlineOpen(true); return; }
