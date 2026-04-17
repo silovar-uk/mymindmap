@@ -826,6 +826,26 @@ svg{background:transparent;position:relative;z-index:1}
 .outline-note{font-size:12px;line-height:1.6;color:var(--sf-text-2);margin-top:14px}
 .outline-row.focus-dim{opacity:.42;filter:saturate(.18)}
 .dimmed{opacity:.15;transition:opacity .2s ease}
+.focus-node-favorite,.focus-edge-favorite{opacity:1;transition:opacity .2s ease}
+.focus-node-context{opacity:.62;transition:opacity .2s ease}
+.focus-edge-context{opacity:.46;transition:opacity .2s ease}
+.focus-node-background{opacity:.22;transition:opacity .2s ease}
+.focus-edge-background{opacity:.14;transition:opacity .2s ease}
+.focus-node-background.is-selected{opacity:.42}
+.focus-node-context.is-selected,.focus-edge-context.is-selected,.focus-edge-background.is-selected{opacity:.68}
+.focus-node-background .node-base{fill:rgba(68,74,84,.96)!important;stroke:rgba(132,145,164,.34)!important;filter:url(#nodeShadow)!important}
+.focus-node-background .node-inner{fill:rgba(255,255,255,.01)!important;stroke:rgba(255,255,255,.02)!important}
+.focus-node-background .node-title{fill:rgba(232,236,241,.82)!important}
+.focus-node-background .node-subtext{fill:rgba(214,222,232,.62)!important}
+.focus-node-background .node-number-badge{fill:rgba(255,255,255,.045)!important;stroke:rgba(255,255,255,.08)!important}
+.focus-node-background .node-number-text{fill:rgba(232,236,241,.74)!important}
+.focus-node-background .node-status-pill{fill:rgba(255,255,255,.05)!important;stroke:rgba(255,255,255,.09)!important}
+.focus-node-background .node-status-text{fill:rgba(232,236,241,.72)!important}
+.focus-node-background .node-status-dot{fill:rgba(232,236,241,.58)!important}
+.focus-node-background .node-shadow{fill:rgba(0,0,0,.12)!important}
+.focus-edge-background .edge-path{stroke:rgba(128,138,150,.78)!important}
+.focus-edge-background .edge-label-bg{fill:rgba(16,21,29,.88)!important;stroke:rgba(132,145,164,.12)!important}
+.focus-edge-background .edge-label-text{fill:rgba(214,222,232,.72)!important}
 .outline-row.focus-hit{border-color:rgba(255,196,157,.24);box-shadow:0 0 0 1px rgba(255,111,44,.08), inset 0 1px 0 rgba(255,255,255,.02)}
 .outline-title-line{display:flex;align-items:center;gap:6px;min-width:0}
 .outline-favorite{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:rgba(255,196,157,.12);border:1px solid rgba(255,160,120,.18);color:#ffd8c4;font-size:10px;font-weight:800;line-height:1}
@@ -1288,8 +1308,9 @@ svg{background:transparent;position:relative;z-index:1}
         </div>
 
         <div id="io-export-options" class="io-export-options" hidden>
-          <label class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox" checked><span>ナンバリングを含めない</span></label>
-          <label class="tb-check" for="export-omit-subtext"><input id="export-omit-subtext" type="checkbox"><span>補足を含めない</span></label>
+          <label id="export-opt-omit-numbering" class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox" checked><span>ナンバリングを含めない</span></label>
+          <label id="export-opt-omit-subtext" class="tb-check" for="export-omit-subtext"><input id="export-omit-subtext" type="checkbox"><span>補足を含めない</span></label>
+          <label id="export-opt-omit-done" class="tb-check" for="export-omit-done"><input id="export-omit-done" type="checkbox" checked><span>完了済みを含めない</span></label>
         </div>
 
         <label class="io-label" for="j-io">内容</label>
@@ -1520,7 +1541,8 @@ function clearOutlineDropState(){
 }
 function renderOutlineEditor(){
   if(!outlineListEl) return;
-  const focusSet=isFocusModeActive() ? getFocusBranchNodeIds() : null;
+  const focusGroups=isFocusModeActive() ? getFocusGroups() : null;
+  const focusSet=getFocusVisibleSet(focusGroups);
   const sourceNodes=(meta?.hideDone ? nodes.filter(node=>node.status!=='done') : nodes);
   const visibleIdsSet=new Set(sourceNodes.map(node=>node.id));
   const sourceEdges=edges.filter(edge=>visibleIdsSet.has(edge.from)&&visibleIdsSet.has(edge.to));
@@ -1721,9 +1743,10 @@ function getSelectionExportNodeIds(){
   if(!ids.size && activeNodeId && nb(activeNodeId)) ids.add(activeNodeId);
   return ids;
 }
-function getStructuredExportContext(onlySelection=false){
+function getStructuredExportContext(onlySelection=false,options={}){
   const pickedIds = onlySelection ? getSelectionExportNodeIds() : new Set(nodes.map(n=>n.id));
-  const exportNodes = nodes.filter(n=>pickedIds.has(n.id)).slice();
+  const omitDone=!!options.omitDone;
+  const exportNodes = nodes.filter(n=>pickedIds.has(n.id) && !(omitDone && n.status==='done')).slice();
   const exportNodeIds = new Set(exportNodes.map(n=>n.id));
   const exportEdges = edges.filter(e=>exportNodeIds.has(e.from)&&exportNodeIds.has(e.to)).slice();
   const hierarchy=getHierarchyMaps(exportNodes,exportEdges);
@@ -2098,6 +2121,10 @@ const focusModeSideBtn=document.getElementById('b-focus-side');
 const exportOptionsEl=document.getElementById('io-export-options');
 const exportOmitNumberingToggle=document.getElementById('export-omit-numbering');
 const exportOmitSubtextToggle=document.getElementById('export-omit-subtext');
+const exportOmitDoneToggle=document.getElementById('export-omit-done');
+const exportOmitNumberingOption=document.getElementById('export-opt-omit-numbering');
+const exportOmitSubtextOption=document.getElementById('export-opt-omit-subtext');
+const exportOmitDoneOption=document.getElementById('export-opt-omit-done');
 let toastTimer=null;
 let advancedUiOpen=false;
 let coachCollapsed=true;
@@ -2128,29 +2155,50 @@ function hasFavoriteNodes(){
 function shouldAutoFavoriteNewNodes(){
   return hasFavoriteNodes();
 }
-function getFocusBranchNodeIds(){
-  // 集中モードで「フォーカス内」とみなす範囲:
-  // 1) ★付きノード自身
-  // 2) その祖先(現在地の文脈を残すため)
-  // 3) その子孫(親を★にしたときに枝全体を追えるようにするため)
-  // ※ 兄弟ノードは含めない。浅い階層のマップでは兄弟まで含めると
-  //    focusSet が広がりすぎて、非フォーカスがほぼ発生しなくなるため。
-  const focusSet=new Set();
+function getFocusGroups(){
+  // 集中モードの描画は 3 層で扱う。
+  // favorite: ★付きノード自身
+  // context : favorite の祖先・子孫
+  // background: それ以外
+  // 兄弟は含めない。範囲が広がりすぎると背景化対象が消えてしまうため。
+  const favoriteSet=new Set();
+  const contextSet=new Set();
+  const backgroundSet=new Set();
   const {parentMap,childMap}=getHierarchyMaps();
-  nodes.forEach(node=>{
-    if(!node.favorite) return;
-    focusSet.add(node.id);
-
-    let cur=node.id;
+  nodes.forEach(node=>{ if(node.favorite) favoriteSet.add(node.id); });
+  favoriteSet.forEach(id=>{
+    let cur=id;
     while(parentMap[cur]){
       const parentId=parentMap[cur];
-      focusSet.add(parentId);
+      if(!favoriteSet.has(parentId)) contextSet.add(parentId);
       cur=parentId;
     }
-
-    getDescendantIds(node.id,childMap).forEach(childId=>focusSet.add(childId));
+    getDescendantIds(id,childMap).forEach(childId=>{
+      if(!favoriteSet.has(childId)) contextSet.add(childId);
+    });
   });
-  return focusSet;
+  nodes.forEach(node=>{
+    if(!favoriteSet.has(node.id) && !contextSet.has(node.id)) backgroundSet.add(node.id);
+  });
+  return {favoriteSet,contextSet,backgroundSet};
+}
+function getFocusVisibleSet(focusGroups){
+  if(!focusGroups) return null;
+  return new Set([...focusGroups.favoriteSet,...focusGroups.contextSet]);
+}
+function getNodeFocusRole(nodeId, focusGroups){
+  if(!focusGroups) return 'normal';
+  if(focusGroups.favoriteSet.has(nodeId)) return 'favorite';
+  if(focusGroups.contextSet.has(nodeId)) return 'context';
+  return 'background';
+}
+function getEdgeFocusRole(edge, focusGroups){
+  if(!focusGroups) return 'normal';
+  const fromRole=getNodeFocusRole(edge.from, focusGroups);
+  const toRole=getNodeFocusRole(edge.to, focusGroups);
+  if(fromRole==='background' || toRole==='background') return 'background';
+  if(fromRole==='favorite' || toRole==='favorite') return 'favorite';
+  return 'context';
 }
 function isFocusModeActive(){
   return !!meta?.focusMode && hasFavoriteNodes();
@@ -2171,15 +2219,20 @@ if(focusModeSideBtn){
 function getExportFormattingOptions(){
   return {
     omitNumbering:!!exportOmitNumberingToggle?.checked,
-    omitSubtext:!!exportOmitSubtextToggle?.checked
+    omitSubtext:!!exportOmitSubtextToggle?.checked,
+    omitDone:!!exportOmitDoneToggle?.checked
   };
 }
 function updateExportOptionsUi(kind=currentExportKind){
-  const show=kind==='text' || kind==='md';
+  const show=kind==='text' || kind==='md' || kind==='json';
+  const showTextOptions=kind==='text' || kind==='md';
   if(exportOptionsEl){
     exportOptionsEl.hidden=!show;
     exportOptionsEl.style.display=show?'flex':'none';
   }
+  if(exportOmitNumberingOption) exportOmitNumberingOption.style.display=showTextOptions?'inline-flex':'none';
+  if(exportOmitSubtextOption) exportOmitSubtextOption.style.display=showTextOptions?'inline-flex':'none';
+  if(exportOmitDoneOption) exportOmitDoneOption.style.display=show?'inline-flex':'none';
 }
 function setInitialTitleNodeSyncArmed(value=true){
   initialTitleNodeSyncArmed=!!value;
@@ -3108,7 +3161,7 @@ function parseImportData(raw,{kind}={}){
 }
 
 function buildOutlineText(onlySelection=false,options={}){
-  const ctx=getStructuredExportContext(onlySelection);
+  const ctx=getStructuredExportContext(onlySelection,options);
   const lines=[];
   const omitNumbering=!!options.omitNumbering;
   const omitSubtext=!!options.omitSubtext;
@@ -3132,7 +3185,7 @@ function buildOutlineText(onlySelection=false,options={}){
   return lines.join('\n').trim();
 }
 function buildMarkdownText(onlySelection=false,options={}){
-  const ctx=getStructuredExportContext(onlySelection);
+  const ctx=getStructuredExportContext(onlySelection,options);
   const lines=[];
   const omitNumbering=!!options.omitNumbering;
   const omitSubtext=!!options.omitSubtext;
@@ -4429,18 +4482,22 @@ function draw(){
   const visibleEdges=getVisibleEdges();
   const outlineNumberMap=getOutlineNumberMap();
   const focusModeActive=isFocusModeActive();
-  const focusSet=focusModeActive ? getFocusBranchNodeIds() : null;
+  const focusGroups=focusModeActive ? getFocusGroups() : null;
 
   EL.innerHTML='';
   visibleEdges.forEach(e=>{
     const f=nb(e.from),t=nb(e.to); if(!f||!t) return;
     const info=getPathInfo(f,t);
     const selected=selectedEdgeId===e.id;
-    const edgeInFocus=!focusModeActive || (focusSet?.has(e.from) && focusSet?.has(e.to));
+    const edgeRole=focusModeActive ? getEdgeFocusRole(e, focusGroups) : 'normal';
+    const edgeInFocus=edgeRole!=='background';
     const showEdgeLabel=selected || vs>=0.46;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-eid',e.id);
-    g.classList.toggle('dimmed', !edgeInFocus);
+    if(focusModeActive){
+      g.classList.add(`focus-edge-${edgeRole}`);
+      if(selected) g.classList.add('is-selected');
+    }
 
     const hit=document.createElementNS('http://www.w3.org/2000/svg','path');
     hit.setAttribute('d',info.d);
@@ -4451,6 +4508,7 @@ function draw(){
     g.appendChild(hit);
 
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('class','edge-path');
     p.setAttribute('d',info.d);
     p.setAttribute('fill','none');
     p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(128,138,150,.42)');
@@ -4464,6 +4522,7 @@ function draw(){
       const txW=Math.max(40,label.length*7+16);
 
       const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('class','edge-label-bg');
       bg.setAttribute('x',info.lx-txW/2);
       bg.setAttribute('y',info.ly-11);
       bg.setAttribute('width',txW);
@@ -4475,6 +4534,8 @@ function draw(){
       g.appendChild(bg);
 
       const tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('class','node-subtext');
+      tx.setAttribute('class','edge-label-text');
       tx.setAttribute('x',info.lx);
       tx.setAttribute('y',info.ly+1);
       tx.setAttribute('text-anchor','middle');
@@ -4501,8 +4562,7 @@ function draw(){
     const selected=isSelected(n.id);
     const edgeSeed=mode==='edge'&&efrom===n.id;
     const isDoneNode=n.status==='done';
-    const nodeInFocus=!focusModeActive || focusSet?.has(n.id);
-    const dimmedByFocus=focusModeActive && !nodeInFocus;
+    const focusRole=focusModeActive ? getNodeFocusRole(n.id, focusGroups) : 'normal';
     const renderPalette=isDoneNode
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
       : {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'};
@@ -4512,9 +4572,13 @@ function draw(){
     g.setAttribute('data-id',n.id);
     g.setAttribute('transform',`translate(${n.x},${n.y})`);
     g.style.cursor='grab';
-    g.classList.toggle('dimmed', dimmedByFocus);
+    if(focusModeActive){
+      g.classList.add(`focus-node-${focusRole}`);
+      if(selected) g.classList.add('is-selected');
+    }
 
     const shadow=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    shadow.setAttribute('class','node-shadow');
     shadow.setAttribute('x',-n.w/2);
     shadow.setAttribute('y',-n.h/2+6);
     shadow.setAttribute('width',n.w);
@@ -4585,6 +4649,7 @@ function draw(){
     }
 
     const base=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    base.setAttribute('class','node-base');
     base.setAttribute('x',-n.w/2);
     base.setAttribute('y',-n.h/2);
     base.setAttribute('width',n.w);
@@ -4597,6 +4662,7 @@ function draw(){
     g.appendChild(base);
 
     const inner=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    inner.setAttribute('class','node-inner');
     inner.setAttribute('x',-n.w/2+4);
     inner.setAttribute('y',-n.h/2+4);
     inner.setAttribute('width',n.w-8);
@@ -4633,6 +4699,7 @@ function draw(){
     if(titleLayout.numberLabel){
       const badgeW=Math.max(36, Math.min(n.w*.34, Math.ceil(estimateTextWidth(titleLayout.numberLabel,10.2)+16)));
       const badgeRect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      badgeRect.setAttribute('class','node-number-badge');
       badgeRect.setAttribute('x',contentLeft-2);
       badgeRect.setAttribute('y',headerTop);
       badgeRect.setAttribute('width',badgeW);
@@ -4645,6 +4712,7 @@ function draw(){
       contentGroup.appendChild(badgeRect);
 
       const num=document.createElementNS('http://www.w3.org/2000/svg','text');
+      num.setAttribute('class','node-number-text');
       num.setAttribute('x',contentLeft-2+badgeW/2);
       num.setAttribute('y',headerTop+NODE_NUMBER_BADGE_HEIGHT/2+.4);
       num.setAttribute('text-anchor','middle');
@@ -4663,6 +4731,7 @@ function draw(){
 
     titleLayout.lines.forEach((line,i)=>{
       const title=document.createElementNS('http://www.w3.org/2000/svg','text');
+      title.setAttribute('class','node-title');
       title.setAttribute('x',contentLeft);
       title.setAttribute('y',titleBaseY+i*titleLayout.lineHeight);
       title.setAttribute('dominant-baseline','hanging');
@@ -4699,6 +4768,7 @@ function draw(){
       const pillY=headerTop;
 
       const pill=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      pill.setAttribute('class','node-status-pill');
       pill.setAttribute('x',pillX);
       pill.setAttribute('y',pillY);
       pill.setAttribute('width',pillW);
@@ -4711,6 +4781,7 @@ function draw(){
       contentGroup.appendChild(pill);
 
       const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('class','node-status-dot');
       dot.setAttribute('cx',pillX+11);
       dot.setAttribute('cy',pillY+chipMetrics.height/2);
       dot.setAttribute('r','3');
@@ -4719,6 +4790,7 @@ function draw(){
       contentGroup.appendChild(dot);
 
       const badge=document.createElementNS('http://www.w3.org/2000/svg','text');
+      badge.setAttribute('class','node-status-text');
       badge.setAttribute('x',pillX+19);
       badge.setAttribute('y',pillY+chipMetrics.height/2+.3);
       badge.setAttribute('dominant-baseline','middle');
@@ -5914,15 +5986,19 @@ document.getElementById('confirm-no').addEventListener('click',()=>{
   document.getElementById('confirm-bar').style.display='none';
 });
 
-function buildExportObject(){
+function buildExportObject(options={}){
+  const omitDone=!!options.omitDone;
+  const exportNodes=nodes.filter(n=>!(omitDone && n.status==='done'));
+  const exportNodeIds=new Set(exportNodes.map(n=>n.id));
+  const exportEdges=edges.filter(e=>exportNodeIds.has(e.from)&&exportNodeIds.has(e.to));
   return {
     schemaVersion:'1.0',
     meta,
-    nodes:nodes.map(n=>({
+    nodes:exportNodes.map(n=>({
       id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,
       x:Math.round(n.x),y:Math.round(n.y),color:n.color
     })),
-    edges:edges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
+    edges:exportEdges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
   };
 }
 function getExportString(kind=currentExportKind){
@@ -5930,7 +6006,7 @@ function getExportString(kind=currentExportKind){
   const options=getExportFormattingOptions();
   if(kind==='text') return buildOutlineText(onlySelection,options);
   if(kind==='md') return buildMarkdownText(onlySelection,options);
-  return JSON.stringify(buildExportObject(),null,2);
+  return JSON.stringify(buildExportObject(options),null,2);
 }
 function copyTextToClipboard(value,{successMessage='内容をコピーしました',buttonId='b-cpy'}={}){
   const textValue=String(value??'');
@@ -6132,6 +6208,11 @@ if(exportOmitNumberingToggle){
 if(exportOmitSubtextToggle){
   exportOmitSubtextToggle.addEventListener('change',()=>{
     if(currentExportKind==='text' || currentExportKind==='md') writeCurrentExportToBox(currentExportKind,{silent:true});
+  });
+}
+if(exportOmitDoneToggle){
+  exportOmitDoneToggle.addEventListener('change',()=>{
+    if(currentExportKind==='text' || currentExportKind==='md' || currentExportKind==='json') writeCurrentExportToBox(currentExportKind,{silent:true});
   });
 }
 document.getElementById('b-out-refresh').addEventListener('click',()=>writeCurrentExportToBox(currentExportKind));
