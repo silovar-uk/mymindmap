@@ -1094,6 +1094,7 @@ svg{background:transparent;position:relative;z-index:1}
       <div id="c-edit">ノードを編集</div>
       <div id="c-child">子ノードを追加</div>
       <div id="c-toggle">折りたたみ / 展開</div>
+      <div id="c-focus">この枝に集中</div>
       <hr>
       <div id="c-del" style="color:#dc2626" >消す</div>
     </div>
@@ -1843,7 +1844,7 @@ const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
-let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,focusMode:false,presentationMode:false};
+let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,focusMode:false,focusNodeId:null,presentationMode:false};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -2153,11 +2154,9 @@ function updatePresentationUi(){
   if(presentationToggle) presentationToggle.checked=!!meta?.presentationMode;
 }
 function getFocusSeedNodeId(){
-  if(activeNodeId && nb(activeNodeId) && (selectedNodeIds.size===0 || selectedNodeIds.has(activeNodeId))) return activeNodeId;
-  if(selectedNodeIds.size===1){
-    const onlyId=[...selectedNodeIds][0];
-    return nb(onlyId) ? onlyId : null;
-  }
+  const seedId=meta?.focusNodeId;
+  if(seedId && nb(seedId)) return seedId;
+  if(meta && meta.focusNodeId && !nb(meta.focusNodeId)) meta.focusNodeId=null;
   return null;
 }
 function hasFavoriteNodes(){
@@ -2168,7 +2167,7 @@ function shouldAutoFavoriteNewNodes(){
 }
 function getFocusGroups(){
   // 枝集中モードの描画は 3 層で扱う。
-  // favorite: 選択中の起点ノード(枝の主役)
+  // favorite: 集中対象として明示した起点ノード(枝の主役)
   // context : 起点ノードの祖先・子孫
   // background: それ以外
   // 兄弟は含めない。枝の輪郭を明確にし、背景化が効いて見える状態を優先する。
@@ -2218,17 +2217,27 @@ function isFocusModeActive(){
   return !!meta?.focusMode && !!getFocusSeedNodeId();
 }
 function updateFocusModeUi(){
-  if(!focusModeSideBtn) return;
   const seedId=getFocusSeedNodeId();
   const active=!!meta?.focusMode && !!seedId;
-  focusModeSideBtn.style.display='';
-  focusModeSideBtn.disabled=!seedId;
-  focusModeSideBtn.classList.toggle('act',active);
-  focusModeSideBtn.setAttribute('aria-pressed',active?'true':'false');
-  focusModeSideBtn.textContent=active?'枝集中ON':'枝集中';
-  focusModeSideBtn.title=seedId ? '選択中ノードの枝だけを強調します' : 'ノードを1つ選ぶと使えます';
+  if(focusModeSideBtn){
+    focusModeSideBtn.style.display='none';
+    focusModeSideBtn.disabled=true;
+    focusModeSideBtn.classList.toggle('act',active);
+    focusModeSideBtn.setAttribute('aria-pressed',active?'true':'false');
+    focusModeSideBtn.textContent=active?'枝集中ON':'枝集中';
+  }
+  const focusChip=document.getElementById('focus-chip');
+  const focusChipText=document.getElementById('focus-chip-text');
+  const focusClearBtn=document.getElementById('focus-chip-clear');
+  if(focusChip){
+    focusChip.style.display=active ? 'inline-flex' : 'none';
+    if(focusChipText){
+      const label=seedId && nb(seedId) ? shortenText(nb(seedId).label,20) : '未設定';
+      focusChipText.textContent=seedId && nb(seedId) ? `集中モード: ${label}` : '集中モード';
+    }
+    if(focusClearBtn) focusClearBtn.disabled=!active;
+  }
 }
-
 if(focusModeSideBtn){
   focusModeSideBtn.addEventListener('click',()=>{
     toggleFocusMode();
@@ -2324,7 +2333,7 @@ function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),focusMode:false,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),focusMode:false,focusNodeId:null,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
@@ -3175,6 +3184,7 @@ function parseImportData(raw,{kind}={}){
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial',
     hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone),
     focusMode:false,
+    focusNodeId:null,
     presentationMode:!!((parsed.meta&&parsed.meta.presentationMode)??parsed.presentationMode)
   };
   ensureOutlineOrders(nodesNorm,edgesNorm);
@@ -3940,7 +3950,7 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   nodes=(d.nodes||[]).map(normalizeNode);
   edges=(d.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone),focusMode:false,presentationMode:!!(d.meta&&d.meta.presentationMode)};
+  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone),focusMode:false,focusNodeId:null,presentationMode:!!(d.meta&&d.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
@@ -3987,24 +3997,20 @@ function toggleNodeDone(id,{withHistory=true}={}){
 function toggleNodeFavorite(id,{withHistory=true}={}){
   return false;
 }
-function toggleFocusMode(force){
+function toggleFocusMode(force,{seedId=null,silent=false}={}){
   const next=typeof force==='boolean' ? force : !meta.focusMode;
-  const seedId=getFocusSeedNodeId();
-  if(next && !seedId){
+  const resolvedSeedId=(seedId && nb(seedId)) ? seedId : getFocusSeedNodeId();
+  if(next && !resolvedSeedId){
     meta.focusMode=false;
     updateFocusModeUi();
-    showToast('枝集中にしたいノードを1つ選んでください','warn');
+    if(!silent) showToast('右クリックしたノードから集中を選んでください','warn');
     return false;
   }
-  if(meta.focusMode===next){
-    updateFocusModeUi();
-    draw();
-    return true;
-  }
   snapshot();
+  meta.focusNodeId=next ? resolvedSeedId : null;
   meta.focusMode=next;
   renderNow();
-  showToast(next?'枝集中をONにしました':'枝集中をOFFにしました');
+  if(!silent) showToast(next?'集中モードをONにしました':'集中モードを解除しました');
   return true;
 }
 function cycleSingleNodeStatus(){
@@ -5207,6 +5213,11 @@ NL.addEventListener('contextmenu',e=>{
   if(!isSelected(id)) setSingleSelection(id);
   cid=id;
   document.getElementById('c-toggle').textContent=(nb(id)?.collapsed?'展開する':'折りたたむ');
+  const cFocus=document.getElementById('c-focus');
+  if(cFocus){
+    const focused=!!meta?.focusMode && getFocusSeedNodeId()===id;
+    cFocus.textContent=focused?'この枝を集中対象にしている':'この枝に集中';
+  }
   const wr=cw.getBoundingClientRect();
   cm.style.display='block';
   cm.style.left=(e.clientX-wr.left)+'px';
@@ -5941,6 +5952,7 @@ document.getElementById('confirm-yes').addEventListener('click',()=>{
   edges=[];
   meta.title='';
   meta.focusMode=false;
+  meta.focusNodeId=null;
   meta.presentationMode=false;
   updatePresentationUi();
   document.getElementById('map-title').value='';
@@ -6149,6 +6161,14 @@ if(hideDoneToggle){
     clearSelection();
     renderNow();
     showToast(meta.hideDone?'完了ノードを非表示にしました':'完了ノードを再表示しました');
+  });
+}
+if(presentationToggle){
+  presentationToggle.addEventListener('change',e=>{
+    snapshot();
+    meta.presentationMode=!!e.target.checked;
+    renderNow();
+    showToast(meta.presentationMode?'共有表示をONにしました':'共有表示をOFFにしました');
   });
 }
 document.getElementById('b-outline').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setOutlineOpen(!appEl.classList.contains('outline-open')); });
@@ -6549,7 +6569,7 @@ if(document.readyState==='complete'){
   }
   @media (max-width:820px){
     #inbox-wrap{flex-basis:min(70vw,280px);width:min(70vw,280px)}
-    #location-chip,#path-chip{max-width:calc(100% - 24px)}
+    #location-chip,#path-chip,#focus-chip{max-width:calc(100% - 24px)}
   }
   `;
   const styleEl=document.createElement('style');
@@ -6609,6 +6629,12 @@ if(document.readyState==='complete'){
     pathChip.className='hud-chip';
     pathChip.innerHTML='<span class="dot"></span><strong>現在地</strong><span>未選択</span>';
     hud.appendChild(pathChip);
+
+    const focusChip=document.createElement('div');
+    focusChip.id='focus-chip';
+    focusChip.className='hud-chip';
+    focusChip.innerHTML='<span class="dot"></span><strong>集中モード</strong><span id="focus-chip-text" class="focus-chip-text">未設定</span><button id="focus-chip-clear" type="button">解除</button>';
+    hud.appendChild(focusChip);
   }
 
 
@@ -6629,6 +6655,15 @@ if(document.readyState==='complete'){
   const inboxResizer=document.getElementById('inbox-resizer');
   const inboxToggleInline=document.getElementById('inbox-toggle-inline');
   const inboxToggleSide=document.getElementById('inbox-toggle-side');
+  const focusChipClearBtn=document.getElementById('focus-chip-clear');
+  if(focusChipClearBtn){
+    focusChipClearBtn.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      if(!isFocusModeActive()) return;
+      toggleFocusMode(false);
+    });
+  }
   const dropHint=document.getElementById('inbox-drop-hint');
   const collapseConvertedBtn=document.getElementById('inbox-collapse-converted');
 
