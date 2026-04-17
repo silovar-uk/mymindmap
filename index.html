@@ -1289,6 +1289,7 @@ svg{background:transparent;position:relative;z-index:1}
 
         <div id="io-export-options" class="io-export-options" hidden>
           <label class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox" checked><span>ナンバリングを含めない</span></label>
+          <label class="tb-check" for="export-omit-subtext"><input id="export-omit-subtext" type="checkbox"><span>補足を含めない</span></label>
         </div>
 
         <label class="io-label" for="j-io">内容</label>
@@ -2096,6 +2097,7 @@ const hideDoneToggle=document.getElementById('hide-done-toggle');
 const focusModeSideBtn=document.getElementById('b-focus-side');
 const exportOptionsEl=document.getElementById('io-export-options');
 const exportOmitNumberingToggle=document.getElementById('export-omit-numbering');
+const exportOmitSubtextToggle=document.getElementById('export-omit-subtext');
 let toastTimer=null;
 let advancedUiOpen=false;
 let coachCollapsed=true;
@@ -2171,7 +2173,10 @@ if(focusModeSideBtn){
   });
 }
 function getExportFormattingOptions(){
-  return {omitNumbering:!!exportOmitNumberingToggle?.checked};
+  return {
+    omitNumbering:!!exportOmitNumberingToggle?.checked,
+    omitSubtext:!!exportOmitSubtextToggle?.checked
+  };
 }
 function updateExportOptionsUi(kind=currentExportKind){
   const show=kind==='text' || kind==='md';
@@ -3110,6 +3115,7 @@ function buildOutlineText(onlySelection=false,options={}){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
   const omitNumbering=!!options.omitNumbering;
+  const omitSubtext=!!options.omitSubtext;
   const seen=new Set();
   function walk(id,depth,edgeLabel=''){
     if(seen.has(id)) return;
@@ -3122,7 +3128,7 @@ function buildOutlineText(onlySelection=false,options={}){
     line+=[numberText,node.label].filter(Boolean).join(' ').trim();
     if(node.status && node.status!=='none') line+=` [${STATUS_META[node.status].label}]`;
     lines.push(line);
-    if(node.subtext) lines.push('  '.repeat(depth+1)+node.subtext.replace(/\n/g,' / '));
+    if(node.subtext && !omitSubtext) lines.push('  '.repeat(depth+1)+node.subtext.replace(/\n/g,' / '));
     (ctx.childMap[id]||[]).forEach(ch=>walk(ch.id,depth+1,ch.label));
   }
   ctx.roots.forEach(r=>walk(r.id,0));
@@ -3133,6 +3139,7 @@ function buildMarkdownText(onlySelection=false,options={}){
   const ctx=getStructuredExportContext(onlySelection);
   const lines=[];
   const omitNumbering=!!options.omitNumbering;
+  const omitSubtext=!!options.omitSubtext;
   const seen=new Set();
   function walk(id,depth,edgeLabel=''){
     if(seen.has(id)) return;
@@ -3149,7 +3156,7 @@ function buildMarkdownText(onlySelection=false,options={}){
       line+=`${title}${status}`.trim();
       lines.push(line);
     }
-    if(node.subtext) lines.push((depth===0?'':'  '.repeat(depth)) + node.subtext.replace(/\n/g,' / '));
+    if(node.subtext && !omitSubtext) lines.push((depth===0?'':'  '.repeat(depth)) + node.subtext.replace(/\n/g,' / '));
     (ctx.childMap[id]||[]).forEach(ch=>walk(ch.id,depth+1,ch.label));
     if(depth===0) lines.push('');
   }
@@ -6123,6 +6130,11 @@ document.getElementById('b-exp-text').addEventListener('click',()=>activateExpor
 document.getElementById('b-exp-md').addEventListener('click',()=>activateExportTab('md',{copy:true}));
 if(exportOmitNumberingToggle){
   exportOmitNumberingToggle.addEventListener('change',()=>{
+    if(currentExportKind==='text' || currentExportKind==='md') writeCurrentExportToBox(currentExportKind,{silent:true});
+  });
+}
+if(exportOmitSubtextToggle){
+  exportOmitSubtextToggle.addEventListener('change',()=>{
     if(currentExportKind==='text' || currentExportKind==='md') writeCurrentExportToBox(currentExportKind,{silent:true});
   });
 }
