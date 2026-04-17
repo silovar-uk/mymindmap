@@ -2366,6 +2366,8 @@ function toW(x,y){return{x:x*vs+vx,y:y*vs+vy}}
 
 function closePanels(){
   cm.style.display='none';
+  ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
+  const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   closeEp();
   closeEep();
 }
@@ -5215,9 +5217,19 @@ NL.addEventListener('contextmenu',e=>{
   const id=g.dataset.id;
   if(!isSelected(id)) setSingleSelection(id);
   cid=id;
-  document.getElementById('c-toggle').textContent=(nb(id)?.collapsed?'展開する':'折りたたむ');
+  const cEdit=document.getElementById('c-edit');
+  const cChild=document.getElementById('c-child');
+  const cToggle=document.getElementById('c-toggle');
+  const cDelete=document.getElementById('c-del');
   const cFocus=document.getElementById('c-focus');
+  const cHr=cm.querySelector('hr');
+  if(cEdit) cEdit.style.display='none';
+  if(cChild) cChild.style.display='none';
+  if(cToggle) cToggle.style.display='none';
+  if(cDelete) cDelete.style.display='none';
+  if(cHr) cHr.style.display='none';
   if(cFocus){
+    cFocus.style.display='block';
     const focused=!!meta?.focusMode && getFocusSeedNodeId()===id;
     cFocus.textContent=focused?'この枝を集中対象にしている':'この枝に集中';
   }
@@ -5263,6 +5275,7 @@ EL.addEventListener('contextmenu',e=>{
   e.preventDefault();
   e.stopPropagation();
   cm.style.display='none';
+  ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   clearSelection();
   selectedEdgeId=g.dataset.eid;
   draw();
@@ -5396,13 +5409,17 @@ sv.addEventListener('wheel',e=>{
 },{passive:false});
 document.addEventListener('mousedown',e=>{
   if(!flushOpenEditors(e.target)) return;
-  if(!cm.contains(e.target)) cm.style.display='none';
+  if(!cm.contains(e.target)){
+    cm.style.display='none';
+    ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
+    const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
+  }
 });
 
 document.getElementById('c-edit').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   openEp(id);
 });
 document.getElementById('c-child').addEventListener('mousedown',e=>{
@@ -5410,20 +5427,20 @@ document.getElementById('c-child').addEventListener('mousedown',e=>{
   if(!nb(cid)) return;
   snapshot();
   const child=createChildNode(cid,{status:'none',fitMode:'shrink'});
-  cm.style.display='none'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   draw();
   if(child) openEp(child.id);
 });
 document.getElementById('c-toggle').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   toggleCollapse(id);
 });
 document.getElementById('c-focus').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   if(!nb(id)) return;
   toggleFocusMode(true,{seedId:id,silent:false});
 });
@@ -5432,7 +5449,7 @@ document.getElementById('c-del').addEventListener('mousedown',e=>{
   snapshot();
   const ids=isSelected(cid) && selectedNodeIds.size>1 ? [...selectedNodeIds] : [cid];
   deleteNodes(ids);
-  cm.style.display='none'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   draw();
 });
 
