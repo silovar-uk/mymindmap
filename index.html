@@ -1313,7 +1313,7 @@ svg{background:transparent;position:relative;z-index:1}
         <div id="io-export-options" class="io-export-options" hidden>
           <label id="export-opt-omit-numbering" class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox" checked><span>ナンバリングを含めない</span></label>
           <label id="export-opt-omit-subtext" class="tb-check" for="export-omit-subtext"><input id="export-omit-subtext" type="checkbox"><span>補足を含めない</span></label>
-          <label id="export-opt-omit-done" class="tb-check" for="export-omit-done"><input id="export-omit-done" type="checkbox" checked><span>完了済みを含めない</span></label>
+          <label id="export-opt-omit-done" class="tb-check" for="export-omit-done"><input id="export-omit-done" type="checkbox"><span>完了済みを含めない</span></label>
         </div>
 
         <label class="io-label" for="j-io">内容</label>
@@ -3668,46 +3668,47 @@ function getNodeNumberLabel(node, numberMap=null){
   return map[node.id]||'';
 }
 function getNodePreferredInnerWidth(n, numberMap=null){
-  const statusMetrics=getStatusChipMetrics(n.status);
-  const numberLabel=getNodeNumberLabel(n, numberMap);
-  const collapseReserve=hasVisibleChildren(n.id) ? 28 : 0;
-  const headerActionReserve=NODE_FAVORITE_HEADER_RESERVE + collapseReserve;
+  const presentationMode=!!meta?.presentationMode;
+  const statusMetrics=presentationMode ? null : getStatusChipMetrics(n.status);
+  const numberLabel=presentationMode ? '' : getNodeNumberLabel(n, numberMap);
+  const collapseReserve=!presentationMode && hasVisibleChildren(n.id) ? 28 : 0;
+  const headerActionReserve=presentationMode ? 0 : (NODE_FAVORITE_HEADER_RESERVE + collapseReserve);
   const numberWidth=numberLabel ? Math.max(36, Math.ceil(estimateTextWidth(numberLabel,10.2)+18)) : 0;
   const headerWidth=numberWidth + (statusMetrics ? statusMetrics.width + (numberWidth?8:0) : 0) + headerActionReserve;
-  const presentationMode=!!meta?.presentationMode;
-  const titleFont=presentationMode ? (n.fitMode==='wrap' ? 16.8 : 17.4) : (n.fitMode==='wrap' ? 13.4 : 14);
+  const titleFont=presentationMode ? (n.fitMode==='wrap' ? 23.2 : 24.4) : (n.fitMode==='wrap' ? 13.4 : 14);
   const titleWidth=Math.ceil(estimateTextWidth(String(n.label||'新規案件'),titleFont));
   const subLines=presentationMode ? [] : String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
   const subWidth=subLines.length ? Math.max(...subLines.map(line=>Math.ceil(estimateTextWidth(line,NODE_SUB_FONT_SIZE)))) : 0;
-  return Math.max(144, Math.min(NODE_W_MAX-NODE_INNER_PAD_X*2, Math.max(headerWidth, titleWidth + NODE_TEXT_SAFE_PAD_RIGHT, subWidth + NODE_TEXT_SAFE_PAD_RIGHT)));
+  const maxInnerWidth=(presentationMode ? 520 : NODE_W_MAX)-NODE_INNER_PAD_X*2;
+  return Math.max(presentationMode ? 180 : 144, Math.min(maxInnerWidth, Math.max(headerWidth, titleWidth + (presentationMode ? 6 : NODE_TEXT_SAFE_PAD_RIGHT), subWidth + NODE_TEXT_SAFE_PAD_RIGHT)));
 }
 function getNodeTitleLayout(n, numberMap=null){
-  const statusMetrics=getStatusChipMetrics(n.status);
-  const numberLabel=getNodeNumberLabel(n, numberMap);
+  const presentationMode=!!meta?.presentationMode;
+  const statusMetrics=presentationMode ? null : getStatusChipMetrics(n.status);
+  const numberLabel=presentationMode ? '' : getNodeNumberLabel(n, numberMap);
   const headerHeight=numberLabel || statusMetrics ? NODE_HEADER_BAND_HEIGHT : 0;
   const label=String(n?.label||'新規案件');
-  const usable=Math.max(96, n.w-NODE_INNER_PAD_X*2-NODE_TEXT_LAYOUT_SAFE_WIDTH);
-  const presentationMode=!!meta?.presentationMode;
-  const baseFont=presentationMode ? (n.fitMode==='wrap' ? 16.8 : 17.4) : (n.fitMode==='wrap' ? 13.4 : 14);
-  const minFont=presentationMode ? (n.fitMode==='wrap' ? 14.2 : 13.2) : (n.fitMode==='wrap' ? 12 : 10.8);
+  const usable=Math.max(presentationMode ? 132 : 96, n.w-NODE_INNER_PAD_X*2-(presentationMode ? 4 : NODE_TEXT_LAYOUT_SAFE_WIDTH));
+  const baseFont=presentationMode ? (n.fitMode==='wrap' ? 23.2 : 24.4) : (n.fitMode==='wrap' ? 13.4 : 14);
+  const minFont=presentationMode ? (n.fitMode==='wrap' ? 18.4 : 18.8) : (n.fitMode==='wrap' ? 12 : 10.8);
   let fontSize=baseFont;
   let lines=[];
   while(fontSize>=minFont-0.01){
     const maxUnits=Math.max(8, usable/Math.max(6.4,fontSize*.92));
-    lines=wrapText(label,maxUnits,TITLE_WRAP_MAX_LINES).filter(Boolean);
-    if(lines.length<=3) break;
+    lines=wrapText(label,maxUnits,presentationMode ? 4 : TITLE_WRAP_MAX_LINES).filter(Boolean);
+    if(lines.length<=(presentationMode ? 4 : 3)) break;
     fontSize-=0.6;
   }
   if(!lines.length) lines=['新規案件'];
-  if(lines.length>4){
+  if(lines.length>(presentationMode ? 4 : 4)){
     fontSize=minFont;
     const maxUnits=Math.max(7, usable/Math.max(6,fontSize*.92));
-    lines=wrapText(label,maxUnits,4).filter(Boolean);
+    lines=wrapText(label,maxUnits,presentationMode ? 4 : 4).filter(Boolean);
   }
   return {
     lines,
     fontSize,
-    lineHeight:Math.max(16, Math.ceil(fontSize+4)),
+    lineHeight:Math.max(presentationMode ? 24 : 16, Math.ceil(fontSize+(presentationMode ? 5 : 4))),
     usableWidth:usable,
     numberLabel,
     headerHeight
@@ -4574,7 +4575,7 @@ function draw(){
 
   NL.innerHTML='';
   const showSubtextGlobal=!meta?.presentationMode;
-  const showStatusGlobal=true;
+  const showStatusGlobal=!meta?.presentationMode;
   const compactTitles=false;
   visibleNodes.forEach(n=>{
     updateNodeMetrics(n, outlineNumberMap);
@@ -4587,7 +4588,7 @@ function draw(){
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
       : {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'};
     const showSubtext=showSubtextGlobal;
-    const showStatus=showStatusGlobal || selected || edgeSeed;
+    const showStatus=!meta?.presentationMode && (showStatusGlobal || selected || edgeSeed);
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-id',n.id);
     g.setAttribute('transform',`translate(${n.x},${n.y})`);
@@ -4825,7 +4826,7 @@ function draw(){
 
     g.appendChild(contentGroup);
 
-    if(hasVisibleChildren(n.id)){
+    if(hasVisibleChildren(n.id) && !meta?.presentationMode){
       const cg=document.createElementNS('http://www.w3.org/2000/svg','g');
       cg.setAttribute('data-id',n.id);
       cg.setAttribute('data-action','toggle-collapse');
@@ -4895,9 +4896,10 @@ function draw(){
     }
 
     const favoriteSize=NODE_FAVORITE_ICON_SIZE;
-    const favoriteX=n.w/2-NODE_INNER_PAD_X-favoriteSize-(hasVisibleChildren(n.id)?28:0);
+    const favoriteX=n.w/2-NODE_INNER_PAD_X-favoriteSize-(hasVisibleChildren(n.id) && !meta?.presentationMode?28:0);
     const favoriteY=headerTop+Math.max(0,(NODE_NUMBER_BADGE_HEIGHT-favoriteSize)/2);
 
+    if(!meta?.presentationMode){
     const doneGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
     doneGroup.setAttribute('data-id',n.id);
     doneGroup.setAttribute('data-action','toggle-done');
@@ -4939,8 +4941,9 @@ function draw(){
     }
 
     g.appendChild(doneGroup);
+    }
 
-    if(selected && selectedNodeIds.size>1){
+    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){
       const tagBg=document.createElementNS('http://www.w3.org/2000/svg','rect');
       tagBg.setAttribute('x',-28);
       tagBg.setAttribute('y',n.h/2+4);
@@ -5416,6 +5419,13 @@ document.getElementById('c-toggle').addEventListener('mousedown',e=>{
   const id=cid;
   cm.style.display='none'; cid=null;
   toggleCollapse(id);
+});
+document.getElementById('c-focus').addEventListener('mousedown',e=>{
+  e.stopPropagation();
+  const id=cid;
+  cm.style.display='none'; cid=null;
+  if(!nb(id)) return;
+  toggleFocusMode(true,{seedId:id,silent:false});
 });
 document.getElementById('c-del').addEventListener('mousedown',e=>{
   e.stopPropagation();
