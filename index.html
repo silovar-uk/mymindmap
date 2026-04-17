@@ -6766,7 +6766,7 @@ if(document.readyState==='complete'){
       collapseConvertedBtn.textContent=hideConvertedInbox?'変換済みも表示':'変換済みだけ隠す';
     }
     if(!items.length){
-      inboxListEl.innerHTML='<div class="inbox-empty">まだメモがありません。左で思いつきを雑に置いて、必要になったものだけ右へ構造化できます。</div>';
+      inboxListEl.innerHTML='';
       return;
     }
     inboxListEl.innerHTML=items.map(item=>`
