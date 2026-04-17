@@ -911,6 +911,7 @@ svg{background:transparent;position:relative;z-index:1}
 }
 
 #b-focus-side{
+  display:none !important;
   position:absolute;
   left:-116px !important;
   top:82px !important;
@@ -1016,6 +1017,8 @@ svg{background:transparent;position:relative;z-index:1}
         <button id="b-undo">戻す</button>
         <button id="b-redo">やり直す</button>
         <label class="tb-check" for="hide-done-toggle"><input id="hide-done-toggle" type="checkbox"><span>完了を非表示</span></label>
+        <button id="b-branch-focus" class="secondary-action" aria-pressed="false">枝集中</button>
+        <label class="tb-check" for="presentation-toggle"><input id="presentation-toggle" type="checkbox"><span>共有表示</span></label>
         <button id="b-more" class="secondary-action" aria-expanded="false">詳細を開く</button>
       </div>
     </div>
@@ -1289,7 +1292,6 @@ svg{background:transparent;position:relative;z-index:1}
   <div id="io-wrap">
     <button id="b-io-side" type="button" aria-label="データの開閉">データ</button>
     <button id="b-outline-side" type="button" aria-label="アウトライナーの開閉">アウトライナー</button>
-    <button id="b-focus-side" type="button" aria-label="集中モードの切り替え" aria-pressed="false">集中モード</button>
     <div id="io">
       <div class="io-panel">
         <div class="io-head">
@@ -1570,7 +1572,7 @@ function renderOutlineEditor(){
       row.dataset.id=id;
       row.dataset.parent=parentId||'';
       row.draggable=true;
-      row.innerHTML=`<span class="outline-handle" aria-hidden="true">⋮⋮</span><span class="outline-number">${escapeHtml(numberMap[id]||'')}</span><div class="outline-main"><div class="outline-title-line">${node.favorite?'<span class="outline-favorite" aria-label="集中対象">★</span>':''}<div class="outline-title-text">${escapeHtml(node.label||'新規案件')}</div></div>${node.subtext?`<div class="outline-subtext">${escapeHtml(shortenText(node.subtext,84))}</div>`:''}<div class="outline-actions"><button class="outline-action" type="button" data-outline-action="edit">編集</button><button class="outline-action" type="button" data-outline-action="toggle-favorite">${node.favorite?'★を外す':'★を付ける'}</button><button class="outline-action" type="button" data-outline-action="add-sibling">＋同階層</button><button class="outline-action" type="button" data-outline-action="add-child">＋子</button><button class="outline-action" type="button" data-outline-action="outdent">←</button><button class="outline-action" type="button" data-outline-action="indent">→</button><button class="outline-action" type="button" data-outline-action="up">↑</button><button class="outline-action" type="button" data-outline-action="down">↓</button></div></div>${node.status&&node.status!=='none'?`<span class="outline-status ${escapeHtml(node.status)}">${escapeHtml(STATUS_META[node.status].label)}</span>`:''}`;
+      row.innerHTML=`<span class="outline-handle" aria-hidden="true">⋮⋮</span><span class="outline-number">${escapeHtml(numberMap[id]||'')}</span><div class="outline-main"><div class="outline-title-line"><div class="outline-title-text">${escapeHtml(node.label||'新規案件')}</div></div>${node.subtext?`<div class="outline-subtext">${escapeHtml(shortenText(node.subtext,84))}</div>`:''}<div class="outline-actions"><button class="outline-action" type="button" data-outline-action="edit">編集</button><button class="outline-action" type="button" data-outline-action="add-sibling">＋同階層</button><button class="outline-action" type="button" data-outline-action="add-child">＋子</button><button class="outline-action" type="button" data-outline-action="outdent">←</button><button class="outline-action" type="button" data-outline-action="indent">→</button><button class="outline-action" type="button" data-outline-action="up">↑</button><button class="outline-action" type="button" data-outline-action="down">↓</button></div></div>${node.status&&node.status!=='none'?`<span class="outline-status ${escapeHtml(node.status)}">${escapeHtml(STATUS_META[node.status].label)}</span>`:''}`;
       row.addEventListener('click',ev=>{
         const actionBtn=ev.target.closest('[data-outline-action]');
         if(actionBtn){
@@ -1580,10 +1582,6 @@ function renderOutlineEditor(){
             setSingleSelection(id);
             draw();
             openEp(id);
-            return;
-          }
-          if(action==='toggle-favorite'){
-            toggleNodeFavorite(id);
             return;
           }
           if(action==='add-sibling'){
@@ -1845,7 +1843,7 @@ const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
-let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,focusMode:false};
+let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,focusMode:false,presentationMode:false};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -1942,12 +1940,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.1';
-const APP_UPDATED_AT='2026-04-17 00:24 JST';
+const APP_VERSION='1.6.2';
+const APP_UPDATED_AT='2026-04-17 11:52 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.2',date:'2026-04-17 11:52 JST',summary:'共有用に補足を隠してタイトルを大きく見せる表示モードを追加し、通常表示とPNG保存の両方へ反映。',items:['上部に「共有表示」チェックを追加し、初期状態はOFFのまま任意で切り替えられるよう対応','共有表示中はノード補足を描画せず、タイトルの基準フォントと折り返しレイアウトを拡大して読みやすく調整','ノード幅と高さの計算も共有表示に合わせて見直し、補足を消したぶんタイトルが大きく収まるよう変更','JSONの meta に共有表示フラグを保持し、読み込み後も表示モードを再現できるよう更新','描画本体で切り替える方式にしたため、PNG保存でも共有表示の見た目がそのまま反映されるよう整理']},
 {version:'1.6.1',date:'2026-04-17 00:24 JST',summary:'選択中ノードの子孫込みJSONコピーと、空白貼り付け / 子ノード貼り付けを追加して他のマインドマップへ枝ごと持ち運びやすく改善。',items:['親ノードを選択してコピーすると、子孫ノードと内部の接続線を含む専用JSONをクリップボードへ書き出すよう追加','空白で貼り付けた場合はビューポート中心または最後にクリックした空白位置へ新しい枝として貼り付けるよう対応','ノードを選択した状態で貼り付けた場合は、その選択ノードの子ノードとして枝ごと貼り付けるよう対応','貼り付け時は新しいノードIDと線IDを採番し直し、元の色・メモ・状態・★・相対レイアウトを保ったまま複製できるよう整理','貼り付けた枝では子孫ノードのうち子を持つものを折りたたみ状態にし、最初は見通しよく扱えるよう調整','キャンバス上で通常の Ctrl/Cmd+C / Ctrl/Cmd+V で使えるよう、コピーイベントと貼り付けイベントに枝JSONの処理を追加']},
 {version:'1.6.0',date:'2026-04-16 13:17 JST',summary:'左インボックス、現在地HUD、ミニマップ、出力時のインボックス切替を追加し、構造化前のメモと構造化後のマップを同じ画面で往復しやすく改善。',items:['左側に常設インボックスを追加し、1行入力・複数行分割・カード管理・幅変更に対応','インボックスカードをルート化 / 子化できる変換導線を追加し、カードのドラッグ&ドロップでキャンバス上へノード化できるよう拡張','テキスト / Markdown 出力ではインボックスをデフォルト非表示にし、チェックを入れたときだけ末尾セクションとして含めるよう変更','現在地の把握用にビューポート位置・パス表示・右下ミニマップを追加し、クリックで見たい場所へジャンプできるよう改善','インボックス→マップ変換時の軽いフライト演出と到着パルスを追加し、整理した手応えが残るよう調整','JSON 保存 / 読み込み・Undo / Redo でもインボックス状態と関連UI設定を保持するよう更新']},
 {version:'1.5.3',date:'2026-04-16 23:59 JST',summary:'同階層追加でも右優先の初期配置を採用し、右側が詰まっている場合は時計回りに空きを探すよう統一。',items:['createSiblingNode の配置基準を親中心ではなく選択中ノード基準へ変更し、同階層追加でもまず右側に出るよう調整','同階層追加でも子ノード追加と同じ方向ベクトルと方向バイアスを使い、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう統一','親を持つノードは従来どおり同じ親へ接続したまま、配置だけを右優先のルールへ変更','ルートノード同士の同階層追加も同じ右優先ロジックで配置し、下方向へずれる旧挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2117,7 +2116,8 @@ const shortcutTitleEl=document.getElementById('shortcut-title');
 const shortcutBodyEl=document.getElementById('shortcut-body');
 const coachToggleBtn=document.getElementById('coach-toggle');
 const hideDoneToggle=document.getElementById('hide-done-toggle');
-const focusModeSideBtn=document.getElementById('b-focus-side');
+const presentationToggle=document.getElementById('presentation-toggle');
+const focusModeSideBtn=document.getElementById('b-branch-focus');
 const exportOptionsEl=document.getElementById('io-export-options');
 const exportOmitNumberingToggle=document.getElementById('export-omit-numbering');
 const exportOmitSubtextToggle=document.getElementById('export-omit-subtext');
@@ -2149,33 +2149,47 @@ function updateDocumentTitle(){
 function updateHideDoneUi(){
   if(hideDoneToggle) hideDoneToggle.checked=!!meta?.hideDone;
 }
+function updatePresentationUi(){
+  if(presentationToggle) presentationToggle.checked=!!meta?.presentationMode;
+}
+function getFocusSeedNodeId(){
+  if(activeNodeId && nb(activeNodeId) && (selectedNodeIds.size===0 || selectedNodeIds.has(activeNodeId))) return activeNodeId;
+  if(selectedNodeIds.size===1){
+    const onlyId=[...selectedNodeIds][0];
+    return nb(onlyId) ? onlyId : null;
+  }
+  return null;
+}
 function hasFavoriteNodes(){
-  return nodes.some(node=>!!node.favorite);
+  return !!getFocusSeedNodeId();
 }
 function shouldAutoFavoriteNewNodes(){
-  return hasFavoriteNodes();
+  return false;
 }
 function getFocusGroups(){
-  // 集中モードの描画は 3 層で扱う。
-  // favorite: ★付きノード自身
-  // context : favorite の祖先・子孫
+  // 枝集中モードの描画は 3 層で扱う。
+  // favorite: 選択中の起点ノード(枝の主役)
+  // context : 起点ノードの祖先・子孫
   // background: それ以外
-  // 兄弟は含めない。範囲が広がりすぎると背景化対象が消えてしまうため。
+  // 兄弟は含めない。枝の輪郭を明確にし、背景化が効いて見える状態を優先する。
   const favoriteSet=new Set();
   const contextSet=new Set();
   const backgroundSet=new Set();
+  const seedId=getFocusSeedNodeId();
+  if(!seedId){
+    nodes.forEach(node=>backgroundSet.add(node.id));
+    return {favoriteSet,contextSet,backgroundSet};
+  }
   const {parentMap,childMap}=getHierarchyMaps();
-  nodes.forEach(node=>{ if(node.favorite) favoriteSet.add(node.id); });
-  favoriteSet.forEach(id=>{
-    let cur=id;
-    while(parentMap[cur]){
-      const parentId=parentMap[cur];
-      if(!favoriteSet.has(parentId)) contextSet.add(parentId);
-      cur=parentId;
-    }
-    getDescendantIds(id,childMap).forEach(childId=>{
-      if(!favoriteSet.has(childId)) contextSet.add(childId);
-    });
+  favoriteSet.add(seedId);
+  let cur=seedId;
+  while(parentMap[cur]){
+    const parentId=parentMap[cur];
+    if(!favoriteSet.has(parentId)) contextSet.add(parentId);
+    cur=parentId;
+  }
+  getDescendantIds(seedId,childMap).forEach(childId=>{
+    if(!favoriteSet.has(childId)) contextSet.add(childId);
   });
   nodes.forEach(node=>{
     if(!favoriteSet.has(node.id) && !contextSet.has(node.id)) backgroundSet.add(node.id);
@@ -2201,14 +2215,18 @@ function getEdgeFocusRole(edge, focusGroups){
   return 'context';
 }
 function isFocusModeActive(){
-  return !!meta?.focusMode && hasFavoriteNodes();
+  return !!meta?.focusMode && !!getFocusSeedNodeId();
 }
 function updateFocusModeUi(){
   if(!focusModeSideBtn) return;
-  const active=isFocusModeActive();
+  const seedId=getFocusSeedNodeId();
+  const active=!!meta?.focusMode && !!seedId;
+  focusModeSideBtn.style.display='';
+  focusModeSideBtn.disabled=!seedId;
   focusModeSideBtn.classList.toggle('act',active);
-  focusModeSideBtn.textContent=active?'集中モードON':'集中モード';
   focusModeSideBtn.setAttribute('aria-pressed',active?'true':'false');
+  focusModeSideBtn.textContent=active?'枝集中ON':'枝集中';
+  focusModeSideBtn.title=seedId ? '選択中ノードの枝だけを強調します' : 'ノードを1つ選ぶと使えます';
 }
 
 if(focusModeSideBtn){
@@ -2305,9 +2323,10 @@ function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),focusMode:!!(payload.meta&&payload.meta.focusMode) && (payload.nodes||[]).some(node=>!!node.favorite)};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),focusMode:false,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
+  updatePresentationUi();
   setInitialTitleNodeSyncArmed(false);
   updateDocumentTitle();
   nid=payload.nid||Math.max(
@@ -3154,7 +3173,8 @@ function parseImportData(raw,{kind}={}){
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial',
     hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone),
-    focusMode:!!((parsed.meta&&parsed.meta.focusMode)??parsed.focusMode)
+    focusMode:false,
+    presentationMode:!!((parsed.meta&&parsed.meta.presentationMode)??parsed.presentationMode)
   };
   ensureOutlineOrders(nodesNorm,edgesNorm);
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm,importKind:'json'};
@@ -3643,9 +3663,10 @@ function getNodePreferredInnerWidth(n, numberMap=null){
   const headerActionReserve=NODE_FAVORITE_HEADER_RESERVE + collapseReserve;
   const numberWidth=numberLabel ? Math.max(36, Math.ceil(estimateTextWidth(numberLabel,10.2)+18)) : 0;
   const headerWidth=numberWidth + (statusMetrics ? statusMetrics.width + (numberWidth?8:0) : 0) + headerActionReserve;
-  const titleFont=n.fitMode==='wrap' ? 13.4 : 14;
+  const presentationMode=!!meta?.presentationMode;
+  const titleFont=presentationMode ? (n.fitMode==='wrap' ? 16.8 : 17.4) : (n.fitMode==='wrap' ? 13.4 : 14);
   const titleWidth=Math.ceil(estimateTextWidth(String(n.label||'新規案件'),titleFont));
-  const subLines=String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
+  const subLines=presentationMode ? [] : String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
   const subWidth=subLines.length ? Math.max(...subLines.map(line=>Math.ceil(estimateTextWidth(line,NODE_SUB_FONT_SIZE)))) : 0;
   return Math.max(144, Math.min(NODE_W_MAX-NODE_INNER_PAD_X*2, Math.max(headerWidth, titleWidth + NODE_TEXT_SAFE_PAD_RIGHT, subWidth + NODE_TEXT_SAFE_PAD_RIGHT)));
 }
@@ -3655,8 +3676,9 @@ function getNodeTitleLayout(n, numberMap=null){
   const headerHeight=numberLabel || statusMetrics ? NODE_HEADER_BAND_HEIGHT : 0;
   const label=String(n?.label||'新規案件');
   const usable=Math.max(96, n.w-NODE_INNER_PAD_X*2-NODE_TEXT_LAYOUT_SAFE_WIDTH);
-  const baseFont=n.fitMode==='wrap' ? 13.4 : 14;
-  const minFont=n.fitMode==='wrap' ? 12 : 10.8;
+  const presentationMode=!!meta?.presentationMode;
+  const baseFont=presentationMode ? (n.fitMode==='wrap' ? 16.8 : 17.4) : (n.fitMode==='wrap' ? 13.4 : 14);
+  const minFont=presentationMode ? (n.fitMode==='wrap' ? 14.2 : 13.2) : (n.fitMode==='wrap' ? 12 : 10.8);
   let fontSize=baseFont;
   let lines=[];
   while(fontSize>=minFont-0.01){
@@ -3685,7 +3707,7 @@ function updateNodeMetrics(n, numberMap=null){
   const rawWidth=Math.max(176, preferredInnerWidth + NODE_INNER_PAD_X*2);
   n.w=Math.max(NODE_W_MIN, Math.min(NODE_W_MAX, Math.round(rawWidth)));
   const titleLayout=getNodeTitleLayout(n, numberMap);
-  const nodeSubLines=getNodeSubLines(n);
+  const nodeSubLines=meta?.presentationMode ? [] : getNodeSubLines(n);
   const titleHeight=titleLayout.lines.length*titleLayout.lineHeight;
   const subHeight=nodeSubLines.length ? nodeSubLines.length*NODE_SUB_LINE_HEIGHT : 0;
   const headerGap=titleLayout.headerHeight ? NODE_HEADER_GAP : 0;
@@ -3917,9 +3939,10 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   nodes=(d.nodes||[]).map(normalizeNode);
   edges=(d.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone),focusMode:!!(d.meta&&d.meta.focusMode) && (d.nodes||[]).some(node=>!!node.favorite)};
+  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone),focusMode:false,presentationMode:!!(d.meta&&d.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
+  updatePresentationUi();
   setInitialTitleNodeSyncArmed(false);
   nid=Math.max(
     1,
@@ -3961,33 +3984,26 @@ function toggleNodeDone(id,{withHistory=true}={}){
   return true;
 }
 function toggleNodeFavorite(id,{withHistory=true}={}){
-  const node=nb(id);
-  if(!node) return false;
-  if(withHistory) snapshot();
-  node.favorite=!node.favorite;
-  if(meta.focusMode && !hasFavoriteNodes()) meta.focusMode=false;
-  renderNow();
-  if(node.favorite) showToast('★を付けました');
-  else if(meta.focusMode) showToast('★を外しました');
-  else showToast('★を外したので集中モードもOFFにしました','warn');
-  return true;
+  return false;
 }
 function toggleFocusMode(force){
   const next=typeof force==='boolean' ? force : !meta.focusMode;
-  if(next && !hasFavoriteNodes()){
+  const seedId=getFocusSeedNodeId();
+  if(next && !seedId){
     meta.focusMode=false;
     updateFocusModeUi();
-    showToast('先に★を付けたノードを1つ以上作ってください','warn');
+    showToast('枝集中にしたいノードを1つ選んでください','warn');
     return false;
   }
   if(meta.focusMode===next){
     updateFocusModeUi();
+    draw();
     return true;
   }
   snapshot();
   meta.focusMode=next;
   renderNow();
-  showToast(next?'集中モードをONにしました':'集中モードをOFFにしました');
+  showToast(next?'枝集中をONにしました':'枝集中をOFFにしました');
   return true;
 }
 function cycleSingleNodeStatus(){
@@ -4147,9 +4163,6 @@ function runQuickbarAction(action){
       draw();
       showToast('終点ノードをクリックしてください');
       break;
-    case 'toggle-focus':
-      if(activeNodeId && nb(activeNodeId)) toggleNodeFavorite(activeNodeId);
-      break;
     case 'cycle-status':
       cycleSingleNodeStatus();
       break;
@@ -4247,7 +4260,6 @@ function getQuickbarConfig(){
       {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
       {id:'qb-child',label:'子を追加',action:'add-child'},
       {id:'qb-connect',label:'つなぐ',action:'connect'},
-      {id:'qb-fit',label:(nb(activeNodeId)?.favorite?'★を外す':'★を付ける'),action:'toggle-focus'},
       {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
     ];
   }
@@ -4483,6 +4495,7 @@ function draw(){
   const outlineNumberMap=getOutlineNumberMap();
   const focusModeActive=isFocusModeActive();
   const focusGroups=focusModeActive ? getFocusGroups() : null;
+  updateFocusModeUi();
 
   EL.innerHTML='';
   visibleEdges.forEach(e=>{
@@ -4553,7 +4566,7 @@ function draw(){
   });
 
   NL.innerHTML='';
-  const showSubtextGlobal=true;
+  const showSubtextGlobal=!meta?.presentationMode;
   const showStatusGlobal=true;
   const compactTitles=false;
   visibleNodes.forEach(n=>{
@@ -4566,7 +4579,7 @@ function draw(){
     const renderPalette=isDoneNode
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
       : {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'};
-    const showSubtext=showSubtextGlobal || selected || edgeSeed;
+    const showSubtext=showSubtextGlobal;
     const showStatus=showStatusGlobal || selected || edgeSeed;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-id',n.id);
@@ -4874,48 +4887,9 @@ function draw(){
       g.appendChild(cg);
     }
 
-    const favoriteGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
-    favoriteGroup.setAttribute('data-id',n.id);
-    favoriteGroup.setAttribute('data-action','toggle-favorite');
-    favoriteGroup.style.cursor='pointer';
-
     const favoriteSize=NODE_FAVORITE_ICON_SIZE;
     const favoriteX=n.w/2-NODE_INNER_PAD_X-favoriteSize-(hasVisibleChildren(n.id)?28:0);
     const favoriteY=headerTop+Math.max(0,(NODE_NUMBER_BADGE_HEIGHT-favoriteSize)/2);
-
-    const favoriteTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    favoriteTap.setAttribute('x',favoriteX-4);
-    favoriteTap.setAttribute('y',favoriteY-4);
-    favoriteTap.setAttribute('width',favoriteSize+8);
-    favoriteTap.setAttribute('height',favoriteSize+8);
-    favoriteTap.setAttribute('rx','8');
-    favoriteTap.setAttribute('fill','rgba(0,0,0,0)');
-    favoriteGroup.appendChild(favoriteTap);
-
-    const favoriteBox=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    favoriteBox.setAttribute('x',favoriteX);
-    favoriteBox.setAttribute('y',favoriteY);
-    favoriteBox.setAttribute('width',favoriteSize);
-    favoriteBox.setAttribute('height',favoriteSize);
-    favoriteBox.setAttribute('rx','5');
-    favoriteBox.setAttribute('fill',n.favorite?'rgba(255,160,120,.22)':'rgba(10,14,20,.94)');
-    favoriteBox.setAttribute('stroke',n.favorite?'rgba(255,196,157,.56)':'rgba(143,155,173,.42)');
-    favoriteBox.setAttribute('stroke-width','1.2');
-    favoriteGroup.appendChild(favoriteBox);
-
-    const favoriteText=document.createElementNS('http://www.w3.org/2000/svg','text');
-    favoriteText.setAttribute('x',favoriteX+favoriteSize/2);
-    favoriteText.setAttribute('y',favoriteY+favoriteSize/2+0.3);
-    favoriteText.setAttribute('text-anchor','middle');
-    favoriteText.setAttribute('dominant-baseline','middle');
-    favoriteText.setAttribute('font-size','10.4');
-    favoriteText.setAttribute('font-weight','800');
-    favoriteText.setAttribute('fill',n.favorite?'#ffe6d9':'rgba(214,222,232,.52)');
-    favoriteText.setAttribute('pointer-events','none');
-    favoriteText.textContent='★';
-    favoriteGroup.appendChild(favoriteText);
-
-    g.appendChild(favoriteGroup);
 
     const doneGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
     doneGroup.setAttribute('data-id',n.id);
@@ -5145,12 +5119,6 @@ NL.addEventListener('mousedown',e=>{
   if(doneToggle){
     e.stopPropagation();
     toggleNodeDone(doneToggle.dataset.id);
-    return;
-  }
-  const favoriteToggle=e.target.closest('[data-action="toggle-favorite"]');
-  if(favoriteToggle){
-    e.stopPropagation();
-    toggleNodeFavorite(favoriteToggle.dataset.id);
     return;
   }
   const g=e.target.closest('[data-id]');
@@ -5972,6 +5940,8 @@ document.getElementById('confirm-yes').addEventListener('click',()=>{
   edges=[];
   meta.title='';
   meta.focusMode=false;
+  meta.presentationMode=false;
+  updatePresentationUi();
   document.getElementById('map-title').value='';
   document.getElementById('map-title').placeholder='まずマップ名を入力';
   setInitialTitleNodeSyncArmed(true);
@@ -6335,11 +6305,13 @@ const initialPreset=STARTER_PRESETS.sample;
 meta={
   title:'',
   layoutMode:(initialPreset.meta&&initialPreset.meta.layoutMode)||'horizontal',
-  hideDone:false
+  hideDone:false,
+  presentationMode:false
 };
 document.getElementById('map-title').value='';
 document.getElementById('map-title').placeholder='まずマップ名を入力';
 document.getElementById('layout-mode').value=meta.layoutMode;
+updatePresentationUi();
 setInitialTitleNodeSyncArmed(true);
 updateDocumentTitle();
 nodes=(initialPreset.nodes||[]).map(normalizeNode);
@@ -6731,7 +6703,6 @@ if(document.readyState==='complete'){
           <div class="inbox-badges">
             ${item.state==='converted'?'<span class="inbox-badge converted">変換済み</span>':''}
             ${item.state==='hold'?'<span class="inbox-badge hold">保留</span>':''}
-            ${item.favorite?'<span class="inbox-badge star">★</span>':''}
           </div>
           <div class="inbox-time">${escapeHtmlLite(item.createdAt||'')}</div>
         </div>
@@ -6739,7 +6710,6 @@ if(document.readyState==='complete'){
         <div class="inbox-card-actions">
           <button type="button" class="primary" data-inbox-action="to-root">ルートへ</button>
           <button type="button" data-inbox-action="to-child" ${activeNodeId && nb(activeNodeId)?'':'disabled'}>選択ノードの子へ</button>
-          <button type="button" data-inbox-action="toggle-favorite">${item.favorite?'★を外す':'★を付ける'}</button>
           <button type="button" data-inbox-action="toggle-state">${item.state==='hold'?'保留を外す':'保留'}</button>
           <button type="button" data-inbox-action="delete">削除</button>
         </div>
