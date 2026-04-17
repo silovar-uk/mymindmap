@@ -78,7 +78,7 @@ body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-seri
 #main{flex:1;display:flex;min-height:0;overflow:hidden}
 #cw{flex:1;min-width:0;position:relative;overflow:hidden}
 svg{width:100%;height:100%;display:block;background:#fafafa}
-#io-wrap{width:0;flex:0 0 auto;position:relative;overflow:visible;border-left:0 solid #e8e8e8;background:#fbfbfb;transition:width .22s ease,border-color .22s ease}
+#io-wrap{width:0;flex:0 0 auto;position:relative;overflow:visible;border-left:0 solid rgba(132,145,164,.18);background:linear-gradient(180deg, rgba(13,17,24,.94), rgba(9,13,18,.97));transition:width .22s ease,border-color .22s ease}
 #app.io-open #io-wrap{width:min(420px,38vw);border-left-width:1px}
 #outline-wrap{width:0;flex:0 0 auto;position:relative;overflow:visible;border-left:0 solid #e8e8e8;background:#fbfbfb;transition:width .22s ease,border-color .22s ease}
 #app.outline-open #outline-wrap{width:min(360px,32vw);border-left-width:1px}
@@ -2283,6 +2283,7 @@ function renderNow(){
   updateHUD();
   updateQuickbar();
   updateHint();
+  if(typeof renderInboxDepthCounts==='function') renderInboxDepthCounts();
   if(outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
   draw();
 }
@@ -6484,6 +6485,17 @@ if(document.readyState==='complete'){
   #inbox-actions button.primary{background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64)}
   #inbox-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.05)}
   #inbox-stats{font-size:11px;color:var(--sf-text-2)}
+#inbox-depth-counts{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,.015)}
+.inbox-depth-empty{font-size:11px;line-height:1.6;color:var(--sf-text-3)}
+.inbox-depth-total{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;border:1px solid rgba(255,111,44,.18);border-radius:12px;background:rgba(255,111,44,.05)}
+.inbox-depth-total-label{font-size:11px;font-weight:900;color:#ffe0d2;letter-spacing:.02em}
+.inbox-depth-list{display:flex;flex-direction:column;gap:6px}
+.inbox-depth-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:7px 9px;border:1px solid rgba(132,145,164,.12);border-radius:12px;background:rgba(255,255,255,.02)}
+.inbox-depth-label{font-size:11px;font-weight:800;color:var(--sf-text-1)}
+.inbox-depth-values{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.inbox-depth-pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;border:1px solid rgba(132,145,164,.16);background:rgba(255,255,255,.035);color:var(--sf-text-1);white-space:nowrap}
+.inbox-depth-pill.done{border-color:rgba(152,245,123,.22);background:rgba(152,245,123,.10);color:#eaffdf}
+.inbox-depth-pill.active{border-color:rgba(18,198,255,.20);background:rgba(18,198,255,.08);color:#e9fbff}
   #inbox-list{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
   .inbox-empty{
     padding:14px;border:1px dashed rgba(132,145,164,.24);border-radius:16px;color:var(--sf-text-2);
@@ -6576,6 +6588,7 @@ if(document.readyState==='complete'){
             <button id="inbox-collapse-converted" type="button" style="font-size:10.5px;padding:5px 8px">変換済みだけ隠す</button>
           </div>
         </div>
+        <div id="inbox-depth-counts"></div>
         <div id="inbox-list"></div>
       </div>
       <div id="inbox-resizer" aria-hidden="true"></div>
@@ -6610,6 +6623,7 @@ if(document.readyState==='complete'){
   const inboxInput=document.getElementById('inbox-input');
   const inboxListEl=document.getElementById('inbox-list');
   const inboxStatsEl=document.getElementById('inbox-stats');
+  const inboxDepthCountsEl=document.getElementById('inbox-depth-counts');
   const includeInboxToggle=document.getElementById('export-include-inbox');
   const inboxWrap=document.getElementById('inbox-wrap');
   const inboxResizer=document.getElementById('inbox-resizer');
@@ -6683,8 +6697,66 @@ if(document.readyState==='complete'){
   function getInboxExportItems(){
     return inboxItems.filter(item=>item && String(item.text||'').trim());
   }
+  function getNodeDepthCounterRows(){
+    if(!nodes.length) return [];
+    const {parentMap}=getHierarchyMaps(nodes,edges);
+    const stats=new Map();
+    nodes.forEach(node=>{
+      let depth=1;
+      let cur=node.id;
+      const seen=new Set([cur]);
+      while(parentMap[cur] && !seen.has(parentMap[cur])){
+        cur=parentMap[cur];
+        seen.add(cur);
+        depth+=1;
+      }
+      const bucket=stats.get(depth)||{depth,total:0,done:0,active:0};
+      bucket.total+=1;
+      if(node.status==='done') bucket.done+=1;
+      else bucket.active+=1;
+      stats.set(depth,bucket);
+    });
+    return [...stats.values()].sort((a,b)=>a.depth-b.depth);
+  }
+  function renderInboxDepthCounts(){
+    if(!inboxDepthCountsEl) return;
+    const rows=getNodeDepthCounterRows();
+    if(!rows.length){
+      inboxDepthCountsEl.innerHTML='<div class="inbox-depth-empty">まだノードがありません。</div>';
+      return;
+    }
+    const totals=rows.reduce((acc,row)=>{
+      acc.total+=row.total;
+      acc.active+=row.active;
+      acc.done+=row.done;
+      return acc;
+    },{total:0,active:0,done:0});
+    inboxDepthCountsEl.innerHTML=`
+      <div class="inbox-depth-total">
+        <div class="inbox-depth-total-label">合計</div>
+        <div class="inbox-depth-values">
+          <span class="inbox-depth-pill">全 ${totals.total}件</span>
+          <span class="inbox-depth-pill active">未完了 ${totals.active}件</span>
+          <span class="inbox-depth-pill done">完了 ${totals.done}件</span>
+        </div>
+      </div>
+      <div class="inbox-depth-list">
+        ${rows.map(row=>`
+          <div class="inbox-depth-row">
+            <div class="inbox-depth-label">${row.depth}階層目</div>
+            <div class="inbox-depth-values">
+              <span class="inbox-depth-pill">合計 ${row.total}件</span>
+              <span class="inbox-depth-pill active">未完了 ${row.active}件</span>
+              <span class="inbox-depth-pill done">完了 ${row.done}件</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
   function renderInbox(){
     if(!inboxListEl) return;
+    renderInboxDepthCounts();
     const items=hideConvertedInbox ? inboxItems.filter(item=>item.state!=='converted') : inboxItems.slice();
     if(inboxStatsEl){
       const activeCount=inboxItems.filter(item=>item.state!=='converted').length;
