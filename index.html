@@ -4450,10 +4450,9 @@ function draw(){
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',info.d);
     p.setAttribute('fill','none');
-    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(118,126,136,.05)');
+    p.setAttribute('stroke',selected?'#12c6ff':edgeInFocus?'rgba(143,155,173,.54)':'rgba(128,138,150,.42)');
     p.setAttribute('stroke-width',selected?'2.8':edgeInFocus?'1.9':'1.2');
     p.setAttribute('marker-end',selected?'url(#ars)':'url(#ar)');
-    if(!edgeInFocus) p.setAttribute('opacity','0.12');
     p.style.cursor='pointer';
     g.appendChild(p);
 
@@ -4467,8 +4466,8 @@ function draw(){
       bg.setAttribute('width',txW);
       bg.setAttribute('height',22);
       bg.setAttribute('rx',11);
-      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.18)');
-      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.04)');
+      bg.setAttribute('fill',edgeInFocus?'rgba(16,21,29,.96)':'rgba(16,21,29,.92)');
+      bg.setAttribute('stroke',selected?'rgba(18,198,255,.58)':edgeInFocus?'rgba(132,145,164,.22)':'rgba(132,145,164,.18)');
       bg.setAttribute('stroke-width','1');
       g.appendChild(bg);
 
@@ -4479,7 +4478,7 @@ function draw(){
       tx.setAttribute('dominant-baseline','middle');
       tx.setAttribute('font-size','11');
       tx.setAttribute('font-weight','700');
-      tx.setAttribute('fill',selected?'#eefcff':edgeInFocus?'#d6dee8':'rgba(214,222,232,.10)');
+      tx.setAttribute('fill',selected?'#eefcff':'#d6dee8');
       tx.setAttribute('pointer-events','none');
       tx.setAttribute('font-family','Rajdhani, Noto Sans JP, sans-serif');
       tx.textContent=label;
@@ -4503,9 +4502,7 @@ function draw(){
     const dimmedByFocus=focusModeActive && !nodeInFocus;
     const renderPalette=isDoneNode
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.62)',accent:'rgba(190,198,208,.18)',subtext:'rgba(214,222,232,.44)'}
-      : nodeInFocus
-        ? {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'}
-        : {fill:'rgba(36,40,46,.05)',stroke:'rgba(93,101,112,.10)',text:'rgba(214,220,227,.12)',accent:null,subtext:'rgba(214,222,232,.08)'};
+      : {fill:c.fill,stroke:c.stroke,text:c.text,accent:null,subtext:'rgba(214,222,232,.76)'};
     const showSubtext=showSubtextGlobal || selected || edgeSeed;
     const showStatus=showStatusGlobal || selected || edgeSeed;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -4513,7 +4510,6 @@ function draw(){
     g.setAttribute('transform',`translate(${n.x},${n.y})`);
     g.style.cursor='grab';
     g.classList.toggle('dimmed', dimmedByFocus);
-    if(dimmedByFocus){ g.setAttribute('opacity',selected?'0.5':'0.22'); g.setAttribute('filter','url(#nodeDim)'); }
 
     const shadow=document.createElementNS('http://www.w3.org/2000/svg','rect');
     shadow.setAttribute('x',-n.w/2);
@@ -4521,7 +4517,7 @@ function draw(){
     shadow.setAttribute('width',n.w);
     shadow.setAttribute('height',n.h);
     shadow.setAttribute('rx',14);
-    shadow.setAttribute('fill',dimmedByFocus?'rgba(0,0,0,.03)':'rgba(0,0,0,.16)');
+    shadow.setAttribute('fill','rgba(0,0,0,.16)');
     shadow.setAttribute('pointer-events','none');
     g.appendChild(shadow);
 
@@ -4593,9 +4589,8 @@ function draw(){
     base.setAttribute('rx',14);
     base.setAttribute('fill',renderPalette.fill);
     base.setAttribute('stroke',selected?'rgba(255,247,236,.94)':edgeSeed?'#ff6f2c':renderPalette.stroke);
-    base.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.8':nodeInFocus?'1.55':'1');
-    base.setAttribute('filter',selected?'url(#nodeSelectGlow)':edgeSeed?'url(#nodeWarmGlow)':nodeInFocus?'url(#nodeShadow)':'none');
-    if(!nodeInFocus) base.setAttribute('opacity',selected?'0.5':'0.18');
+    base.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.8':'1.55');
+    base.setAttribute('filter',selected?'url(#nodeSelectGlow)':edgeSeed?'url(#nodeWarmGlow)':'url(#nodeShadow)');
     g.appendChild(base);
 
     const inner=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -4604,8 +4599,8 @@ function draw(){
     inner.setAttribute('width',n.w-8);
     inner.setAttribute('height',n.h-8);
     inner.setAttribute('rx',11);
-    inner.setAttribute('fill',nodeInFocus?'rgba(255,255,255,.014)':'rgba(255,255,255,.004)');
-    inner.setAttribute('stroke',nodeInFocus?'rgba(255,255,255,.028)':'rgba(255,255,255,.008)');
+    inner.setAttribute('fill','rgba(255,255,255,.014)');
+    inner.setAttribute('stroke','rgba(255,255,255,.028)');
     inner.setAttribute('stroke-width','1');
     inner.setAttribute('pointer-events','none');
     g.appendChild(inner);
