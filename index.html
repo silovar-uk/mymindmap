@@ -1809,7 +1809,7 @@ const NODE_TEXT_SAFE_PAD_RIGHT=16;
 const NODE_TEXT_LAYOUT_SAFE_WIDTH=12;
 const NODE_TOP_PAD=14;
 const NODE_FAVORITE_ICON_SIZE=16;
-const NODE_FAVORITE_HEADER_RESERVE=24;
+const NODE_FAVORITE_HEADER_RESERVE=46;
 const NODE_BOTTOM_PAD=16;
 const NODE_HEADER_BAND_HEIGHT=22;
 const NODE_HEADER_GAP=8;
@@ -1909,18 +1909,21 @@ let marquee=null;
 let shortcutReadyNodeId=null,shortcutReadyUntil=0;
 
 let pan=false,psx=0,psy=0,vx=0,vy=0,vs=1;
+let lastCanvasBlankWorldPoint=null;
+const SUBTREE_CLIPBOARD_SCHEMA='mindmap-subtree/1.0';
 let cid=null,epid=null,epc=null,eeid=null;
 let undoStack=[],redoStack=[];
 let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.0';
-const APP_UPDATED_AT='2026-04-16 13:17 JST';
+const APP_VERSION='1.6.1';
+const APP_UPDATED_AT='2026-04-17 00:24 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.1',date:'2026-04-17 00:24 JST',summary:'選択中ノードの子孫込みJSONコピーと、空白貼り付け / 子ノード貼り付けを追加して他のマインドマップへ枝ごと持ち運びやすく改善。',items:['親ノードを選択してコピーすると、子孫ノードと内部の接続線を含む専用JSONをクリップボードへ書き出すよう追加','空白で貼り付けた場合はビューポート中心または最後にクリックした空白位置へ新しい枝として貼り付けるよう対応','ノードを選択した状態で貼り付けた場合は、その選択ノードの子ノードとして枝ごと貼り付けるよう対応','貼り付け時は新しいノードIDと線IDを採番し直し、元の色・メモ・状態・★・相対レイアウトを保ったまま複製できるよう整理','貼り付けた枝では子孫ノードのうち子を持つものを折りたたみ状態にし、最初は見通しよく扱えるよう調整','キャンバス上で通常の Ctrl/Cmd+C / Ctrl/Cmd+V で使えるよう、コピーイベントと貼り付けイベントに枝JSONの処理を追加']},
 {version:'1.6.0',date:'2026-04-16 13:17 JST',summary:'左インボックス、現在地HUD、ミニマップ、出力時のインボックス切替を追加し、構造化前のメモと構造化後のマップを同じ画面で往復しやすく改善。',items:['左側に常設インボックスを追加し、1行入力・複数行分割・カード管理・幅変更に対応','インボックスカードをルート化 / 子化できる変換導線を追加し、カードのドラッグ&ドロップでキャンバス上へノード化できるよう拡張','テキスト / Markdown 出力ではインボックスをデフォルト非表示にし、チェックを入れたときだけ末尾セクションとして含めるよう変更','現在地の把握用にビューポート位置・パス表示・右下ミニマップを追加し、クリックで見たい場所へジャンプできるよう改善','インボックス→マップ変換時の軽いフライト演出と到着パルスを追加し、整理した手応えが残るよう調整','JSON 保存 / 読み込み・Undo / Redo でもインボックス状態と関連UI設定を保持するよう更新']},
 {version:'1.5.3',date:'2026-04-16 23:59 JST',summary:'同階層追加でも右優先の初期配置を採用し、右側が詰まっている場合は時計回りに空きを探すよう統一。',items:['createSiblingNode の配置基準を親中心ではなく選択中ノード基準へ変更し、同階層追加でもまず右側に出るよう調整','同階層追加でも子ノード追加と同じ方向ベクトルと方向バイアスを使い、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう統一','親を持つノードは従来どおり同じ親へ接続したまま、配置だけを右優先のルールへ変更','ルートノード同士の同階層追加も同じ右優先ロジックで配置し、下方向へずれる旧挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.5.2',date:'2026-04-16 23:53 JST',summary:'Tabで追加する子ノードの初期配置を右優先に見直し、右側が詰まっている場合は時計回りで空きを探すよう改善。',items:['子ノード追加専用の方向ベクトルを追加し、右→右下→下→左下→左→左上→上→右上の順で候補を評価するよう変更','findBestInsertPosition に方向配列と方向バイアスの指定を追加し、用途ごとに初期配置の優先順位を切り替えられるよう整理','Tab などで使う createChildNode は右方向の優先度を強め、右側に十分な空きがある限りまず右へ生えるよう調整','右側がノードや線で詰まっている場合は従来の衝突回避ロジックを保ったまま、時計回りに近い位置へ自動で逃がすよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2752,6 +2755,120 @@ function createStandaloneNode(options={}){
   setSingleSelection(id);
   return node;
 }
+
+function buildSubtreeClipboardPayload(rootId){
+  const root=nb(rootId);
+  if(!root) return null;
+  const childMap=getChildrenMap();
+  const subtreeIds=new Set([rootId, ...getDescendantIds(rootId, childMap)]);
+  const baseX=root.x;
+  const baseY=root.y;
+  const subtreeNodes=nodes
+    .filter(node=>subtreeIds.has(node.id))
+    .map(node=>({
+      id:node.id,
+      label:node.label,
+      subtext:node.subtext,
+      status:node.status,
+      collapsed:!!node.collapsed,
+      fitMode:node.fitMode,
+      order:normalizeOrderValue(node.order,1),
+      favorite:!!node.favorite,
+      x:Math.round((node.x-baseX)*100)/100,
+      y:Math.round((node.y-baseY)*100)/100,
+      color:{...(node.color||PRESETS[0])}
+    }));
+  if(!subtreeNodes.length) return null;
+  const subtreeEdges=edges
+    .filter(edge=>subtreeIds.has(edge.from) && subtreeIds.has(edge.to))
+    .map(edge=>({id:edge.id,from:edge.from,to:edge.to,label:edge.label||''}));
+  return {
+    schemaVersion:SUBTREE_CLIPBOARD_SCHEMA,
+    type:'node-subtree',
+    rootId,
+    nodes:subtreeNodes,
+    edges:subtreeEdges
+  };
+}
+function getSelectedSubtreeCopySourceId(){
+  if(activeNodeId && nb(activeNodeId)) return activeNodeId;
+  return [...selectedNodeIds].find(id=>nb(id)) || null;
+}
+function tryParseSubtreeClipboardPayload(raw){
+  const text=String(raw||'').trim();
+  if(!text || text[0]!=='{') return null;
+  try{
+    const payload=JSON.parse(text);
+    if(!payload || payload.schemaVersion!==SUBTREE_CLIPBOARD_SCHEMA || payload.type!=='node-subtree') return null;
+    if(!payload.rootId || !Array.isArray(payload.nodes) || !Array.isArray(payload.edges) || !payload.nodes.length) return null;
+    if(!payload.nodes.some(node=>node && node.id===payload.rootId)) return null;
+    return payload;
+  }catch(_){
+    return null;
+  }
+}
+function createPastedSubtree(payload,{parentId=null,anchor=null}={}){
+  if(!payload || !Array.isArray(payload.nodes) || !payload.nodes.length) return null;
+  const rootSource=payload.nodes.find(node=>node && node.id===payload.rootId);
+  if(!rootSource) return null;
+  const sourceChildMap={};
+  payload.nodes.forEach(node=>{ sourceChildMap[node.id]=[]; });
+  payload.edges.forEach(edge=>{
+    if(sourceChildMap[edge.from]) sourceChildMap[edge.from].push(edge.to);
+  });
+  const templateNode=normalizeNode({
+    id:'__subtree_root__',
+    label:rootSource.label||'新規案件',
+    subtext:rootSource.subtext||'',
+    status:rootSource.status||'none',
+    collapsed:false,
+    fitMode:rootSource.fitMode||'shrink',
+    order:1,
+    favorite:!!rootSource.favorite,
+    x:0,
+    y:0,
+    color:ensureDarkThemeColor(rootSource.color,{...PRESETS[0]})
+  });
+  const rootPosition=parentId
+    ? findBestInsertPosition({parentId, templateNode, directions:getClockwiseChildInsertDirections(), directionBiasWeight:220})
+    : (anchor || lastCanvasBlankWorldPoint || getViewportCenterWorld());
+  const orderedSources=[rootSource, ...payload.nodes.filter(node=>node && node.id!==payload.rootId)];
+  const idMap=new Map();
+  orderedSources.forEach((sourceNode,index)=>{
+    const newId='n'+(nid++);
+    idMap.set(sourceNode.id,newId);
+    const hasChildren=(sourceChildMap[sourceNode.id]||[]).length>0;
+    const isRoot=sourceNode.id===payload.rootId;
+    const normalized=normalizeNode({
+      id:newId,
+      label:sourceNode.label||'新規案件',
+      subtext:sourceNode.subtext||'',
+      status:sourceNode.status||'none',
+      collapsed:isRoot ? false : !!hasChildren,
+      fitMode:sourceNode.fitMode||'shrink',
+      order:isRoot ? getNextOutlineOrder(parentId||null) : normalizeOrderValue(sourceNode.order,index+1),
+      favorite:!!sourceNode.favorite,
+      x:rootPosition.x + (Number(sourceNode.x)||0),
+      y:rootPosition.y + (Number(sourceNode.y)||0),
+      color:ensureDarkThemeColor(sourceNode.color,{...PRESETS[index%PRESETS.length]})
+    });
+    nodes.push(normalized);
+  });
+  const newRootId=idMap.get(payload.rootId);
+  if(parentId && newRootId){
+    edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newRootId,label:''}));
+  }
+  payload.edges.forEach(sourceEdge=>{
+    const from=idMap.get(sourceEdge.from);
+    const to=idMap.get(sourceEdge.to);
+    if(!from || !to) return;
+    edges.push(normalizeEdge({id:'e'+(nid++),from,to,label:sourceEdge.label||''}));
+  });
+  ensureOutlineOrders();
+  if(newRootId) setSingleSelection(newRootId);
+  return newRootId || null;
+}
+
 const STATUS_KEY_BY_LABEL=Object.fromEntries(Object.entries(STATUS_META).map(([key,value])=>[value.label,key]));
 function detectImportKind(raw='',preferred=currentExportKind){
   const s=String(raw||'').trim();
@@ -4715,8 +4832,8 @@ function draw(){
     doneGroup.style.cursor='pointer';
 
     const boxSize=16;
-    const boxX=n.w/2-boxSize-10;
-    const boxY=n.h/2-boxSize-10;
+    const boxX=favoriteX-boxSize-6;
+    const boxY=favoriteY;
 
     const doneTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
     doneTap.setAttribute('x',boxX-4);
@@ -5097,6 +5214,7 @@ sv.addEventListener('mousedown',e=>{
     return;
   }
   const wr=cw.getBoundingClientRect();
+  lastCanvasBlankWorldPoint=toS(e.clientX-wr.left,e.clientY-wr.top);
   if(e.shiftKey){
     const additive=e.ctrlKey || e.metaKey;
     const baseSelection=additive ? new Set(selectedNodeIds) : new Set();
@@ -5483,6 +5601,47 @@ document.addEventListener('keydown',e=>{
     draw();
     showToast(nodes.length?`${nodes.length}件のノードを選択しました`:'選べるノードがありません','ok');
   }
+});
+
+
+document.addEventListener('copy',e=>{
+  if(ep.style.display==='block' || eep.style.display==='block') return;
+  const activeEl=document.activeElement;
+  const tag=(activeEl?.tagName||'').toUpperCase();
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT' || activeEl?.isContentEditable) return;
+  const sourceId=getSelectedSubtreeCopySourceId();
+  if(!sourceId) return;
+  const payload=buildSubtreeClipboardPayload(sourceId);
+  if(!payload) return;
+  const textValue=JSON.stringify(payload);
+  if(e.clipboardData?.setData){
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', textValue);
+    showToast('選択中のノード枝をJSONでコピーしました');
+    return;
+  }
+  if(copyTextToClipboard(textValue,{successMessage:'選択中のノード枝をJSONでコピーしました',buttonId:''})) e.preventDefault();
+});
+document.addEventListener('paste',e=>{
+  if(ep.style.display==='block' || eep.style.display==='block') return;
+  const activeEl=document.activeElement;
+  const tag=(activeEl?.tagName||'').toUpperCase();
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT' || activeEl?.isContentEditable) return;
+  const raw=e.clipboardData?.getData('text/plain') || '';
+  const payload=tryParseSubtreeClipboardPayload(raw);
+  if(!payload) return;
+  if(!ensureMapTitle({toast:true,focus:true})) return;
+  const targetParentId=(activeNodeId && nb(activeNodeId) && selectedNodeIds.has(activeNodeId)) ? activeNodeId : null;
+  const anchor=targetParentId ? null : (lastCanvasBlankWorldPoint || getViewportCenterWorld());
+  e.preventDefault();
+  snapshot();
+  const pastedRootId=createPastedSubtree(payload,{parentId:targetParentId,anchor});
+  if(!pastedRootId){
+    showToast('貼り付けできる枝データではありませんでした','warn');
+    return;
+  }
+  renderNow();
+  showToast(targetParentId ? '選択ノードの子として枝を貼り付けました' : '新しい枝として貼り付けました');
 });
 
 document.addEventListener('keydown',e=>{
