@@ -2132,11 +2132,11 @@ function getFocusBranchNodeIds(){
   // 集中モードで「フォーカス内」とみなす範囲:
   // 1) ★付きノード自身
   // 2) その祖先(現在地の文脈を残すため)
-  // 3) その子孫(枝全体をまとめて見せるため)
-  // 4) その直近の兄弟(同じ親配下の比較対象を残すため)
-  // ※ 祖先の兄弟やいとこノードまでは含めず、範囲を局所的に保つ。
+  // 3) その子孫(親を★にしたときに枝全体を追えるようにするため)
+  // ※ 兄弟ノードは含めない。浅い階層のマップでは兄弟まで含めると
+  //    focusSet が広がりすぎて、非フォーカスがほぼ発生しなくなるため。
   const focusSet=new Set();
-  const {parentMap,childMap,roots}=getHierarchyMaps();
+  const {parentMap,childMap}=getHierarchyMaps();
   nodes.forEach(node=>{
     if(!node.favorite) return;
     focusSet.add(node.id);
@@ -2149,10 +2149,6 @@ function getFocusBranchNodeIds(){
     }
 
     getDescendantIds(node.id,childMap).forEach(childId=>focusSet.add(childId));
-
-    const parentId=parentMap[node.id]??null;
-    const siblingIds=parentId ? (childMap[parentId]||[]) : roots;
-    siblingIds.forEach(siblingId=>focusSet.add(siblingId));
   });
   return focusSet;
 }
