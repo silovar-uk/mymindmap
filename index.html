@@ -1943,7 +1943,7 @@ const APP_UPDATED_AT='2026-04-19 23:45 JST';
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
-{version:'1.6.4',date:'2026-04-19 23:58 JST',summary:'スマホ長押しでノード名をその場編集できるインライン入力を追加。',items:['スマホではノード長押し時に編集パネルを開かず、その場の一覧画面上で名前だけ直接編集できるインライン入力を追加','インライン入力はノード位置に追従して表示し、Enterまたはフォーカス外しで保存、Escapeでキャンセルできるよう整理','インライン編集中は下部アクションバーを隠し、他メニューを開く前には自動で入力内容を確定するよう調整','キャンバスのタッチジェスチャーからインライン入力を除外し、入力中にパンやピンチが誤反応しにくいよう補強','モバイルUIの状態クラスに mobile-inline-edit-open を追加し、既存の編集モーダルとは別系統で軽量に管理']},
+{version:'1.6.5',date:'2026-04-20 00:06 JST',summary:'スマホのインライン編集をノード幅・位置によりぴったり沿う表示へ調整。',items:['スマホのインライン編集をノードの横幅に近いサイズへ寄せ、左右に余白が出すぎないよう調整','入力欄の位置をノードの中央付近に合わせ、一覧画面上でより直接編集している感覚に寄せた','インライン編集のシェル余白と影を小さくし、ノードに被せたときの浮きすぎを軽減','補助ヒントは常時表示をやめ、入力欄そのものを主役にしたミニマルな見た目へ調整']},
 {version:'1.6.3',date:'2026-04-19 23:45 JST',summary:'スマホ編集を背景操作から切り離し、下部4ボタンの文字サイズと占有感を引き上げて操作を安定化。',items:['スマホで編集パネルが開いている間はキャンバス本体と上部バーのポインター操作を止め、背面ジェスチャーが入力を奪わないよう整理','編集パネル本体に touchstart / pointerdown / click の伝播停止を追加し、タップが背後やバックドロップへ漏れにくいよう補強','ノード編集・矢印編集の初回フォーカス後に再度 scrollIntoView をかけ、キーボード表示後も入力欄が見切れにくいよう調整','下部アクションバーの4ボタンをさらに大型化し、主ラベルと補助ラベルの文字サイズを引き上げて読みやすさを改善','極小幅向けの 340px / 380px ブレークポイントでも文字を潰しすぎないよう最小サイズを底上げ','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.2',date:'2026-04-17 11:52 JST',summary:'共有用に補足を隠してタイトルを大きく見せる表示モードを追加し、通常表示とPNG保存の両方へ反映。',items:['上部に「共有表示」チェックを追加し、初期状態はOFFのまま任意で切り替えられるよう対応','共有表示中はノード補足を描画せず、タイトルの基準フォントと折り返しレイアウトを拡大して読みやすく調整','ノード幅と高さの計算も共有表示に合わせて見直し、補足を消したぶんタイトルが大きく収まるよう変更','JSONの meta に共有表示フラグを保持し、読み込み後も表示モードを再現できるよう更新','描画本体で切り替える方式にしたため、PNG保存でも共有表示の見た目がそのまま反映されるよう整理']},
 {version:'1.6.1',date:'2026-04-17 00:24 JST',summary:'選択中ノードの子孫込みJSONコピーと、空白貼り付け / 子ノード貼り付けを追加して他のマインドマップへ枝ごと持ち運びやすく改善。',items:['親ノードを選択してコピーすると、子孫ノードと内部の接続線を含む専用JSONをクリップボードへ書き出すよう追加','空白で貼り付けた場合はビューポート中心または最後にクリックした空白位置へ新しい枝として貼り付けるよう対応','ノードを選択した状態で貼り付けた場合は、その選択ノードの子ノードとして枝ごと貼り付けるよう対応','貼り付け時は新しいノードIDと線IDを採番し直し、元の色・メモ・状態・★・相対レイアウトを保ったまま複製できるよう整理','貼り付けた枝では子孫ノードのうち子を持つものを折りたたみ状態にし、最初は見通しよく扱えるよう調整','キャンバス上で通常の Ctrl/Cmd+C / Ctrl/Cmd+V で使えるよう、コピーイベントと貼り付けイベントに枝JSONの処理を追加']},
@@ -6787,19 +6787,33 @@ if(document.readyState==='complete'){
 #mobile-node-sheet .sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 #mobile-node-sheet .sheet-close{margin-top:10px;width:100%}
 #mobile-inline-editor{
+  --inline-fill:#161b23;
+  --inline-stroke:#ff8a4c;
+  --inline-text:#f7f2eb;
+  --inline-inner-stroke:rgba(255,255,255,.028);
+  --inline-inner-fill:rgba(255,255,255,.014);
   position:fixed;left:10px;top:calc(var(--mobile-topbar-h) + 12px + env(safe-area-inset-top,0px));z-index:121;
   width:min(88vw,360px);pointer-events:auto
 }
 #mobile-inline-editor .inline-edit-shell{
-  background:linear-gradient(180deg, rgba(20,25,34,.98), rgba(10,14,20,.99));
-  border:1px solid rgba(18,198,255,.44);border-radius:16px;padding:8px;box-shadow:0 16px 32px rgba(0,0,0,.34)
+  position:relative;overflow:hidden;
+  background:var(--inline-fill);
+  border:1.55px solid var(--inline-stroke);border-radius:14px;padding:4px;
+  box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.035)
+}
+#mobile-inline-editor .inline-edit-shell::before{
+  content:'';position:absolute;inset:4px;border-radius:11px;pointer-events:none;
+  background:var(--inline-inner-fill);border:1px solid var(--inline-inner-stroke)
 }
 #mobile-inline-input{
-  width:100%;height:44px;padding:0 12px;border:1px solid rgba(132,145,164,.24);border-radius:12px;
-  background:rgba(255,255,255,.035);color:var(--sf-text-0);font-size:16px;font-weight:800;outline:none
+  position:relative;z-index:1;
+  width:100%;height:42px;padding:0 14px;border:none;border-radius:11px;
+  background:transparent;color:var(--inline-text);font-size:16px;font-weight:800;outline:none;
+  font-family:'Noto Sans JP', Rajdhani, sans-serif; letter-spacing:0
 }
-#mobile-inline-input:focus{border-color:rgba(18,198,255,.56);box-shadow:0 0 0 3px rgba(18,198,255,.14)}
-#mobile-inline-editor .inline-edit-hint{margin-top:6px;font-size:10px;font-weight:700;line-height:1.2;color:var(--sf-text-2);text-align:center}
+#mobile-inline-input::placeholder{color:color-mix(in srgb, var(--inline-text) 54%, transparent)}
+#mobile-inline-input:focus{box-shadow:inset 0 0 0 1.2px color-mix(in srgb, var(--inline-stroke) 72%, white 8%), 0 0 0 2px color-mix(in srgb, var(--inline-stroke) 16%, transparent)}
+#mobile-inline-editor .inline-edit-hint{display:none}
 #app.mobile-mode{padding-top:56px}
 #app.mobile-mode #tb{display:none !important}
 #app.mobile-mode #mobile-topbar{display:flex}
@@ -7134,20 +7148,42 @@ if(document.readyState==='complete'){
   function clamp(n,min,max){ return Math.min(max,Math.max(min,n)); }
   function touchDistance(a,b){ return Math.hypot((a.clientX-b.clientX),(a.clientY-b.clientY)); }
   function currentTitle(){ return String((mapTitleInput&&mapTitleInput.value) || (meta&&meta.title) || '案件マインドマップ').trim() || '案件マインドマップ'; }
+  function applyMobileInlineEditorSkin(nodeId){
+    if(!mobileInlineEditor || !nodeId || !nb(nodeId)) return;
+    const node=nb(nodeId);
+    const isDoneNode=node.status==='done';
+    const palette=isDoneNode
+      ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.82)',innerStroke:'rgba(255,255,255,.08)',innerFill:'rgba(255,255,255,.02)'}
+      : {fill:node.color?.fill || '#161b23',stroke:node.color?.stroke || '#ff8a4c',text:node.color?.text || '#f7f2eb',innerStroke:'rgba(255,255,255,.028)',innerFill:'rgba(255,255,255,.014)'};
+    mobileInlineEditor.style.setProperty('--inline-fill', palette.fill);
+    mobileInlineEditor.style.setProperty('--inline-stroke', palette.stroke);
+    mobileInlineEditor.style.setProperty('--inline-text', palette.text);
+    mobileInlineEditor.style.setProperty('--inline-inner-stroke', palette.innerStroke);
+    mobileInlineEditor.style.setProperty('--inline-inner-fill', palette.innerFill);
+  }
   function positionMobileInlineEditor(nodeId,{selectAll=false}={}){
     if(!isMobileMode() || !nodeId || !nb(nodeId)) return;
     const node=nb(nodeId);
+    applyMobileInlineEditorSkin(nodeId);
     updateNodeMetrics(node, getOutlineNumberMap());
     const bounds=getScreenNodeBounds(node);
     const cwRect=cw.getBoundingClientRect();
     const topbarHeight=parseFloat(getComputedStyle(app).getPropertyValue('--mobile-topbar-h')) || 56;
-    const width=clamp(Math.max(164, Math.round(bounds.w + 26)), 164, Math.max(164, window.innerWidth-16));
-    const left=clamp(cwRect.left + bounds.x + (bounds.w/2) - (width/2), 8, Math.max(8, window.innerWidth-width-8));
-    const desiredTop=cwRect.top + bounds.y + (bounds.h/2) - 26;
-    const top=clamp(desiredTop, topbarHeight + 8, Math.max(topbarHeight + 8, window.innerHeight - 74));
-    mobileInlineEditor.style.left=`${Math.round(left)}px`;
-    mobileInlineEditor.style.top=`${Math.round(top)}px`;
-    mobileInlineEditor.style.width=`${Math.round(width)}px`;
+    const shellPad=4;
+    const inputMin=120;
+    const sideInset=6;
+    const rawWidth=Math.round(bounds.w - sideInset * 2);
+    const width=clamp(rawWidth, Math.min(inputMin, Math.max(120, window.innerWidth-24)), Math.max(inputMin, window.innerWidth-16));
+    const rawLeft=Math.round(cwRect.left + bounds.x + sideInset);
+    const left=clamp(rawLeft, 8, Math.max(8, window.innerWidth - width - 8));
+    const inputHeight=clamp(Math.round(bounds.h - 8), 38, 46);
+    mobileInlineInput.style.height=`${inputHeight}px`;
+    const shellHeight=inputHeight + shellPad * 2;
+    const rawTop=Math.round(cwRect.top + bounds.y + (bounds.h - shellHeight) / 2);
+    const top=clamp(rawTop, topbarHeight + 8, Math.max(topbarHeight + 8, window.innerHeight - shellHeight - 12));
+    mobileInlineEditor.style.left=`${left}px`;
+    mobileInlineEditor.style.top=`${top}px`;
+    mobileInlineEditor.style.width=`${width}px`;
     if(selectAll){
       requestAnimationFrame(()=>{
         try{ mobileInlineInput.focus({preventScroll:true}); }catch(_e){ try{ mobileInlineInput.focus(); }catch(__e){} }
