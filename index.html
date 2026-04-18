@@ -1944,7 +1944,7 @@ const APP_UPDATED_AT='2026-04-19 23:45 JST';
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
 {version:'1.6.5',date:'2026-04-20 00:06 JST',summary:'スマホのインライン編集をノード幅・位置によりぴったり沿う表示へ調整。',items:['スマホのインライン編集をノードの横幅に近いサイズへ寄せ、左右に余白が出すぎないよう調整','入力欄の位置をノードの中央付近に合わせ、一覧画面上でより直接編集している感覚に寄せた','インライン編集のシェル余白と影を小さくし、ノードに被せたときの浮きすぎを軽減','補助ヒントは常時表示をやめ、入力欄そのものを主役にしたミニマルな見た目へ調整']},
-{version:'1.6.6',date:'2026-04-20 00:12 JST',summary:'スマホ編集を背景操作から切り離し、下部4ボタンの文字サイズと占有感を引き上げて操作を安定化。',items:['スマホで編集パネルが開いている間はキャンバス本体と上部バーのポインター操作を止め、背面ジェスチャーが入力を奪わないよう整理','編集パネル本体に touchstart / pointerdown / click の伝播停止を追加し、タップが背後やバックドロップへ漏れにくいよう補強','ノード編集・矢印編集の初回フォーカス後に再度 scrollIntoView をかけ、キーボード表示後も入力欄が見切れにくいよう調整','下部アクションバーの4ボタンをさらに大型化し、主ラベルと補助ラベルの文字サイズを引き上げて読みやすさを改善','極小幅向けの 340px / 380px ブレークポイントでも文字を潰しすぎないよう最小サイズを底上げ','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.7.0',date:'2026-04-20 00:26 JST',summary:'スマホ操作を選択・移動・命名・追加に整理し、ダブルタップ命名とドラッグ移動を安定化。',items:['スマホで編集パネルが開いている間はキャンバス本体と上部バーのポインター操作を止め、背面ジェスチャーが入力を奪わないよう整理','編集パネル本体に touchstart / pointerdown / click の伝播停止を追加し、タップが背後やバックドロップへ漏れにくいよう補強','ノード編集・矢印編集の初回フォーカス後に再度 scrollIntoView をかけ、キーボード表示後も入力欄が見切れにくいよう調整','下部アクションバーの4ボタンをさらに大型化し、主ラベルと補助ラベルの文字サイズを引き上げて読みやすさを改善','極小幅向けの 340px / 380px ブレークポイントでも文字を潰しすぎないよう最小サイズを底上げ','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.2',date:'2026-04-17 11:52 JST',summary:'共有用に補足を隠してタイトルを大きく見せる表示モードを追加し、通常表示とPNG保存の両方へ反映。',items:['上部に「共有表示」チェックを追加し、初期状態はOFFのまま任意で切り替えられるよう対応','共有表示中はノード補足を描画せず、タイトルの基準フォントと折り返しレイアウトを拡大して読みやすく調整','ノード幅と高さの計算も共有表示に合わせて見直し、補足を消したぶんタイトルが大きく収まるよう変更','JSONの meta に共有表示フラグを保持し、読み込み後も表示モードを再現できるよう更新','描画本体で切り替える方式にしたため、PNG保存でも共有表示の見た目がそのまま反映されるよう整理']},
 {version:'1.6.1',date:'2026-04-17 00:24 JST',summary:'選択中ノードの子孫込みJSONコピーと、空白貼り付け / 子ノード貼り付けを追加して他のマインドマップへ枝ごと持ち運びやすく改善。',items:['親ノードを選択してコピーすると、子孫ノードと内部の接続線を含む専用JSONをクリップボードへ書き出すよう追加','空白で貼り付けた場合はビューポート中心または最後にクリックした空白位置へ新しい枝として貼り付けるよう対応','ノードを選択した状態で貼り付けた場合は、その選択ノードの子ノードとして枝ごと貼り付けるよう対応','貼り付け時は新しいノードIDと線IDを採番し直し、元の色・メモ・状態・★・相対レイアウトを保ったまま複製できるよう整理','貼り付けた枝では子孫ノードのうち子を持つものを折りたたみ状態にし、最初は見通しよく扱えるよう調整','キャンバス上で通常の Ctrl/Cmd+C / Ctrl/Cmd+V で使えるよう、コピーイベントと貼り付けイベントに枝JSONの処理を追加']},
 {version:'1.6.0',date:'2026-04-16 13:17 JST',summary:'左インボックス、現在地HUD、ミニマップ、出力時のインボックス切替を追加し、構造化前のメモと構造化後のマップを同じ画面で往復しやすく改善。',items:['左側に常設インボックスを追加し、1行入力・複数行分割・カード管理・幅変更に対応','インボックスカードをルート化 / 子化できる変換導線を追加し、カードのドラッグ&ドロップでキャンバス上へノード化できるよう拡張','テキスト / Markdown 出力ではインボックスをデフォルト非表示にし、チェックを入れたときだけ末尾セクションとして含めるよう変更','現在地の把握用にビューポート位置・パス表示・右下ミニマップを追加し、クリックで見たい場所へジャンプできるよう改善','インボックス→マップ変換時の軽いフライト演出と到着パルスを追加し、整理した手応えが残るよう調整','JSON 保存 / 読み込み・Undo / Redo でもインボックス状態と関連UI設定を保持するよう更新']},
@@ -7074,10 +7074,10 @@ if(document.readyState==='complete'){
   mobileActionbar.id='mobile-actionbar';
   mobileActionbar.hidden=true;
   mobileActionbar.innerHTML=`
-    <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">編集</span><span class="mobile-btn-sub">入力する</span></button>
-    <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子追加</span><span class="mobile-btn-sub">下へ1つ</span></button>
-    <button data-mobile-action="sibling" type="button"><span class="mobile-btn-main">同階層</span><span class="mobile-btn-sub">横へ1つ</span></button>
-    <button data-mobile-action="more" type="button"><span class="mobile-btn-main">その他</span><span class="mobile-btn-sub">完了・削除</span></button>`;
+    <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前変更</span><span class="mobile-btn-sub">ダブルタップ可</span></button>
+    <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子追加</span><span class="mobile-btn-sub">そのまま命名</span></button>
+    <button data-mobile-action="sibling" type="button"><span class="mobile-btn-main">同階層</span><span class="mobile-btn-sub">そのまま命名</span></button>
+    <button data-mobile-action="more" type="button"><span class="mobile-btn-main">その他</span><span class="mobile-btn-sub">完了・削除など</span></button>`;
   app.appendChild(mobileActionbar);
 
   const mobileNodeSheet=document.createElement('div');
@@ -7086,7 +7086,8 @@ if(document.readyState==='complete'){
     <div class="sheet-panel">
       <div id="mobile-node-sheet-title" class="sheet-title">ノード操作</div>
       <div class="sheet-grid">
-        <button data-mobile-sheet-action="edit" type="button">編集</button>
+        <button data-mobile-sheet-action="edit" type="button">名前変更</button>
+        <button data-mobile-sheet-action="details" type="button">詳細編集</button>
         <button data-mobile-sheet-action="child" type="button">子追加</button>
         <button data-mobile-sheet-action="sibling" type="button">同階層追加</button>
         <button data-mobile-sheet-action="done" type="button">完了</button>
@@ -7148,6 +7149,21 @@ if(document.readyState==='complete'){
   function clamp(n,min,max){ return Math.min(max,Math.max(min,n)); }
   function touchDistance(a,b){ return Math.hypot((a.clientX-b.clientX),(a.clientY-b.clientY)); }
   function currentTitle(){ return String((mapTitleInput&&mapTitleInput.value) || (meta&&meta.title) || '案件マインドマップ').trim() || '案件マインドマップ'; }
+  const MOBILE_DOUBLE_TAP_MS=380;
+  const MOBILE_DOUBLE_TAP_RADIUS=26;
+  const MOBILE_DRAG_START_PX=8;
+  function getMobileNodeEl(nodeId){
+    if(!nodeId) return null;
+    try{ return NL.querySelector(`[data-id="${CSS.escape(nodeId)}"]`); }catch(_e){}
+    return NL.querySelector(`[data-id="${String(nodeId).replace(/"/g,'\\"')}"]`);
+  }
+  function getMobileNodeRect(nodeId){
+    const el=getMobileNodeEl(nodeId);
+    if(!el || typeof el.getBoundingClientRect!=='function') return null;
+    const rect=el.getBoundingClientRect();
+    if(!rect || !isFinite(rect.left) || rect.width<=0 || rect.height<=0) return null;
+    return rect;
+  }
   function applyMobileInlineEditorSkin(nodeId){
     if(!mobileInlineEditor || !nodeId || !nb(nodeId)) return;
     const node=nb(nodeId);
@@ -7163,27 +7179,43 @@ if(document.readyState==='complete'){
   }
   function positionMobileInlineEditor(nodeId,{selectAll=false}={}){
     if(!isMobileMode() || !nodeId || !nb(nodeId)) return;
-    const node=nb(nodeId);
-    applyMobileInlineEditorSkin(nodeId);
-    updateNodeMetrics(node, getOutlineNumberMap());
-    const bounds=getScreenNodeBounds(node);
-    const cwRect=cw.getBoundingClientRect();
     const topbarHeight=parseFloat(getComputedStyle(app).getPropertyValue('--mobile-topbar-h')) || 56;
     const shellPad=4;
-    const inputMin=120;
-    const sideInset=6;
-    const rawWidth=Math.round(bounds.w - sideInset * 2);
-    const width=clamp(rawWidth, Math.min(inputMin, Math.max(120, window.innerWidth-24)), Math.max(inputMin, window.innerWidth-16));
-    const rawLeft=Math.round(cwRect.left + bounds.x + sideInset);
-    const left=clamp(rawLeft, 8, Math.max(8, window.innerWidth - width - 8));
-    const inputHeight=clamp(Math.round(bounds.h - 8), 38, 46);
-    mobileInlineInput.style.height=`${inputHeight}px`;
-    const shellHeight=inputHeight + shellPad * 2;
-    const rawTop=Math.round(cwRect.top + bounds.y + (bounds.h - shellHeight) / 2);
-    const top=clamp(rawTop, topbarHeight + 8, Math.max(topbarHeight + 8, window.innerHeight - shellHeight - 12));
-    mobileInlineEditor.style.left=`${left}px`;
-    mobileInlineEditor.style.top=`${top}px`;
-    mobileInlineEditor.style.width=`${width}px`;
+    applyMobileInlineEditorSkin(nodeId);
+    const nodeRect=getMobileNodeRect(nodeId);
+    if(nodeRect){
+      const viewportWidth=window.innerWidth || document.documentElement.clientWidth || 360;
+      const viewportHeight=window.innerHeight || document.documentElement.clientHeight || 640;
+      const targetWidth=Math.round(nodeRect.width-8);
+      const width=clamp(targetWidth, 96, Math.max(96, viewportWidth-16));
+      const rawLeft=Math.round(nodeRect.left + (nodeRect.width-width)/2);
+      const left=clamp(rawLeft, 8, Math.max(8, viewportWidth-width-8));
+      const inputHeight=clamp(Math.round(nodeRect.height-8), 38, 52);
+      mobileInlineInput.style.height=`${inputHeight}px`;
+      const shellHeight=inputHeight + shellPad * 2;
+      const rawTop=Math.round(nodeRect.top + (nodeRect.height-shellHeight)/2);
+      const top=clamp(rawTop, topbarHeight + 6, Math.max(topbarHeight + 6, viewportHeight-shellHeight-12));
+      mobileInlineEditor.style.left=`${left}px`;
+      mobileInlineEditor.style.top=`${top}px`;
+      mobileInlineEditor.style.width=`${width}px`;
+    }else{
+      const node=nb(nodeId);
+      updateNodeMetrics(node, getOutlineNumberMap());
+      const bounds=getScreenNodeBounds(node);
+      const cwRect=cw.getBoundingClientRect();
+      const rawWidth=Math.round(bounds.w - 6);
+      const width=clamp(rawWidth, 96, Math.max(96, window.innerWidth-16));
+      const rawLeft=Math.round(cwRect.left + bounds.x + (bounds.w-width)/2);
+      const left=clamp(rawLeft, 8, Math.max(8, window.innerWidth - width - 8));
+      const inputHeight=clamp(Math.round(bounds.h - 8), 38, 52);
+      mobileInlineInput.style.height=`${inputHeight}px`;
+      const shellHeight=inputHeight + shellPad * 2;
+      const rawTop=Math.round(cwRect.top + bounds.y + (bounds.h - shellHeight) / 2);
+      const top=clamp(rawTop, topbarHeight + 6, Math.max(topbarHeight + 6, window.innerHeight - shellHeight - 12));
+      mobileInlineEditor.style.left=`${left}px`;
+      mobileInlineEditor.style.top=`${top}px`;
+      mobileInlineEditor.style.width=`${width}px`;
+    }
     if(selectAll){
       requestAnimationFrame(()=>{
         try{ mobileInlineInput.focus({preventScroll:true}); }catch(_e){ try{ mobileInlineInput.focus(); }catch(__e){} }
@@ -7191,7 +7223,7 @@ if(document.readyState==='complete'){
       });
     }
   }
-  function closeMobileInlineEdit({restoreFocus=true}={}){
+  function closeMobileInlineEdit  function closeMobileInlineEdit({restoreFocus=true}={}){
     if(!isMobileInlineEditing()){
       mobileInlineEditId=null;
       mobileInlineEditOriginal='';
@@ -7244,8 +7276,11 @@ if(document.readyState==='complete'){
     mobileInlineInput.value=mobileInlineEditOriginal;
     mobileInlineEditor.style.display='block';
     app.classList.add('mobile-inline-edit-open');
-    positionMobileInlineEditor(nodeId,{selectAll:true});
     updateMobileUi();
+    requestAnimationFrame(()=>{
+      positionMobileInlineEditor(nodeId,{selectAll:true});
+      requestAnimationFrame(()=>positionMobileInlineEditor(nodeId));
+    });
     return true;
   }
   function setMobileMenuOpen(open){
@@ -7269,6 +7304,17 @@ if(document.readyState==='complete'){
     if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
     if(typeof closeEp==='function') closeEp();
     if(typeof closeEep==='function') closeEep();
+  }
+  function runAfterClosingMobileTransientUi(callback){
+    closeActiveMobileEditing();
+    closeMobileNodeSheet();
+    closeMobileMenu();
+    app.classList.remove('mobile-menu-open','mobile-node-sheet-open','mobile-sheet-open','mobile-editor-open');
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        try{ callback(); }finally{ updateMobileUi(); }
+      });
+    });
   }
   function setMobileActionbarVisible(show){
     if(!mobileActionbar) return;
@@ -7493,7 +7539,7 @@ if(document.readyState==='complete'){
     if(node){
       setSingleSelection(node.id);
       renderNow();
-      openMobileInlineEdit(node.id);
+      requestAnimationFrame(()=>openMobileInlineEdit(node.id));
     }
   }
   function runMobileNodeAction(action,nodeId){
@@ -7501,6 +7547,14 @@ if(document.readyState==='complete'){
     const id=nodeId || (activeNodeId && nb(activeNodeId) ? activeNodeId : mobileSheetNodeId);
     if(!id || !nb(id)) return;
     if(action==='edit'){
+      closeMobileMenu();
+      closeMobileNodeSheet();
+      if(app.classList.contains('io-open')) _setIoOpen(false);
+      openMobileInlineEdit(id);
+      updateMobileUi();
+      return;
+    }
+    if(action==='details'){
       closeMobileMenu();
       closeMobileNodeSheet();
       if(app.classList.contains('io-open')) _setIoOpen(false);
@@ -7515,7 +7569,7 @@ if(document.readyState==='complete'){
         setSingleSelection(child.id);
         renderNow();
         closeMobileNodeSheet();
-        openMobileInlineEdit(child.id);
+        requestAnimationFrame(()=>openMobileInlineEdit(child.id));
         return;
       }
       closeMobileNodeSheet();
@@ -7528,7 +7582,7 @@ if(document.readyState==='complete'){
         setSingleSelection(sibling.id);
         renderNow();
         closeMobileNodeSheet();
-        openMobileInlineEdit(sibling.id);
+        requestAnimationFrame(()=>openMobileInlineEdit(sibling.id));
         return;
       }
       closeMobileNodeSheet();
@@ -7607,30 +7661,22 @@ if(document.readyState==='complete'){
     updateMobileUi();
   });
   mobileDataBtn.addEventListener('click',()=>{
-    closeActiveMobileEditing();
-    closeMobileNodeSheet();
-    closeMobileMenu();
-    if(app.classList.contains('io-open')) _setIoOpen(false);
-    requestAnimationFrame(()=>{ _setIoOpen(true); updateMobileUi(); });
+    runAfterClosingMobileTransientUi(()=>{
+      if(app.classList.contains('io-open')) _setIoOpen(false);
+      _setIoOpen(true);
+    });
   });
   mobileAddBtn.addEventListener('click',()=>{
-    closeActiveMobileEditing();
-    closeMobileNodeSheet();
-    closeMobileMenu();
-    requestAnimationFrame(()=>{ addStandaloneFromMobile(); });
+    runAfterClosingMobileTransientUi(()=>{ addStandaloneFromMobile(); });
   });
   mobileMenuBtn.addEventListener('click',toggleMobileMenu);
   mobileShareBtn.addEventListener('click',()=>{
-    if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
     if(!presentationToggle) return;
-    closeMobileMenu();
-    presentationToggle.checked=!presentationToggle.checked;
-    presentationToggle.dispatchEvent(new Event('change',{bubbles:true}));
-    if(isMobileMode() && presentationToggle.checked){
-      if(app.classList.contains('io-open')) _setIoOpen(false);
-      closeMobileNodeSheet();
-    }
-    updateMobileUi();
+    runAfterClosingMobileTransientUi(()=>{
+      presentationToggle.checked=!presentationToggle.checked;
+      presentationToggle.dispatchEvent(new Event('change',{bubbles:true}));
+      if(isMobileMode() && presentationToggle.checked && app.classList.contains('io-open')) _setIoOpen(false);
+    });
   });
   mobileActionbar.addEventListener('click',e=>{
     const btn=e.target.closest('button[data-mobile-action]');
@@ -7648,6 +7694,8 @@ if(document.readyState==='complete'){
     if(app.classList.contains('io-open')) _setIoOpen(false);
     closeMobileNodeSheet();
     closeMobileMenu();
+    app.classList.remove('mobile-menu-open','mobile-node-sheet-open','mobile-sheet-open','mobile-editor-open');
+    updateMobileUi();
   });
   if(presentationToggle){
     presentationToggle.addEventListener('change',()=>{
@@ -7672,8 +7720,8 @@ if(document.readyState==='complete'){
   function handleMobileNodeTap(nodeId,clientX,clientY){
     const now=Date.now();
     const isDoubleTap=lastMobileNodeTap.id===nodeId
-      && (now-lastMobileNodeTap.time)<320
-      && Math.hypot(clientX-lastMobileNodeTap.x, clientY-lastMobileNodeTap.y)<22;
+      && (now-lastMobileNodeTap.time)<MOBILE_DOUBLE_TAP_MS
+      && Math.hypot(clientX-lastMobileNodeTap.x, clientY-lastMobileNodeTap.y)<MOBILE_DOUBLE_TAP_RADIUS;
     if(isDoubleTap){
       resetLastMobileNodeTap();
       openMobileInlineEdit(nodeId);
@@ -7703,7 +7751,7 @@ if(document.readyState==='complete'){
     if(!isMobileMode() || !touchGesture || touchGesture.type!=='node-drag' || !e.touches.length) return;
     const touch=e.touches[0];
     const moved=Math.hypot(touch.clientX-touchGesture.startX,touch.clientY-touchGesture.startY);
-    if(moved>3){
+    if(moved>MOBILE_DRAG_START_PX){
       touchGesture.moved=true;
       resetLastMobileNodeTap();
       updateMobileDragPosition(touch.clientX,touch.clientY);
@@ -7751,7 +7799,7 @@ if(document.readyState==='complete'){
     if(touchGesture.type==='node-drag' && e.touches.length===1){
       const t=e.touches[0];
       const moved=Math.hypot(t.clientX-touchGesture.startX,t.clientY-touchGesture.startY);
-      if(moved>3){
+      if(moved>MOBILE_DRAG_START_PX){
         touchGesture.moved=true;
         resetLastMobileNodeTap();
         updateMobileDragPosition(t.clientX,t.clientY);
