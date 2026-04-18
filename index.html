@@ -6963,6 +6963,22 @@ if(document.readyState==='complete'){
   function clamp(n,min,max){ return Math.min(max,Math.max(min,n)); }
   function touchDistance(a,b){ return Math.hypot((a.clientX-b.clientX),(a.clientY-b.clientY)); }
   function currentTitle(){ return String((mapTitleInput&&mapTitleInput.value) || (meta&&meta.title) || '案件マインドマップ').trim() || '案件マインドマップ'; }
+  function setMobileMenuOpen(open){
+    const next=!!open && isMobileMode() && !meta?.presentationMode;
+    app.classList.toggle('mobile-menu-open', next);
+    if(mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    updateMobileUi();
+  }
+  function closeMobileMenu(){ setMobileMenuOpen(false); }
+  function toggleMobileMenu(){
+    if(!isMobileMode() || meta?.presentationMode) return;
+    const willOpen=!app.classList.contains('mobile-menu-open');
+    if(willOpen){
+      if(app.classList.contains('io-open')) _setIoOpen(false);
+      closeMobileNodeSheet();
+    }
+    setMobileMenuOpen(willOpen);
+  }
   function setMobileActionbarVisible(show){
     if(!mobileActionbar) return;
     clearTimeout(mobileActionbarHideTimer);
@@ -7151,7 +7167,7 @@ if(document.readyState==='complete'){
     const doneBtn=mobileActionbar.querySelector('[data-mobile-action="done"]');
     if(doneBtn) doneBtn.textContent=(hasNode && nb(activeNodeId) && nb(activeNodeId).status==='done')?'未完了':'完了';
     updateMobileSheetState();
-    const anySheet=isMobileMode() && (app.classList.contains('mobile-io-open') || app.classList.contains('mobile-node-sheet-open'));
+    const anySheet=isMobileMode() && (app.classList.contains('mobile-io-open') || app.classList.contains('mobile-node-sheet-open') || app.classList.contains('mobile-menu-open'));
     app.classList.toggle('mobile-sheet-open', anySheet);
   }
 
