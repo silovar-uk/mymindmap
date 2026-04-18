@@ -1944,7 +1944,7 @@ const APP_UPDATED_AT='2026-04-19 23:45 JST';
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
 {version:'1.6.5',date:'2026-04-20 00:06 JST',summary:'スマホのインライン編集をノード幅・位置によりぴったり沿う表示へ調整。',items:['スマホのインライン編集をノードの横幅に近いサイズへ寄せ、左右に余白が出すぎないよう調整','入力欄の位置をノードの中央付近に合わせ、一覧画面上でより直接編集している感覚に寄せた','インライン編集のシェル余白と影を小さくし、ノードに被せたときの浮きすぎを軽減','補助ヒントは常時表示をやめ、入力欄そのものを主役にしたミニマルな見た目へ調整']},
-{version:'1.6.3',date:'2026-04-19 23:45 JST',summary:'スマホ編集を背景操作から切り離し、下部4ボタンの文字サイズと占有感を引き上げて操作を安定化。',items:['スマホで編集パネルが開いている間はキャンバス本体と上部バーのポインター操作を止め、背面ジェスチャーが入力を奪わないよう整理','編集パネル本体に touchstart / pointerdown / click の伝播停止を追加し、タップが背後やバックドロップへ漏れにくいよう補強','ノード編集・矢印編集の初回フォーカス後に再度 scrollIntoView をかけ、キーボード表示後も入力欄が見切れにくいよう調整','下部アクションバーの4ボタンをさらに大型化し、主ラベルと補助ラベルの文字サイズを引き上げて読みやすさを改善','極小幅向けの 340px / 380px ブレークポイントでも文字を潰しすぎないよう最小サイズを底上げ','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.6.6',date:'2026-04-20 00:12 JST',summary:'スマホ編集を背景操作から切り離し、下部4ボタンの文字サイズと占有感を引き上げて操作を安定化。',items:['スマホで編集パネルが開いている間はキャンバス本体と上部バーのポインター操作を止め、背面ジェスチャーが入力を奪わないよう整理','編集パネル本体に touchstart / pointerdown / click の伝播停止を追加し、タップが背後やバックドロップへ漏れにくいよう補強','ノード編集・矢印編集の初回フォーカス後に再度 scrollIntoView をかけ、キーボード表示後も入力欄が見切れにくいよう調整','下部アクションバーの4ボタンをさらに大型化し、主ラベルと補助ラベルの文字サイズを引き上げて読みやすさを改善','極小幅向けの 340px / 380px ブレークポイントでも文字を潰しすぎないよう最小サイズを底上げ','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.2',date:'2026-04-17 11:52 JST',summary:'共有用に補足を隠してタイトルを大きく見せる表示モードを追加し、通常表示とPNG保存の両方へ反映。',items:['上部に「共有表示」チェックを追加し、初期状態はOFFのまま任意で切り替えられるよう対応','共有表示中はノード補足を描画せず、タイトルの基準フォントと折り返しレイアウトを拡大して読みやすく調整','ノード幅と高さの計算も共有表示に合わせて見直し、補足を消したぶんタイトルが大きく収まるよう変更','JSONの meta に共有表示フラグを保持し、読み込み後も表示モードを再現できるよう更新','描画本体で切り替える方式にしたため、PNG保存でも共有表示の見た目がそのまま反映されるよう整理']},
 {version:'1.6.1',date:'2026-04-17 00:24 JST',summary:'選択中ノードの子孫込みJSONコピーと、空白貼り付け / 子ノード貼り付けを追加して他のマインドマップへ枝ごと持ち運びやすく改善。',items:['親ノードを選択してコピーすると、子孫ノードと内部の接続線を含む専用JSONをクリップボードへ書き出すよう追加','空白で貼り付けた場合はビューポート中心または最後にクリックした空白位置へ新しい枝として貼り付けるよう対応','ノードを選択した状態で貼り付けた場合は、その選択ノードの子ノードとして枝ごと貼り付けるよう対応','貼り付け時は新しいノードIDと線IDを採番し直し、元の色・メモ・状態・★・相対レイアウトを保ったまま複製できるよう整理','貼り付けた枝では子孫ノードのうち子を持つものを折りたたみ状態にし、最初は見通しよく扱えるよう調整','キャンバス上で通常の Ctrl/Cmd+C / Ctrl/Cmd+V で使えるよう、コピーイベントと貼り付けイベントに枝JSONの処理を追加']},
 {version:'1.6.0',date:'2026-04-16 13:17 JST',summary:'左インボックス、現在地HUD、ミニマップ、出力時のインボックス切替を追加し、構造化前のメモと構造化後のマップを同じ画面で往復しやすく改善。',items:['左側に常設インボックスを追加し、1行入力・複数行分割・カード管理・幅変更に対応','インボックスカードをルート化 / 子化できる変換導線を追加し、カードのドラッグ&ドロップでキャンバス上へノード化できるよう拡張','テキスト / Markdown 出力ではインボックスをデフォルト非表示にし、チェックを入れたときだけ末尾セクションとして含めるよう変更','現在地の把握用にビューポート位置・パス表示・右下ミニマップを追加し、クリックで見たい場所へジャンプできるよう改善','インボックス→マップ変換時の軽いフライト演出と到着パルスを追加し、整理した手応えが残るよう調整','JSON 保存 / 読み込み・Undo / Redo でもインボックス状態と関連UI設定を保持するよう更新']},
@@ -6833,6 +6833,7 @@ if(document.readyState==='complete'){
 #app.mobile-mode.mobile-editor-open #mobile-menu-sheet,
 #app.mobile-mode.mobile-editor-open #io-wrap{pointer-events:none !important;opacity:0 !important}
 #app.mobile-mode.mobile-inline-edit-open #mobile-actionbar{pointer-events:none !important;opacity:0 !important}
+#app.mobile-mode.mobile-inline-edit-open #main{padding-bottom:12px !important}
 #app.mobile-mode.mobile-editor-open #mobile-backdrop{opacity:1;pointer-events:auto;z-index:118}
 #app.mobile-mode #location-chip,#app.mobile-mode #path-chip{display:none !important}
 #app.mobile-mode .node-hit-mobile{pointer-events:all}
@@ -7103,7 +7104,7 @@ if(document.readyState==='complete'){
   mobileInlineEditor.innerHTML=`
     <div class="inline-edit-shell">
       <input id="mobile-inline-input" type="text" inputmode="text" enterkeyhint="done" aria-label="ノード名を編集">
-      <div class="inline-edit-hint">長押しで名前を直接編集 / Enterで保存</div>
+      <div class="inline-edit-hint">ダブルタップで名前変更 / Enterで保存</div>
     </div>`;
   app.appendChild(mobileInlineEditor);
 
@@ -7133,9 +7134,8 @@ if(document.readyState==='complete'){
   let mobileInlineEditId=null;
   let mobileInlineEditOriginal='';
   let suppressMobileInlineBlur=false;
-  let longPressTimer=null;
-  let longPressState=null;
   let touchGesture=null;
+  let lastMobileNodeTap={id:null,time:0,x:0,y:0};
   let mobileActionbarHideTimer=null;
   const ua=navigator.userAgent||'';
   const isIOS=/iPhone|iPad|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
@@ -7187,8 +7187,7 @@ if(document.readyState==='complete'){
     if(selectAll){
       requestAnimationFrame(()=>{
         try{ mobileInlineInput.focus({preventScroll:true}); }catch(_e){ try{ mobileInlineInput.focus(); }catch(__e){} }
-        try{ mobileInlineInput.select(); }catch(_e){}
-        setTimeout(()=>{ try{ mobileInlineInput.scrollIntoView({block:'center',inline:'nearest'}); }catch(_e){} },180);
+        try{ mobileInlineInput.setSelectionRange(0, mobileInlineInput.value.length); }catch(_e){ try{ mobileInlineInput.select(); }catch(__e){} }
       });
     }
   }
@@ -7266,6 +7265,11 @@ if(document.readyState==='complete'){
     }
     setMobileMenuOpen(willOpen);
   }
+  function closeActiveMobileEditing(){
+    if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
+    if(typeof closeEp==='function') closeEp();
+    if(typeof closeEep==='function') closeEep();
+  }
   function setMobileActionbarVisible(show){
     if(!mobileActionbar) return;
     clearTimeout(mobileActionbarHideTimer);
@@ -7285,11 +7289,13 @@ if(document.readyState==='complete'){
     const offsetTop=vv ? vv.offsetTop : 0;
     const keyboardDelta=vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
     const keyboardOpen=keyboardDelta > 120;
+    const inlineEditing=isMobileInlineEditing();
+    const effectiveKeyboardOffset=inlineEditing ? 0 : (keyboardOpen ? keyboardDelta : 0);
     app.style.setProperty('--mobile-vh', `${Math.max(320,height)}px`);
     app.style.setProperty('--mobile-topbar-h', `${Math.max(56,56+offsetTop)}px`);
-    app.style.setProperty('--keyboard-offset', `${keyboardOpen ? keyboardDelta : 0}px`);
-    app.classList.toggle('keyboard-open', keyboardOpen && isMobileMode());
-    if(isMobileInlineEditing()) setTimeout(()=>positionMobileInlineEditor(mobileInlineEditId), keyboardOpen ? 180 : 40);
+    app.style.setProperty('--keyboard-offset', `${effectiveKeyboardOffset}px`);
+    app.classList.toggle('keyboard-open', keyboardOpen && isMobileMode() && !inlineEditing);
+    if(inlineEditing) setTimeout(()=>positionMobileInlineEditor(mobileInlineEditId), keyboardOpen ? 180 : 40);
   }
   function getSheetDragTarget(type){
     if(type==='io') return ioWrapEl;
@@ -7480,14 +7486,14 @@ if(document.readyState==='complete'){
   toggleIo=function(){ _toggleIo(); updateMobileUi(); };
 
   function addStandaloneFromMobile(){
-    if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
+    closeActiveMobileEditing();
     if(typeof ensureMapTitle==='function' && !ensureMapTitle({toast:true,focus:true})) return;
     if(typeof snapshot==='function') snapshot();
     const node=createStandaloneNode({label:'新規案件',subtext:'',status:'none',fitMode:'shrink',anchor:getViewportCenterWorld()});
     if(node){
       setSingleSelection(node.id);
       renderNow();
-      openEp(node.id);
+      openMobileInlineEdit(node.id);
     }
   }
   function runMobileNodeAction(action,nodeId){
@@ -7508,7 +7514,9 @@ if(document.readyState==='complete'){
       if(child){
         setSingleSelection(child.id);
         renderNow();
-        openEp(child.id);
+        closeMobileNodeSheet();
+        openMobileInlineEdit(child.id);
+        return;
       }
       closeMobileNodeSheet();
       return;
@@ -7519,7 +7527,9 @@ if(document.readyState==='complete'){
       if(sibling){
         setSingleSelection(sibling.id);
         renderNow();
-        openEp(sibling.id);
+        closeMobileNodeSheet();
+        openMobileInlineEdit(sibling.id);
+        return;
       }
       closeMobileNodeSheet();
       return;
@@ -7596,8 +7606,19 @@ if(document.readyState==='complete'){
     mapTitleInput.dispatchEvent(new Event('blur',{bubbles:true}));
     updateMobileUi();
   });
-  mobileDataBtn.addEventListener('click',()=>{ if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false}); closeMobileMenu(); toggleIo(); });
-  mobileAddBtn.addEventListener('click',()=>{ closeMobileMenu(); addStandaloneFromMobile(); });
+  mobileDataBtn.addEventListener('click',()=>{
+    closeActiveMobileEditing();
+    closeMobileNodeSheet();
+    closeMobileMenu();
+    if(app.classList.contains('io-open')) _setIoOpen(false);
+    requestAnimationFrame(()=>{ _setIoOpen(true); updateMobileUi(); });
+  });
+  mobileAddBtn.addEventListener('click',()=>{
+    closeActiveMobileEditing();
+    closeMobileNodeSheet();
+    closeMobileMenu();
+    requestAnimationFrame(()=>{ addStandaloneFromMobile(); });
+  });
   mobileMenuBtn.addEventListener('click',toggleMobileMenu);
   mobileShareBtn.addEventListener('click',()=>{
     if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
@@ -7623,12 +7644,10 @@ if(document.readyState==='complete'){
     runMobileNodeAction(btn.dataset.mobileSheetAction, mobileSheetNodeId);
   });
   mobileBackdrop.addEventListener('click',()=>{
-    if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
+    closeActiveMobileEditing();
     if(app.classList.contains('io-open')) _setIoOpen(false);
     closeMobileNodeSheet();
     closeMobileMenu();
-    if(typeof closeEp==='function') closeEp();
-    if(typeof closeEep==='function') closeEep();
   });
   if(presentationToggle){
     presentationToggle.addEventListener('change',()=>{
@@ -7647,59 +7666,65 @@ if(document.readyState==='complete'){
   attachSheetDragHandle(ioPanelEl,'io');
   attachSheetDragHandle(mobileNodeSheetPanel,'node');
 
-  function cancelLongPress(){
-    if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; }
-    longPressState=null;
+  function resetLastMobileNodeTap(){
+    lastMobileNodeTap={id:null,time:0,x:0,y:0};
+  }
+  function handleMobileNodeTap(nodeId,clientX,clientY){
+    const now=Date.now();
+    const isDoubleTap=lastMobileNodeTap.id===nodeId
+      && (now-lastMobileNodeTap.time)<320
+      && Math.hypot(clientX-lastMobileNodeTap.x, clientY-lastMobileNodeTap.y)<22;
+    if(isDoubleTap){
+      resetLastMobileNodeTap();
+      openMobileInlineEdit(nodeId);
+      return;
+    }
+    lastMobileNodeTap={id:nodeId,time:now,x:clientX,y:clientY};
+    updateMobileUi();
   }
   NL.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
     const nodeEl=e.target.closest('[data-id]');
     if(!nodeEl || e.touches.length!==1) return;
     const touch=e.touches[0];
-    cancelLongPress();
-    longPressState={nodeId:nodeEl.dataset.id,startX:touch.clientX,startY:touch.clientY,triggered:false};
-    longPressTimer=setTimeout(()=>{
-      if(!longPressState) return;
-      const id=longPressState.nodeId;
-      if(!id || !nb(id)) return;
-      if(!isSelected(id) || selectedNodeIds.size===0) setSingleSelection(id);
-      else {activeNodeId=id; selectedEdgeId=null; draw();}
-      longPressState.triggered=true;
-      openMobileInlineEdit(id);
-      if(window.navigator && typeof window.navigator.vibrate==='function') window.navigator.vibrate(10);
-    },320);
-  },{passive:true});
+    const id=nodeEl.dataset.id;
+    if(!id || !nb(id)) return;
+    closeMobileMenu();
+    closeMobileNodeSheet();
+    if(isMobileInlineEditing() && mobileInlineEditId!==id) commitMobileInlineEdit({restoreFocus:false});
+    if(!isSelected(id) || selectedNodeIds.size===0) setSingleSelection(id);
+    else {activeNodeId=id; selectedEdgeId=null; draw();}
+    startMobileNodeDrag(id,touch.clientX,touch.clientY);
+    touchGesture={type:'node-drag',nodeId:id,startX:touch.clientX,startY:touch.clientY,moved:false};
+    e.preventDefault();
+    e.stopPropagation();
+  },{passive:false});
   NL.addEventListener('touchmove',e=>{
-    if(!isMobileMode() || !longPressState || !e.touches.length) return;
+    if(!isMobileMode() || !touchGesture || touchGesture.type!=='node-drag' || !e.touches.length) return;
     const touch=e.touches[0];
-    const distance=Math.hypot(touch.clientX-longPressState.startX,touch.clientY-longPressState.startY);
-    if(!longPressState.triggered && distance>10){
-      cancelLongPress();
-      return;
+    const moved=Math.hypot(touch.clientX-touchGesture.startX,touch.clientY-touchGesture.startY);
+    if(moved>3){
+      touchGesture.moved=true;
+      resetLastMobileNodeTap();
+      updateMobileDragPosition(touch.clientX,touch.clientY);
     }
-    if(longPressState.triggered){
-      e.preventDefault();
-    }
+    e.preventDefault();
+    e.stopPropagation();
   },{passive:false});
   NL.addEventListener('touchend',e=>{
-    if(!isMobileMode()) return;
-    const state=longPressState;
-    cancelLongPress();
-    if(!state) return;
-    if(state.triggered){
-      e.preventDefault();
-      return;
+    if(!isMobileMode() || !touchGesture || touchGesture.type!=='node-drag') return;
+    const finishedId=touchGesture.nodeId;
+    const moved=!!(touchGesture.moved || drag?.moved);
+    const changedTouch=(e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+    finishPointerLikeDrag();
+    touchGesture=null;
+    if(!moved && finishedId && changedTouch){
+      handleMobileNodeTap(finishedId, changedTouch.clientX, changedTouch.clientY);
     }
-    const id=state.nodeId;
-    if(id && nb(id)){
-      if(!isSelected(id) || selectedNodeIds.size===0) setSingleSelection(id);
-      else {activeNodeId=id; selectedEdgeId=null;}
-      draw();
-      updateMobileUi();
-      e.preventDefault();
-    }
+    e.preventDefault();
+    e.stopPropagation();
   },{passive:false});
-  NL.addEventListener('touchcancel',()=>{ cancelLongPress(); finishPointerLikeDrag(); },{passive:true});
+  NL.addEventListener('touchcancel',()=>{ touchGesture=null; finishPointerLikeDrag(); resetLastMobileNodeTap(); },{passive:true});
 
   cw.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
@@ -7710,7 +7735,7 @@ if(document.readyState==='complete'){
       const cx=((a.clientX+b.clientX)/2)-rect.left;
       const cy=((a.clientY+b.clientY)/2)-rect.top;
       touchGesture={type:'pinch',startDist:touchDistance(a,b),startVs:vs,worldCenter:{x:cx*vs+vx,y:cy*vs+vy}};
-      cancelLongPress();
+      resetLastMobileNodeTap();
       e.preventDefault();
       return;
     }
@@ -7723,6 +7748,17 @@ if(document.readyState==='complete'){
   cw.addEventListener('touchmove',e=>{
     if(!isMobileMode() || !touchGesture) return;
     if(e.target.closest('#ep') || e.target.closest('#eep') || e.target.closest('#mobile-inline-editor') || e.target.closest('#io-wrap') || e.target.closest('#mobile-menu-sheet') || e.target.closest('#mobile-node-sheet')) return;
+    if(touchGesture.type==='node-drag' && e.touches.length===1){
+      const t=e.touches[0];
+      const moved=Math.hypot(t.clientX-touchGesture.startX,t.clientY-touchGesture.startY);
+      if(moved>3){
+        touchGesture.moved=true;
+        resetLastMobileNodeTap();
+        updateMobileDragPosition(t.clientX,t.clientY);
+      }
+      e.preventDefault();
+      return;
+    }
     if(touchGesture.type==='pan' && e.touches.length===1){
       const t=e.touches[0];
       const dx=t.clientX-touchGesture.startX;
@@ -7756,6 +7792,16 @@ if(document.readyState==='complete'){
       if(!e.touches.length) touchGesture=null;
       return;
     }
+    if(touchGesture && touchGesture.type==='node-drag'){
+      const finishedId=touchGesture.nodeId;
+      const moved=!!(touchGesture.moved || drag?.moved);
+      const changedTouch=(e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+      finishPointerLikeDrag();
+      if(!moved && finishedId && changedTouch) handleMobileNodeTap(finishedId, changedTouch.clientX, changedTouch.clientY);
+      if(!e.touches.length) touchGesture=null;
+      e.preventDefault();
+      return;
+    }
     if(touchGesture && touchGesture.type==='pan' && !touchGesture.moved){
       if(selectedNodeIds.size || selectedEdgeId || activeNodeId){
         clearSelection();
@@ -7764,7 +7810,7 @@ if(document.readyState==='complete'){
     }
     if(!e.touches.length) touchGesture=null;
   },{passive:false});
-  cw.addEventListener('touchcancel',()=>{ touchGesture=null; cancelLongPress(); finishPointerLikeDrag(); },{passive:true});
+  cw.addEventListener('touchcancel',()=>{ touchGesture=null; finishPointerLikeDrag(); resetLastMobileNodeTap(); },{passive:true});
 
   function updateMobileMode(){
     const shouldMobile=window.innerWidth<=MOBILE_BREAKPOINT;
