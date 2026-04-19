@@ -6720,7 +6720,7 @@ if(document.readyState==='complete'){
 </script>
 
 <style id="mobile-mode-style">
-#mobile-topbar,#mobile-actionbar,#mobile-node-sheet,#mobile-menu-sheet,#mobile-backdrop,#mobile-inline-editor{display:none}
+#mobile-topbar,#mobile-actionbar,#mobile-node-sheet,#mobile-menu-sheet,#mobile-backdrop,#mobile-inline-editor,#mobile-fab-menu{display:none}
 #mobile-topbar{
   position:fixed;top:0;left:0;right:0;height:56px;padding:8px 10px;align-items:center;gap:8px;
   background:linear-gradient(180deg, rgba(20,25,34,.98), rgba(10,14,20,.985));
@@ -6750,6 +6750,12 @@ if(document.readyState==='complete'){
   background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64)
 }
 #mobile-menu-btn{width:44px;padding:0;font-size:17px;line-height:1}
+#mobile-fab-menu{
+  position:fixed;right:12px;top:calc(10px + env(safe-area-inset-top,0px));width:46px;height:46px;
+  align-items:center;justify-content:center;border:1px solid rgba(132,145,164,.18);border-radius:15px;
+  background:linear-gradient(180deg, rgba(20,25,34,.96), rgba(10,14,20,.98));color:var(--sf-text-0);
+  font-size:18px;font-weight:900;z-index:107;box-shadow:0 10px 22px rgba(0,0,0,.24);cursor:pointer
+}
 #mobile-backdrop{
   position:fixed;inset:0;background:rgba(3,5,8,.46);backdrop-filter:blur(4px);opacity:0;pointer-events:none;z-index:92;
   transition:opacity .18s ease
@@ -6814,20 +6820,22 @@ if(document.readyState==='complete'){
 #mobile-inline-input::placeholder{color:color-mix(in srgb, var(--inline-text) 54%, transparent)}
 #mobile-inline-input:focus{box-shadow:inset 0 0 0 1.2px color-mix(in srgb, var(--inline-stroke) 72%, white 8%), 0 0 0 2px color-mix(in srgb, var(--inline-stroke) 16%, transparent)}
 #mobile-inline-editor .inline-edit-hint{display:none}
-#app.mobile-mode{padding-top:56px}
+#app.mobile-mode{padding-top:0}
 #app.mobile-mode #tb{display:none !important}
-#app.mobile-mode #mobile-topbar{display:flex}
+#app.mobile-mode #mobile-topbar{display:none !important}
+#app.mobile-mode #mobile-fab-menu{display:flex}
 #app.mobile-mode #mobile-backdrop{display:block}
 #app.mobile-mode.mobile-sheet-open #mobile-backdrop{opacity:1;pointer-events:auto}
 #app.mobile-mode.mobile-menu-open #mobile-menu-sheet{display:block;opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
-#app.mobile-mode #main{height:calc(var(--mobile-vh) - var(--mobile-topbar-h));padding-top:0;padding-bottom:calc(74px + env(safe-area-inset-bottom,0px) + var(--keyboard-offset))}
+#app.mobile-mode #main{height:calc(var(--mobile-vh));padding-top:0;padding-bottom:calc(74px + env(safe-area-inset-bottom,0px) + var(--keyboard-offset))}
 #app.mobile-mode.mobile-editor-open #main{z-index:109;pointer-events:none !important}
 #app.mobile-mode #cw,#app.mobile-mode svg{touch-action:none}
 #app.mobile-mode.mobile-editor-open #cw,
 #app.mobile-mode.mobile-editor-open #sv,
 #app.mobile-mode.mobile-editor-open #hud,
 #app.mobile-mode.mobile-editor-open #focus-chip,
-#app.mobile-mode.mobile-editor-open #mobile-topbar{pointer-events:none !important}
+#app.mobile-mode.mobile-editor-open #mobile-topbar,
+#app.mobile-mode.mobile-editor-open #mobile-fab-menu{pointer-events:none !important}
 #app.mobile-mode.mobile-editor-open #mobile-actionbar,
 #app.mobile-mode.mobile-editor-open #mobile-node-sheet,
 #app.mobile-mode.mobile-editor-open #mobile-menu-sheet,
@@ -6847,6 +6855,7 @@ if(document.readyState==='complete'){
 #app.mobile-mode.presentation-mode #mobile-topbar{background:linear-gradient(180deg, rgba(20,25,34,.74), rgba(10,14,20,.62));backdrop-filter:blur(8px);box-shadow:0 8px 18px rgba(0,0,0,.16)}
 #app.mobile-mode.presentation-mode #mobile-title-btn{background:transparent;border-color:transparent;padding-left:0;height:38px;font-size:15px;font-weight:900}
 #app.mobile-mode.presentation-mode #mobile-menu-btn{display:none !important}
+#app.mobile-mode.presentation-mode #mobile-fab-menu{display:none !important}
 #app.mobile-mode.presentation-mode #main{padding-bottom:12px}
 #app.mobile-mode #hud{top:64px;left:8px;max-width:calc(100% - 16px)}
 #app.mobile-mode #focus-chip{pointer-events:auto}
@@ -6925,14 +6934,14 @@ if(document.readyState==='complete'){
 }
 @media (max-width:820px){
   #mobile-topbar{padding-top:max(8px, env(safe-area-inset-top,0px));height:calc(56px + env(safe-area-inset-top,0px))}
-  #app.mobile-mode{padding-top:calc(56px + env(safe-area-inset-top,0px))}
-  #app.mobile-mode #main{height:calc(100vh - 56px - env(safe-area-inset-top,0px));}
+  #app.mobile-mode{padding-top:0}
+  #app.mobile-mode #main{height:100vh;}
 }
 </style>
 
 <style id="mobile-phase3-style">
 #app.mobile-mode{
-  --mobile-topbar-h:56px;
+  --mobile-topbar-h:0px;
   --mobile-vh:100vh;
   --keyboard-offset:0px;
   --sheet-ease:cubic-bezier(.22,1,.36,1);
@@ -7019,7 +7028,7 @@ if(document.readyState==='complete'){
   transform:translateY(28px) scale(.98);
   pointer-events:none;
 }
-#app.mobile-mode.keyboard-open #mobile-menu-btn,#app.mobile-mode.keyboard-open #mobile-title-btn{opacity:0;pointer-events:none;transform:translateY(-6px)}
+#app.mobile-mode.keyboard-open #mobile-menu-btn,#app.mobile-mode.keyboard-open #mobile-title-btn,#app.mobile-mode.keyboard-open #mobile-fab-menu{opacity:0;pointer-events:none;transform:translateY(-6px)}
 #app.mobile-mode.keyboard-open #hud,#app.mobile-mode.keyboard-open #focus-chip{display:none !important}
 #app.mobile-mode.keyboard-open #mobile-topbar{box-shadow:none;background:linear-gradient(180deg, rgba(20,25,34,.76), rgba(10,14,20,.58));backdrop-filter:blur(6px)}
 #app.mobile-mode.keyboard-open #main{padding-bottom:18px}
@@ -7056,6 +7065,14 @@ if(document.readyState==='complete'){
     <button id="mobile-menu-btn" type="button" aria-label="メニューを開く" aria-expanded="false">☰</button>`;
   app.appendChild(mobileTopbar);
 
+  const mobileFabMenu=document.createElement('button');
+  mobileFabMenu.id='mobile-fab-menu';
+  mobileFabMenu.type='button';
+  mobileFabMenu.setAttribute('aria-label','メニューを開く');
+  mobileFabMenu.setAttribute('aria-expanded','false');
+  mobileFabMenu.textContent='☰';
+  app.appendChild(mobileFabMenu);
+
   const mobileBackdrop=document.createElement('div');
   mobileBackdrop.id='mobile-backdrop';
   app.appendChild(mobileBackdrop);
@@ -7064,6 +7081,7 @@ if(document.readyState==='complete'){
   mobileMenuSheet.id='mobile-menu-sheet';
   mobileMenuSheet.innerHTML=`
     <div class="menu-panel">
+      <button id="mobile-title-menu-btn" type="button">マップ名</button>
       <button id="mobile-data-btn" type="button">データ</button>
       <button id="mobile-add-btn" class="primary" type="button">新規ノード</button>
       <button id="mobile-share-btn" type="button">共有表示</button>
@@ -7111,6 +7129,8 @@ if(document.readyState==='complete'){
 
   const mobileTitleBtn=document.getElementById('mobile-title-btn');
   const mobileMenuBtn=document.getElementById('mobile-menu-btn');
+  const mobileFabMenu=document.getElementById('mobile-fab-menu');
+  const mobileTitleMenuBtn=document.getElementById('mobile-title-menu-btn');
   const mobileDataBtn=document.getElementById('mobile-data-btn');
   const mobileAddBtn=document.getElementById('mobile-add-btn');
   const mobileShareBtn=document.getElementById('mobile-share-btn');
@@ -7287,6 +7307,7 @@ if(document.readyState==='complete'){
     const next=!!open && isMobileMode() && !meta?.presentationMode;
     app.classList.toggle('mobile-menu-open', next);
     if(mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    if(mobileFabMenu) mobileFabMenu.setAttribute('aria-expanded', next ? 'true' : 'false');
     updateMobileUi();
   }
   function closeMobileMenu(){ setMobileMenuOpen(false); }
@@ -7338,7 +7359,7 @@ if(document.readyState==='complete'){
     const inlineEditing=isMobileInlineEditing();
     const effectiveKeyboardOffset=inlineEditing ? 0 : (keyboardOpen ? keyboardDelta : 0);
     app.style.setProperty('--mobile-vh', `${Math.max(320,height)}px`);
-    app.style.setProperty('--mobile-topbar-h', `${Math.max(56,56+offsetTop)}px`);
+    app.style.setProperty('--mobile-topbar-h', `${Math.max(0,offsetTop)}px`);
     app.style.setProperty('--keyboard-offset', `${effectiveKeyboardOffset}px`);
     app.classList.toggle('keyboard-open', keyboardOpen && isMobileMode() && !inlineEditing);
     if(inlineEditing) setTimeout(()=>positionMobileInlineEditor(mobileInlineEditId), keyboardOpen ? 180 : 40);
@@ -7505,6 +7526,10 @@ if(document.readyState==='complete'){
     const sheetOrMenuOpen=app.classList.contains('mobile-io-open') || app.classList.contains('mobile-node-sheet-open') || app.classList.contains('mobile-menu-open');
     if(meta?.presentationMode && app.classList.contains('mobile-menu-open')) closeMobileMenu();
     setMobileActionbarVisible(isMobileMode() && hasNode && !meta?.presentationMode && !keyboardOpen && !editorOpen && !inlineEditOpen && !sheetOrMenuOpen);
+    if(mobileFabMenu){
+      const showFab=isMobileMode() && !meta?.presentationMode && !keyboardOpen && !editorOpen && !inlineEditOpen;
+      mobileFabMenu.style.display=showFab ? 'flex' : 'none';
+    }
     if(mobileDataBtn) mobileDataBtn.classList.toggle('act', !!(isMobileMode() && app.classList.contains('io-open')));
     if(mobileShareBtn) mobileShareBtn.classList.toggle('act', !!(meta&&meta.presentationMode));
     updateMobileSheetState();
@@ -7652,14 +7677,21 @@ if(document.readyState==='complete'){
     },0);
   });
 
-  mobileTitleBtn.addEventListener('click',()=>{
+  const promptMobileTitleEdit=()=>{
     const next=window.prompt('マップ名を入力', currentTitle());
     if(next===null || !mapTitleInput) return;
     mapTitleInput.value=next;
     mapTitleInput.dispatchEvent(new Event('input',{bubbles:true}));
     mapTitleInput.dispatchEvent(new Event('blur',{bubbles:true}));
     updateMobileUi();
-  });
+  };
+  mobileTitleBtn.addEventListener('click',promptMobileTitleEdit);
+  if(mobileTitleMenuBtn){
+    mobileTitleMenuBtn.addEventListener('click',()=>{
+      closeMobileMenu();
+      promptMobileTitleEdit();
+    });
+  }
   mobileDataBtn.addEventListener('click',()=>{
     runAfterClosingMobileTransientUi(()=>{
       if(app.classList.contains('io-open')) _setIoOpen(false);
@@ -7670,6 +7702,7 @@ if(document.readyState==='complete'){
     runAfterClosingMobileTransientUi(()=>{ addStandaloneFromMobile(); });
   });
   mobileMenuBtn.addEventListener('click',toggleMobileMenu);
+  if(mobileFabMenu) mobileFabMenu.addEventListener('click',toggleMobileMenu);
   mobileShareBtn.addEventListener('click',()=>{
     if(!presentationToggle) return;
     runAfterClosingMobileTransientUi(()=>{
