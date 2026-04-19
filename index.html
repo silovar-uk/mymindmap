@@ -7165,6 +7165,81 @@ if(document.readyState==='complete'){
   let touchGesture=null;
   let lastMobileNodeTap={id:null,time:0,x:0,y:0};
   let mobileActionbarHideTimer=null;
+  const mobileUiState={mode:'normal',menuKind:null,lastReason:'boot'};
+  function mobileDebugEnabled(){
+    try{ return !!(window.__MOBILE_UI_DEBUG__ || localStorage.getItem('mobile-ui-debug')==='1'); }catch(_e){ return !!window.__MOBILE_UI_DEBUG__; }
+  }
+  function mobileDebugLog(event,detail){
+    if(!mobileDebugEnabled()) return;
+    try{ console.debug('[mobile-ui]', event, detail||''); }catch(_e){}
+  }
+  function setMobileMode(nextMode, opts={}){
+    const normalized=(nextMode==='rename' || nextMode==='menu' || nextMode==='data') ? nextMode : 'normal';
+    const prevMode=mobileUiState.mode;
+    const prevMenuKind=mobileUiState.menuKind;
+    const nextMenuKind=normalized==='menu' ? (opts.menuKind || mobileUiState.menuKind || 'global') : null;
+    const nodeId=opts.nodeId || activeNodeId || mobileSheetNodeId || null;
+    const reason=opts.reason || 'set-mode';
+
+    if(normalized!=='rename'){
+      mobileRenameId=null;
+      mobileRenameOriginal='';
+      mobileInlineEditor.style.display='none';
+    }else if(nodeId && nb(nodeId)){
+      mobileRenameId=nodeId;
+      mobileRenameOriginal=String(nb(nodeId).label||'');
+      mobileInlineEditor.style.display='none';
+      if(!isSelected(nodeId)) setSingleSelection(nodeId);
+    }
+
+    if(normalized!=='menu' || nextMenuKind!=='node'){
+      mobileSheetNodeId=null;
+    }else if(nodeId && nb(nodeId)){
+      mobileSheetNodeId=nodeId;
+      if(!isSelected(nodeId)) setSingleSelection(nodeId);
+      if(mobileNodeSheetTitle){
+        const node=nb(nodeId);
+        mobileNodeSheetTitle.textContent=node ? `${node.label} の操作` : 'ノード操作';
+      }
+    }
+
+    if(normalized!=='data' && app.classList.contains('io-open')){
+      _setIoOpen(false);
+    }
+    if(normalized==='data' && !app.classList.contains('io-open')){
+      _setIoOpen(true);
+    }
+
+    if(normalized!=='rename'){
+      if(typeof closeEp==='function') closeEp();
+      if(typeof closeEep==='function') closeEep();
+    }
+
+    mobileUiState.mode=normalized;
+    mobileUiState.menuKind=nextMenuKind;
+    mobileUiState.lastReason=reason;
+    mobileDebugLog('state changed', `${prevMode}${prevMenuKind?':'+prevMenuKind:''} -> ${normalized}${nextMenuKind?':'+nextMenuKind:''} (${reason})`);
+    renderMobileActionbar();
+    updateMobileUi();
+  }
+  function closeTransientUi(reason='close-transient'){
+    const wasMode=mobileUiState.mode;
+    if(wasMode==='rename'){
+      mobileRenameId=null;
+      mobileRenameOriginal='';
+      mobileInlineEditor.style.display='none';
+    }
+    if(app.classList.contains('io-open')) _setIoOpen(false);
+    if(typeof closeEp==='function') closeEp();
+    if(typeof closeEep==='function') closeEep();
+    mobileSheetNodeId=null;
+    mobileUiState.menuKind=null;
+    mobileUiState.mode='normal';
+    mobileUiState.lastReason=reason;
+    mobileDebugLog('close transient', `${wasMode} -> normal (${reason})`);
+    renderMobileActionbar();
+    updateMobileUi();
+  }
   const ua=navigator.userAgent||'';
   const isIOS=/iPhone|iPad|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
   const isAndroid=/Android/.test(ua);
@@ -7172,7 +7247,7 @@ if(document.readyState==='complete'){
   app.classList.toggle('android', !!isAndroid);
 
   function isMobileMode(){ return app.classList.contains('mobile-mode'); }
-  function isMobileInlineEditing(){ return !!mobileRenameId; }
+  function isMobileInlineEditing(){ return mobileUiState.mode==='rename' && !!mobileRenameId; }
   function getMobileRenameInput(){ return mobileActionbar.querySelector('#mobile-rename-input'); }
   function getMobileRenameMeta(){ return mobileActionbar.querySelector('.mobile-rename-meta'); }
   function clamp(n,min,max){ return Math.min(max,Math.max(min,n)); }
@@ -7239,35 +7314,23 @@ if(document.readyState==='complete'){
       <button data-mobile-action="more" type="button"><span class="mobile-btn-main">その他</span><span class="mobile-btn-sub">完了・削除など</span></button>`;
   }
   function closeMobileInlineEdit({restoreFocus=true}={}){
-    if(!mobileRenameId){
-      mobileRenameId=null;
-      mobileRenameOriginal='';
-      mobileInlineEditor.style.display='none';
-      app.classList.remove('mobile-inline-edit-open');
-      renderMobileActionbar();
-      updateMobileUi();
-      return;
-    }
     const input=getMobileRenameInput();
     if(input && document.activeElement===input && typeof input.blur==='function') input.blur();
-    mobileRenameId=null;
-    mobileRenameOriginal='';
-    mobileInlineEditor.style.display='none';
-    app.classList.remove('mobile-inline-edit-open');
-    renderMobileActionbar();
-    updateMobileUi();
+    closeTransientUi('rename-close');
     if(restoreFocus) focusCanvasForShortcuts();
   }
   function cancelMobileInlineEdit(){
     if(!mobileRenameId) return;
     suppressMobileRenameBlur=true;
+    mobileDebugLog('rename canceled', {nodeId:mobileRenameId});
     closeMobileInlineEdit({restoreFocus:true});
     setTimeout(()=>{ suppressMobileRenameBlur=false; },0);
   }
   function commitMobileInlineEdit({restoreFocus=true}={}){
     if(!mobileRenameId) return true;
+    const currentId=mobileRenameId;
     const input=getMobileRenameInput();
-    const node=nb(mobileRenameId);
+    const node=nb(currentId);
     const nextValue=((input?.value)||'').trim() || '新規案件';
     if(node && nextValue!==node.label){
       snapshot();
@@ -7277,43 +7340,30 @@ if(document.readyState==='complete'){
       if(firstNode && firstNode.id===node.id && !String(meta.title||'').trim()) syncTitleWithFirstNodeLabel(node.label,{lock:true});
       if(activeNodeId!==node.id) activeNodeId=node.id;
       draw();
+      mobileDebugLog('rename committed', {nodeId:currentId,label:node.label});
       showToast(node.label+' を更新しました');
+    }else{
+      mobileDebugLog('rename committed', {nodeId:currentId,label:nextValue,changed:false});
     }
     closeMobileInlineEdit({restoreFocus});
     return true;
   }
   function openMobileInlineEdit(nodeId){
     if(!isMobileMode() || !nodeId || !nb(nodeId)) return false;
-    if(app.classList.contains('io-open')) _setIoOpen(false);
-    closeMobileMenu();
-    closeMobileNodeSheet();
-    if(typeof closeEp==='function') closeEp();
-    if(typeof closeEep==='function') closeEep();
-    mobileRenameId=nodeId;
-    mobileRenameOriginal=String(nb(nodeId).label||'');
-    mobileInlineEditor.style.display='none';
-    app.classList.add('mobile-inline-edit-open');
-    renderMobileActionbar();
-    updateMobileUi();
+    setMobileMode('rename',{nodeId,reason:'open-rename'});
     return true;
   }
   function setMobileMenuOpen(open){
     const next=!!open && isMobileMode() && !meta?.presentationMode;
-    app.classList.toggle('mobile-menu-open', next);
-    if(mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
-    if(mobileFabMenuBtn) mobileFabMenuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
-    updateMobileUi();
+    if(next) setMobileMode('menu',{menuKind:'global',reason:'open-menu'});
+    else if(mobileUiState.mode==='menu' && mobileUiState.menuKind==='global') closeTransientUi('close-menu');
+    else updateMobileUi();
   }
-  function closeMobileMenu(){ setMobileMenuOpen(false); }
+  function closeMobileMenu(){ if(mobileUiState.mode==='menu' && mobileUiState.menuKind==='global') closeTransientUi('close-menu'); else updateMobileUi(); }
   function toggleMobileMenu(){
     if(!isMobileMode() || meta?.presentationMode) return;
-    if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
-    const willOpen=!app.classList.contains('mobile-menu-open');
-    if(willOpen){
-      if(app.classList.contains('io-open')) _setIoOpen(false);
-      closeMobileNodeSheet();
-    }
-    setMobileMenuOpen(willOpen);
+    if(mobileUiState.mode==='menu' && mobileUiState.menuKind==='global') closeTransientUi('toggle-menu-close');
+    else setMobileMode('menu',{menuKind:'global',reason:'toggle-menu-open'});
   }
   function closeActiveMobileEditing(){
     if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
@@ -7321,10 +7371,7 @@ if(document.readyState==='complete'){
     if(typeof closeEep==='function') closeEep();
   }
   function runAfterClosingMobileTransientUi(callback){
-    closeActiveMobileEditing();
-    closeMobileNodeSheet();
-    closeMobileMenu();
-    app.classList.remove('mobile-menu-open','mobile-node-sheet-open','mobile-sheet-open','mobile-editor-open');
+    closeTransientUi('before-callback');
     requestAnimationFrame(()=>{
       requestAnimationFrame(()=>{
         try{ callback(); }finally{ updateMobileUi(); }
@@ -7434,21 +7481,15 @@ if(document.readyState==='complete'){
     },{passive:false});
   }
   function setMobileSheetOpen(open){
-    app.classList.toggle('mobile-node-sheet-open', !!open);
-    if(!open) mobileSheetNodeId=null;
-    updateMobileUi();
+    if(open) setMobileMode('menu',{menuKind:'node',nodeId:mobileSheetNodeId||activeNodeId,reason:'open-node-sheet'});
+    else if(mobileUiState.mode==='menu' && mobileUiState.menuKind==='node') closeTransientUi('close-node-sheet');
+    else updateMobileUi();
   }
   function openMobileNodeSheet(nodeId){
     if(!nodeId || !nb(nodeId)) return;
-    mobileSheetNodeId=nodeId;
-    if(!isSelected(nodeId)) setSingleSelection(nodeId);
-    if(mobileNodeSheetTitle){
-      const node=nb(nodeId);
-      mobileNodeSheetTitle.textContent=node ? `${node.label} の操作` : 'ノード操作';
-    }
-    setMobileSheetOpen(true);
+    setMobileMode('menu',{menuKind:'node',nodeId,reason:'open-node-sheet'});
   }
-  function closeMobileNodeSheet(){ setMobileSheetOpen(false); }
+  function closeMobileNodeSheet(){ if(mobileUiState.mode==='menu' && mobileUiState.menuKind==='node') closeTransientUi('close-node-sheet'); else updateMobileUi(); }
   function finishPointerLikeDrag(){
     const finishedDrag=drag;
     drag=null;
@@ -7532,22 +7573,30 @@ if(document.readyState==='complete'){
     if(mobileTitleBtn) mobileTitleBtn.textContent=currentTitle();
     const hasNode=!!(activeNodeId && nb(activeNodeId));
     const editorOpen=((typeof ep!=='undefined' && ep && ep.style.display==='block') || (typeof eep!=='undefined' && eep && eep.style.display==='block'));
-    const inlineEditOpen=isMobileInlineEditing();
-    const sheetOrMenuOpen=app.classList.contains('mobile-io-open') || app.classList.contains('mobile-node-sheet-open') || app.classList.contains('mobile-menu-open');
-    if(meta?.presentationMode && app.classList.contains('mobile-menu-open')) closeMobileMenu();
+    const mobileMode=mobileUiState.mode || 'normal';
+    const menuOpen=isMobileMode() && mobileMode==='menu' && mobileUiState.menuKind==='global' && !meta?.presentationMode;
+    const nodeSheetOpen=isMobileMode() && mobileMode==='menu' && mobileUiState.menuKind==='node' && !meta?.presentationMode;
+    const dataOpen=isMobileMode() && mobileMode==='data' && !meta?.presentationMode;
+    const renameOpen=isMobileMode() && mobileMode==='rename' && !!mobileRenameId && !meta?.presentationMode;
+    if(meta?.presentationMode && mobileMode!=='normal') closeTransientUi('presentation-mode');
     renderMobileActionbar();
     updateMobileActionbarState(hasNode);
     setMobileActionbarVisible(isMobileMode() && !meta?.presentationMode);
     if(mobileFabMenuBtn){
       mobileFabMenuBtn.style.display='none';
     }
-    if(mobileDataBtn) mobileDataBtn.classList.toggle('act', !!(isMobileMode() && app.classList.contains('io-open')));
+    if(mobileDataBtn) mobileDataBtn.classList.toggle('act', !!dataOpen);
     if(mobileShareBtn) mobileShareBtn.classList.toggle('act', !!(meta&&meta.presentationMode));
     updateMobileSheetState();
+    app.classList.toggle('mobile-menu-open', !!menuOpen);
+    app.classList.toggle('mobile-node-sheet-open', !!nodeSheetOpen);
+    app.classList.toggle('mobile-io-open', !!dataOpen);
     app.classList.toggle('mobile-editor-open', !!(isMobileMode() && editorOpen));
-    app.classList.toggle('mobile-inline-edit-open', !!(isMobileMode() && inlineEditOpen));
-    const anySheet=isMobileMode() && (sheetOrMenuOpen || editorOpen);
+    app.classList.toggle('mobile-inline-edit-open', !!renameOpen);
+    const anySheet=isMobileMode() && ((menuOpen||nodeSheetOpen||dataOpen) || editorOpen);
     app.classList.toggle('mobile-sheet-open', anySheet);
+    if(mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
+    if(mobileFabMenuBtn) mobileFabMenuBtn.setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
   }
 
   const _renderNow=renderNow;
@@ -7558,9 +7607,14 @@ if(document.readyState==='complete'){
   };
   const _setIoOpen=setIoOpen;
   setIoOpen=function(open){
+    if(isMobileMode()){
+      if(open) setMobileMode('data',{reason:'set-io-open'});
+      else if(mobileUiState.mode==='data') closeTransientUi('set-io-close');
+      else { _setIoOpen(false); updateMobileUi(); }
+      return;
+    }
     _setIoOpen(open);
-    if(isMobileMode()) app.classList.toggle('mobile-io-open', !!open);
-    else app.classList.remove('mobile-io-open');
+    app.classList.remove('mobile-io-open');
     updateMobileUi();
   };
   const _toggleIo=toggleIo;
@@ -7751,13 +7805,13 @@ if(document.readyState==='complete'){
     if(!btn) return;
     runMobileNodeAction(btn.dataset.mobileSheetAction, mobileSheetNodeId);
   });
-  mobileBackdrop.addEventListener('click',()=>{
-    closeActiveMobileEditing();
-    if(app.classList.contains('io-open')) _setIoOpen(false);
-    closeMobileNodeSheet();
-    closeMobileMenu();
-    app.classList.remove('mobile-menu-open','mobile-node-sheet-open','mobile-sheet-open','mobile-editor-open');
-    updateMobileUi();
+  mobileBackdrop.addEventListener('click',()=>{ closeTransientUi('backdrop'); });
+  document.addEventListener('keydown',e=>{
+    if(!isMobileMode()) return;
+    if(e.key!=='Escape') return;
+    if(mobileUiState.mode==='normal') return;
+    e.preventDefault();
+    closeTransientUi('escape');
   });
   if(presentationToggle){
     presentationToggle.addEventListener('change',()=>{
@@ -7786,6 +7840,7 @@ if(document.readyState==='complete'){
       && Math.hypot(clientX-lastMobileNodeTap.x, clientY-lastMobileNodeTap.y)<MOBILE_DOUBLE_TAP_RADIUS;
     if(isDoubleTap){
       resetLastMobileNodeTap();
+      mobileDebugLog('double tap accepted', {nodeId});
       openMobileInlineEdit(nodeId);
       return;
     }
@@ -7936,7 +7991,7 @@ if(document.readyState==='complete'){
       closeMobileMenu();
     }
     if(!shouldMobile){
-      closeMobileInlineEdit({restoreFocus:false});
+      closeTransientUi('leave-mobile');
       app.classList.remove('mobile-io-open','mobile-node-sheet-open','mobile-menu-open','mobile-sheet-open','mobile-editor-open','mobile-inline-edit-open','keyboard-open');
       app.style.setProperty('--keyboard-offset','0px');
     }
