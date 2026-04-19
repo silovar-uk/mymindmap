@@ -7256,10 +7256,22 @@ if(document.readyState==='complete'){
   function getMobileRenameMeta(){ return mobileActionbar.querySelector('.mobile-rename-meta'); }
   function clamp(n,min,max){ return Math.min(max,Math.max(min,n)); }
   function touchDistance(a,b){ return Math.hypot((a.clientX-b.clientX),(a.clientY-b.clientY)); }
+  function getNodeIdFromEventTarget(target){
+    let el=target;
+    while(el){
+      if(el.dataset && el.dataset.id) return el.dataset.id;
+      if(typeof el.getAttribute==='function'){
+        const id=el.getAttribute('data-id');
+        if(id) return id;
+      }
+      el=el.parentNode || el.parentElement || null;
+    }
+    return null;
+  }
   function currentTitle(){ return String((mapTitleInput&&mapTitleInput.value) || (meta&&meta.title) || '案件マインドマップ').trim() || '案件マインドマップ'; }
-  const MOBILE_DOUBLE_TAP_MS=380;
-  const MOBILE_DOUBLE_TAP_RADIUS=26;
-  const MOBILE_DRAG_START_PX=8;
+  const MOBILE_DOUBLE_TAP_MS=520;
+  const MOBILE_DOUBLE_TAP_RADIUS=36;
+  const MOBILE_DRAG_START_PX=14;
   function getMobileNodeEl(nodeId){
     if(!nodeId) return null;
     try{ return NL.querySelector(`[data-id="${CSS.escape(nodeId)}"]`); }catch(_e){}
@@ -7387,12 +7399,19 @@ if(document.readyState==='complete'){
     clearTimeout(mobileActionbarHideTimer);
     const shouldShow=!!show;
     mobileActionbar.hidden=!shouldShow;
+    mobileActionbar.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
     if(shouldShow){
       mobileActionbar.style.display=mobileActionbar.classList.contains('rename-mode') ? 'grid' : 'flex';
+      mobileActionbar.style.visibility='visible';
+      mobileActionbar.style.opacity='1';
+      mobileActionbar.style.pointerEvents='auto';
       mobileActionbar.classList.add('visible');
     }else{
       mobileActionbar.classList.remove('visible');
       mobileActionbar.style.display='none';
+      mobileActionbar.style.visibility='hidden';
+      mobileActionbar.style.opacity='0';
+      mobileActionbar.style.pointerEvents='none';
     }
   }
   function updateViewportMetrics(){
@@ -7587,7 +7606,12 @@ if(document.readyState==='complete'){
     updateMobileActionbarState(hasNode);
     setMobileActionbarVisible(isMobileMode() && !meta?.presentationMode);
     if(mobileFabMenuBtn){
-      mobileFabMenuBtn.style.display=(isMobileMode() && !meta?.presentationMode) ? 'flex' : 'none';
+      const showFab=!!(isMobileMode() && !meta?.presentationMode);
+      mobileFabMenuBtn.hidden=!showFab;
+      mobileFabMenuBtn.style.display=showFab ? 'flex' : 'none';
+      mobileFabMenuBtn.style.visibility=showFab ? 'visible' : 'hidden';
+      mobileFabMenuBtn.style.opacity=showFab ? '1' : '0';
+      mobileFabMenuBtn.style.pointerEvents=showFab ? 'auto' : 'none';
     }
     if(mobileDataBtn) mobileDataBtn.classList.toggle('act', !!dataOpen);
     if(mobileShareBtn) mobileShareBtn.classList.toggle('act', !!(meta&&meta.presentationMode));
@@ -7854,9 +7878,7 @@ if(document.readyState==='complete'){
 
   NL.addEventListener('dblclick',e=>{
     if(!isMobileMode()) return;
-    const nodeEl=e.target.closest('[data-id]');
-    if(!nodeEl) return;
-    const id=nodeEl.dataset.id;
+    const id=getNodeIdFromEventTarget(e.target);
     if(!id || !nb(id)) return;
     e.preventDefault();
     e.stopPropagation();
@@ -7865,9 +7887,7 @@ if(document.readyState==='complete'){
   });
   NL.addEventListener('click',e=>{
     if(!isMobileMode() || !('ontouchstart' in window)) return;
-    const nodeEl=e.target.closest('[data-id]');
-    if(!nodeEl) return;
-    const id=nodeEl.dataset.id;
+    const id=getNodeIdFromEventTarget(e.target);
     if(!id || !nb(id)) return;
     const now=Date.now();
     const dx=Math.abs((e.clientX||0)-lastMobileNodeTap.x);
@@ -7880,12 +7900,26 @@ if(document.readyState==='complete'){
       openMobileInlineEdit(id);
     }
   });
+  NL.addEventListener('pointerup',e=>{
+    if(!isMobileMode() || e.pointerType!=='touch') return;
+    const id=getNodeIdFromEventTarget(e.target);
+    if(!id || !nb(id)) return;
+    const now=Date.now();
+    const dx=Math.abs((e.clientX||0)-lastMobileNodeTap.x);
+    const dy=Math.abs((e.clientY||0)-lastMobileNodeTap.y);
+    if(lastMobileNodeTap.id===id && (now-lastMobileNodeTap.time)<MOBILE_DOUBLE_TAP_MS && Math.hypot(dx,dy)<MOBILE_DOUBLE_TAP_RADIUS){
+      e.preventDefault();
+      e.stopPropagation();
+      mobileDebugLog('double tap accepted', {nodeId:id,source:'pointerup-fallback'});
+      resetLastMobileNodeTap();
+      openMobileInlineEdit(id);
+    }
+  });
   NL.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
-    const nodeEl=e.target.closest('[data-id]');
-    if(!nodeEl || e.touches.length!==1) return;
+    const id=getNodeIdFromEventTarget(e.target);
+    if(!id || e.touches.length!==1) return;
     const touch=e.touches[0];
-    const id=nodeEl.dataset.id;
     if(!id || !nb(id)) return;
     closeMobileMenu();
     closeMobileNodeSheet();
@@ -8040,6 +8074,16 @@ if(document.readyState==='complete'){
     }
     updateViewportMetrics();
     updateMobileUi();
+    if(shouldMobile){
+      setMobileActionbarVisible(!meta?.presentationMode);
+      if(mobileFabMenuBtn && !meta?.presentationMode){
+        mobileFabMenuBtn.hidden=false;
+        mobileFabMenuBtn.style.display='flex';
+        mobileFabMenuBtn.style.visibility='visible';
+        mobileFabMenuBtn.style.opacity='1';
+        mobileFabMenuBtn.style.pointerEvents='auto';
+      }
+    }
   }
   window.addEventListener('resize', updateMobileMode);
   if(window.visualViewport){
