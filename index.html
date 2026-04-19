@@ -6772,6 +6772,14 @@ if(document.readyState==='complete'){
 #mobile-actionbar button .mobile-btn-main{font-size:12.5px;font-weight:800;line-height:1.06}
 #mobile-actionbar button .mobile-btn-sub{font-size:9.5px;font-weight:700;line-height:1.08;color:var(--sf-text-2)}
 #mobile-actionbar button:disabled{opacity:.42;filter:saturate(.2);pointer-events:none}
+#mobile-actionbar.rename-mode{grid-template-columns:auto minmax(0,1fr) auto;gap:8px;padding:8px 8px 8px 10px;align-items:center}
+#mobile-actionbar.rename-mode button{min-height:52px;padding:0 12px;border-radius:12px}
+#mobile-actionbar .mobile-rename-field{display:flex;align-items:center;min-width:0;height:52px;padding:0 10px;border-radius:14px;border:1px solid rgba(132,145,164,.18);background:rgba(255,255,255,.03);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+#mobile-actionbar .mobile-rename-field input{width:100%;height:100%;border:none;background:transparent;color:var(--sf-text-0);font-size:16px;font-weight:800;outline:none;font-family:'Noto Sans JP', Rajdhani, sans-serif}
+#mobile-actionbar .mobile-rename-field input::placeholder{color:var(--sf-text-3)}
+#mobile-actionbar .mobile-rename-meta{position:absolute;left:14px;bottom:calc(100% + 6px);max-width:min(82vw,360px);padding:6px 10px;border-radius:12px;border:1px solid rgba(132,145,164,.16);background:linear-gradient(180deg, rgba(20,25,34,.96), rgba(10,14,20,.98));color:var(--sf-text-2);font-size:11px;font-weight:700;line-height:1.25;box-shadow:0 10px 24px rgba(0,0,0,.24)}
+#mobile-actionbar .mobile-rename-meta strong{color:var(--sf-text-0);display:block;font-size:12px;margin-bottom:2px}
+#mobile-actionbar.rename-mode button .mobile-btn-main,#mobile-actionbar.rename-mode button .mobile-btn-sub{display:none}
 #mobile-node-sheet{
   position:fixed;left:0;right:0;bottom:0;transform:translateY(100%);transition:transform .22s ease;
   z-index:105;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));
@@ -6918,6 +6926,10 @@ if(document.readyState==='complete'){
   #mobile-actionbar button{min-height:56px;padding:5px 3px;border-radius:11px}
   #mobile-actionbar button .mobile-btn-main{font-size:11.5px}
   #mobile-actionbar button .mobile-btn-sub{font-size:9px}
+  #mobile-actionbar.rename-mode{grid-template-columns:auto minmax(0,1fr) auto;gap:6px;padding:6px 6px 6px 8px}
+  #mobile-actionbar.rename-mode button{min-height:50px;padding:0 10px}
+  #mobile-actionbar .mobile-rename-field{height:50px;padding:0 8px}
+  #mobile-actionbar .mobile-rename-meta{left:8px;right:8px;max-width:none;font-size:10.5px}
   #mobile-node-sheet{padding-left:8px;padding-right:8px}
   #mobile-node-sheet .sheet-panel{padding:12px}
   #mobile-node-sheet .sheet-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
@@ -7147,9 +7159,9 @@ if(document.readyState==='complete'){
   }
 
   let mobileSheetNodeId=null;
-  let mobileInlineEditId=null;
-  let mobileInlineEditOriginal='';
-  let suppressMobileInlineBlur=false;
+  let mobileRenameId=null;
+  let mobileRenameOriginal='';
+  let suppressMobileRenameBlur=false;
   let touchGesture=null;
   let lastMobileNodeTap={id:null,time:0,x:0,y:0};
   let mobileActionbarHideTimer=null;
@@ -7160,7 +7172,9 @@ if(document.readyState==='complete'){
   app.classList.toggle('android', !!isAndroid);
 
   function isMobileMode(){ return app.classList.contains('mobile-mode'); }
-  function isMobileInlineEditing(){ return !!(mobileInlineEditId && mobileInlineEditor.style.display==='block'); }
+  function isMobileInlineEditing(){ return !!mobileRenameId; }
+  function getMobileRenameInput(){ return mobileActionbar.querySelector('#mobile-rename-input'); }
+  function getMobileRenameMeta(){ return mobileActionbar.querySelector('.mobile-rename-meta'); }
   function clamp(n,min,max){ return Math.min(max,Math.max(min,n)); }
   function touchDistance(a,b){ return Math.hypot((a.clientX-b.clientX),(a.clientY-b.clientY)); }
   function currentTitle(){ return String((mapTitleInput&&mapTitleInput.value) || (meta&&meta.title) || '案件マインドマップ').trim() || '案件マインドマップ'; }
@@ -7180,92 +7194,81 @@ if(document.readyState==='complete'){
     return rect;
   }
   function applyMobileInlineEditorSkin(nodeId){
-    if(!mobileInlineEditor || !nodeId || !nb(nodeId)) return;
+    if(!mobileActionbar || !nodeId || !nb(nodeId)) return;
     const node=nb(nodeId);
     const isDoneNode=node.status==='done';
+    const shell=mobileActionbar.querySelector('.mobile-rename-field');
+    if(!shell) return;
     const palette=isDoneNode
-      ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.82)',innerStroke:'rgba(255,255,255,.08)',innerFill:'rgba(255,255,255,.02)'}
-      : {fill:node.color?.fill || '#161b23',stroke:node.color?.stroke || '#ff8a4c',text:node.color?.text || '#f7f2eb',innerStroke:'rgba(255,255,255,.028)',innerFill:'rgba(255,255,255,.014)'};
-    mobileInlineEditor.style.setProperty('--inline-fill', palette.fill);
-    mobileInlineEditor.style.setProperty('--inline-stroke', palette.stroke);
-    mobileInlineEditor.style.setProperty('--inline-text', palette.text);
-    mobileInlineEditor.style.setProperty('--inline-inner-stroke', palette.innerStroke);
-    mobileInlineEditor.style.setProperty('--inline-inner-fill', palette.innerFill);
+      ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.82)'}
+      : {fill:node.color?.fill || '#161b23',stroke:node.color?.stroke || '#ff8a4c',text:node.color?.text || '#f7f2eb'};
+    shell.style.borderColor='color-mix(in srgb, '+palette.stroke+' 46%, rgba(132,145,164,.18))';
+    shell.style.background='color-mix(in srgb, '+palette.fill+' 62%, rgba(255,255,255,.03))';
+    const input=getMobileRenameInput();
+    if(input) input.style.color=palette.text;
   }
-  function positionMobileInlineEditor(nodeId,{selectAll=false}={}){
-    if(!isMobileMode() || !nodeId || !nb(nodeId)) return;
-    const topbarHeight=parseFloat(getComputedStyle(app).getPropertyValue('--mobile-topbar-h')) || 56;
-    const shellPad=4;
-    applyMobileInlineEditorSkin(nodeId);
-    const nodeRect=getMobileNodeRect(nodeId);
-    if(nodeRect){
-      const viewportWidth=window.innerWidth || document.documentElement.clientWidth || 360;
-      const viewportHeight=window.innerHeight || document.documentElement.clientHeight || 640;
-      const targetWidth=Math.round(nodeRect.width-8);
-      const width=clamp(targetWidth, 96, Math.max(96, viewportWidth-16));
-      const rawLeft=Math.round(nodeRect.left + (nodeRect.width-width)/2);
-      const left=clamp(rawLeft, 8, Math.max(8, viewportWidth-width-8));
-      const inputHeight=clamp(Math.round(nodeRect.height-8), 38, 52);
-      mobileInlineInput.style.height=`${inputHeight}px`;
-      const shellHeight=inputHeight + shellPad * 2;
-      const rawTop=Math.round(nodeRect.top + (nodeRect.height-shellHeight)/2);
-      const top=clamp(rawTop, topbarHeight + 6, Math.max(topbarHeight + 6, viewportHeight-shellHeight-12));
-      mobileInlineEditor.style.left=`${left}px`;
-      mobileInlineEditor.style.top=`${top}px`;
-      mobileInlineEditor.style.width=`${width}px`;
-    }else{
-      const node=nb(nodeId);
-      updateNodeMetrics(node, getOutlineNumberMap());
-      const bounds=getScreenNodeBounds(node);
-      const cwRect=cw.getBoundingClientRect();
-      const rawWidth=Math.round(bounds.w - 6);
-      const width=clamp(rawWidth, 96, Math.max(96, window.innerWidth-16));
-      const rawLeft=Math.round(cwRect.left + bounds.x + (bounds.w-width)/2);
-      const left=clamp(rawLeft, 8, Math.max(8, window.innerWidth - width - 8));
-      const inputHeight=clamp(Math.round(bounds.h - 8), 38, 52);
-      mobileInlineInput.style.height=`${inputHeight}px`;
-      const shellHeight=inputHeight + shellPad * 2;
-      const rawTop=Math.round(cwRect.top + bounds.y + (bounds.h - shellHeight) / 2);
-      const top=clamp(rawTop, topbarHeight + 6, Math.max(topbarHeight + 6, window.innerHeight - shellHeight - 12));
-      mobileInlineEditor.style.left=`${left}px`;
-      mobileInlineEditor.style.top=`${top}px`;
-      mobileInlineEditor.style.width=`${width}px`;
+  function renderMobileActionbar(){
+    if(!mobileActionbar) return;
+    const hasRename=!!(mobileRenameId && nb(mobileRenameId));
+    if(hasRename){
+      const node=nb(mobileRenameId);
+      mobileActionbar.classList.add('rename-mode');
+      mobileActionbar.innerHTML=`
+        <div class="mobile-rename-meta"><strong>名前変更</strong>${escapeHtml(node?.label || '選択中ノード')}</div>
+        <button data-mobile-rename-action="cancel" type="button">キャンセル</button>
+        <label class="mobile-rename-field" for="mobile-rename-input">
+          <input id="mobile-rename-input" type="text" inputmode="text" enterkeyhint="done" aria-label="ノード名を編集" placeholder="ノード名">
+        </label>
+        <button data-mobile-rename-action="save" class="primary" type="button">決定</button>`;
+      const input=getMobileRenameInput();
+      if(input){
+        input.value=mobileRenameOriginal || '';
+        applyMobileInlineEditorSkin(mobileRenameId);
+        requestAnimationFrame(()=>{
+          try{ input.focus({preventScroll:true}); }catch(_e){ try{ input.focus(); }catch(__e){} }
+          try{ input.setSelectionRange(0, input.value.length); }catch(_e){}
+        });
+      }
+      return;
     }
-    if(selectAll){
-      requestAnimationFrame(()=>{
-        try{ mobileInlineInput.focus({preventScroll:true}); }catch(_e){ try{ mobileInlineInput.focus(); }catch(__e){} }
-        try{ mobileInlineInput.setSelectionRange(0, mobileInlineInput.value.length); }catch(_e){ try{ mobileInlineInput.select(); }catch(__e){} }
-      });
-    }
+    mobileActionbar.classList.remove('rename-mode');
+    mobileActionbar.innerHTML=`
+      <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前変更</span><span class="mobile-btn-sub">ダブルタップ可</span></button>
+      <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子追加</span><span class="mobile-btn-sub">そのまま命名</span></button>
+      <button data-mobile-action="sibling" type="button"><span class="mobile-btn-main">同階層</span><span class="mobile-btn-sub">そのまま命名</span></button>
+      <button data-mobile-action="more" type="button"><span class="mobile-btn-main">その他</span><span class="mobile-btn-sub">完了・削除など</span></button>`;
   }
   function closeMobileInlineEdit({restoreFocus=true}={}){
-    if(!isMobileInlineEditing()){
-      mobileInlineEditId=null;
-      mobileInlineEditOriginal='';
+    if(!mobileRenameId){
+      mobileRenameId=null;
+      mobileRenameOriginal='';
       mobileInlineEditor.style.display='none';
       app.classList.remove('mobile-inline-edit-open');
+      renderMobileActionbar();
       updateMobileUi();
       return;
     }
-    if(document.activeElement===mobileInlineInput && typeof mobileInlineInput.blur==='function') mobileInlineInput.blur();
+    const input=getMobileRenameInput();
+    if(input && document.activeElement===input && typeof input.blur==='function') input.blur();
+    mobileRenameId=null;
+    mobileRenameOriginal='';
     mobileInlineEditor.style.display='none';
-    mobileInlineEditId=null;
-    mobileInlineEditOriginal='';
     app.classList.remove('mobile-inline-edit-open');
+    renderMobileActionbar();
     updateMobileUi();
     if(restoreFocus) focusCanvasForShortcuts();
   }
   function cancelMobileInlineEdit(){
-    if(!isMobileInlineEditing()) return;
-    suppressMobileInlineBlur=true;
-    mobileInlineInput.value=mobileInlineEditOriginal || '';
+    if(!mobileRenameId) return;
+    suppressMobileRenameBlur=true;
     closeMobileInlineEdit({restoreFocus:true});
-    setTimeout(()=>{ suppressMobileInlineBlur=false; },0);
+    setTimeout(()=>{ suppressMobileRenameBlur=false; },0);
   }
   function commitMobileInlineEdit({restoreFocus=true}={}){
-    if(!isMobileInlineEditing()) return true;
-    const node=nb(mobileInlineEditId);
-    const nextValue=(mobileInlineInput.value||'').trim() || '新規案件';
+    if(!mobileRenameId) return true;
+    const input=getMobileRenameInput();
+    const node=nb(mobileRenameId);
+    const nextValue=((input?.value)||'').trim() || '新規案件';
     if(node && nextValue!==node.label){
       snapshot();
       node.label=nextValue;
@@ -7286,16 +7289,12 @@ if(document.readyState==='complete'){
     closeMobileNodeSheet();
     if(typeof closeEp==='function') closeEp();
     if(typeof closeEep==='function') closeEep();
-    mobileInlineEditId=nodeId;
-    mobileInlineEditOriginal=String(nb(nodeId).label||'');
-    mobileInlineInput.value=mobileInlineEditOriginal;
-    mobileInlineEditor.style.display='block';
+    mobileRenameId=nodeId;
+    mobileRenameOriginal=String(nb(nodeId).label||'');
+    mobileInlineEditor.style.display='none';
     app.classList.add('mobile-inline-edit-open');
+    renderMobileActionbar();
     updateMobileUi();
-    requestAnimationFrame(()=>{
-      positionMobileInlineEditor(nodeId,{selectAll:true});
-      requestAnimationFrame(()=>positionMobileInlineEditor(nodeId));
-    });
     return true;
   }
   function setMobileMenuOpen(open){
@@ -7357,7 +7356,6 @@ if(document.readyState==='complete'){
     app.style.setProperty('--mobile-topbar-h', `${Math.max(0,offsetTop)}px`);
     app.style.setProperty('--keyboard-offset', `${effectiveKeyboardOffset}px`);
     app.classList.toggle('keyboard-open', keyboardOpen && isMobileMode() && !inlineEditing);
-    if(inlineEditing) setTimeout(()=>positionMobileInlineEditor(mobileInlineEditId), keyboardOpen ? 180 : 40);
   }
   function getSheetDragTarget(type){
     if(type==='io') return ioWrapEl;
@@ -7512,6 +7510,11 @@ if(document.readyState==='complete'){
     if(focusBtn && id) focusBtn.textContent=(isFocusModeActive() && getFocusSeedNodeId()===id)?'集中解除':'枝集中';
   }
   function updateMobileActionbarState(hasNode){
+    if(mobileRenameId){
+      const meta=getMobileRenameMeta();
+      if(meta && nb(mobileRenameId)) meta.innerHTML=`<strong>名前変更</strong>${escapeHtml(nb(mobileRenameId).label || '選択中ノード')}`;
+      return;
+    }
     const editBtn=mobileActionbar.querySelector('[data-mobile-action="edit"]');
     const childBtn=mobileActionbar.querySelector('[data-mobile-action="child"]');
     const siblingBtn=mobileActionbar.querySelector('[data-mobile-action="sibling"]');
@@ -7532,6 +7535,7 @@ if(document.readyState==='complete'){
     const inlineEditOpen=isMobileInlineEditing();
     const sheetOrMenuOpen=app.classList.contains('mobile-io-open') || app.classList.contains('mobile-node-sheet-open') || app.classList.contains('mobile-menu-open');
     if(meta?.presentationMode && app.classList.contains('mobile-menu-open')) closeMobileMenu();
+    renderMobileActionbar();
     updateMobileActionbarState(hasNode);
     setMobileActionbarVisible(isMobileMode() && !meta?.presentationMode);
     if(mobileFabMenuBtn){
@@ -7549,7 +7553,6 @@ if(document.readyState==='complete'){
   const _renderNow=renderNow;
   renderNow=function(){
     const result=_renderNow.apply(this,arguments);
-    if(isMobileInlineEditing()) positionMobileInlineEditor(mobileInlineEditId);
     updateMobileUi();
     return result;
   };
@@ -7582,6 +7585,7 @@ if(document.readyState==='complete'){
       return;
     }
     if(!id || !nb(id)) return;
+    if(isMobileInlineEditing()) return;
     if(action==='edit'){
       closeMobileMenu();
       closeMobileNodeSheet();
@@ -7668,7 +7672,8 @@ if(document.readyState==='complete'){
   ['click','pointerdown','touchstart'].forEach(type=>{
     mobileInlineEditor.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
   });
-  mobileInlineInput.addEventListener('keydown',e=>{
+  mobileActionbar.addEventListener('keydown',e=>{
+    if(!e.target.closest('#mobile-rename-input')) return;
     if(e.key==='Enter'){
       e.preventDefault();
       e.stopPropagation();
@@ -7681,10 +7686,16 @@ if(document.readyState==='complete'){
       cancelMobileInlineEdit();
     }
   });
-  mobileInlineInput.addEventListener('blur',()=>{
-    if(!isMobileInlineEditing() || suppressMobileInlineBlur) return;
+  mobileActionbar.addEventListener('focusout',e=>{
+    if(!isMobileInlineEditing() || suppressMobileRenameBlur) return;
+    if(!e.target.closest('#mobile-rename-input')) return;
+    const nextTarget=e.relatedTarget;
     setTimeout(()=>{
-      if(isMobileInlineEditing() && document.activeElement!==mobileInlineInput) commitMobileInlineEdit({restoreFocus:false});
+      if(!isMobileInlineEditing()) return;
+      const input=getMobileRenameInput();
+      if(nextTarget && mobileActionbar.contains(nextTarget)) return;
+      if(input && document.activeElement===input) return;
+      commitMobileInlineEdit({restoreFocus:false});
     },0);
   });
 
@@ -7723,6 +7734,13 @@ if(document.readyState==='complete'){
     });
   });
   mobileActionbar.addEventListener('click',e=>{
+    const renameBtn=e.target.closest('button[data-mobile-rename-action]');
+    if(renameBtn){
+      const act=renameBtn.dataset.mobileRenameAction;
+      if(act==='cancel') cancelMobileInlineEdit();
+      if(act==='save') commitMobileInlineEdit();
+      return;
+    }
     const btn=e.target.closest('button[data-mobile-action]');
     if(!btn) return;
     const act=btn.dataset.mobileAction;
@@ -7783,7 +7801,7 @@ if(document.readyState==='complete'){
     if(!id || !nb(id)) return;
     closeMobileMenu();
     closeMobileNodeSheet();
-    if(isMobileInlineEditing() && mobileInlineEditId!==id) commitMobileInlineEdit({restoreFocus:false});
+    if(isMobileInlineEditing() && mobileRenameId!==id) commitMobileInlineEdit({restoreFocus:false});
     if(!isSelected(id) || selectedNodeIds.size===0) setSingleSelection(id);
     else {activeNodeId=id; selectedEdgeId=null; draw();}
     startMobileNodeDrag(id,touch.clientX,touch.clientY);
@@ -7792,7 +7810,7 @@ if(document.readyState==='complete'){
     e.stopPropagation();
   },{passive:false});
   NL.addEventListener('touchmove',e=>{
-    if(!isMobileMode() || !touchGesture || touchGesture.type!=='node-drag' || !e.touches.length) return;
+    if(!isMobileMode() || isMobileInlineEditing() || !touchGesture || touchGesture.type!=='node-drag' || !e.touches.length) return;
     const touch=e.touches[0];
     const moved=Math.hypot(touch.clientX-touchGesture.startX,touch.clientY-touchGesture.startY);
     if(moved>MOBILE_DRAG_START_PX){
@@ -7820,6 +7838,7 @@ if(document.readyState==='complete'){
 
   cw.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
+    if(isMobileInlineEditing()){ e.preventDefault(); return; }
     if(e.target.closest('#ep') || e.target.closest('#eep') || e.target.closest('#mobile-inline-editor') || e.target.closest('#io-wrap') || e.target.closest('#mobile-menu-sheet') || e.target.closest('#mobile-node-sheet')) return;
     if(e.touches.length===2){
       const rect=sv.getBoundingClientRect();
@@ -7838,7 +7857,7 @@ if(document.readyState==='complete'){
     }
   },{passive:false});
   cw.addEventListener('touchmove',e=>{
-    if(!isMobileMode() || !touchGesture) return;
+    if(!isMobileMode() || isMobileInlineEditing() || !touchGesture) return;
     if(e.target.closest('#ep') || e.target.closest('#eep') || e.target.closest('#mobile-inline-editor') || e.target.closest('#io-wrap') || e.target.closest('#mobile-menu-sheet') || e.target.closest('#mobile-node-sheet')) return;
     if(touchGesture.type==='node-drag' && e.touches.length===1){
       const t=e.touches[0];
