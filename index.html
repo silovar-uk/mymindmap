@@ -6563,7 +6563,7 @@ function runInitialBoot(){
   const starterNode=nodes[0];
   if(starterNode){
     const mobileBoot=window.innerWidth<=820;
-    const hero=getHeroViewportForNode(starterNode,{zoom:mobileBoot?0.92:1.18,screenYRatio:mobileBoot?.33:.41});
+    const hero=getHeroViewportForNode(starterNode,{zoom:mobileBoot?0.92:1.18,screenYRatio:mobileBoot?0.5:0.41});
     vs=hero.zoom;
     vx=hero.vx;
     vy=hero.vy;
@@ -6833,8 +6833,7 @@ if(document.readyState==='complete'){
 #app.mobile-mode{padding-top:0}
 #app.mobile-mode #tb{display:none !important}
 #app.mobile-mode #mobile-topbar{display:none !important}
-#app.mobile-mode #mobile-fab-menu{display:none !important}
-#app.mobile-mode #mobile-fab-menu{display:flex}
+#app.mobile-mode #mobile-fab-menu{display:flex !important}
 #app.mobile-mode #mobile-backdrop{display:block}
 #app.mobile-mode.mobile-sheet-open #mobile-backdrop{opacity:1;pointer-events:auto}
 #app.mobile-mode.mobile-menu-open #mobile-menu-sheet{display:block;opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
@@ -7387,19 +7386,14 @@ if(document.readyState==='complete'){
     if(!mobileActionbar) return;
     clearTimeout(mobileActionbarHideTimer);
     const shouldShow=!!show;
+    mobileActionbar.hidden=!shouldShow;
     if(shouldShow){
-      mobileActionbar.hidden=false;
       mobileActionbar.style.display=mobileActionbar.classList.contains('rename-mode') ? 'grid' : 'flex';
       mobileActionbar.classList.add('visible');
-      return;
+    }else{
+      mobileActionbar.classList.remove('visible');
+      mobileActionbar.style.display='none';
     }
-    mobileActionbar.classList.remove('visible');
-    mobileActionbarHideTimer=setTimeout(()=>{
-      if(!mobileActionbar.classList.contains('visible')){
-        mobileActionbar.hidden=true;
-        mobileActionbar.style.display='none';
-      }
-    },220);
   }
   function updateViewportMetrics(){
     const vv=window.visualViewport;
@@ -7593,7 +7587,7 @@ if(document.readyState==='complete'){
     updateMobileActionbarState(hasNode);
     setMobileActionbarVisible(isMobileMode() && !meta?.presentationMode);
     if(mobileFabMenuBtn){
-      mobileFabMenuBtn.style.display='none';
+      mobileFabMenuBtn.style.display=(isMobileMode() && !meta?.presentationMode) ? 'flex' : 'none';
     }
     if(mobileDataBtn) mobileDataBtn.classList.toggle('act', !!dataOpen);
     if(mobileShareBtn) mobileShareBtn.classList.toggle('act', !!(meta&&meta.presentationMode));
@@ -7869,6 +7863,23 @@ if(document.readyState==='complete'){
     mobileDebugLog('double tap accepted', {nodeId:id,source:'dblclick'});
     openMobileInlineEdit(id);
   });
+  NL.addEventListener('click',e=>{
+    if(!isMobileMode() || !('ontouchstart' in window)) return;
+    const nodeEl=e.target.closest('[data-id]');
+    if(!nodeEl) return;
+    const id=nodeEl.dataset.id;
+    if(!id || !nb(id)) return;
+    const now=Date.now();
+    const dx=Math.abs((e.clientX||0)-lastMobileNodeTap.x);
+    const dy=Math.abs((e.clientY||0)-lastMobileNodeTap.y);
+    if(lastMobileNodeTap.id===id && (now-lastMobileNodeTap.time)<MOBILE_DOUBLE_TAP_MS && Math.hypot(dx,dy)<MOBILE_DOUBLE_TAP_RADIUS){
+      e.preventDefault();
+      e.stopPropagation();
+      mobileDebugLog('double tap accepted', {nodeId:id,source:'click-fallback'});
+      resetLastMobileNodeTap();
+      openMobileInlineEdit(id);
+    }
+  });
   NL.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
     const nodeEl=e.target.closest('[data-id]');
@@ -7881,29 +7892,39 @@ if(document.readyState==='complete'){
     if(isMobileInlineEditing() && mobileRenameId!==id) commitMobileInlineEdit({restoreFocus:false});
     if(!isSelected(id) || selectedNodeIds.size===0) setSingleSelection(id);
     else {activeNodeId=id; selectedEdgeId=null; draw();}
-    startMobileNodeDrag(id,touch.clientX,touch.clientY);
-    touchGesture={type:'node-drag',nodeId:id,startX:touch.clientX,startY:touch.clientY,moved:false};
+    touchGesture={type:'node-press',nodeId:id,startX:touch.clientX,startY:touch.clientY,moved:false};
     e.preventDefault();
     e.stopPropagation();
   },{passive:false});
   NL.addEventListener('touchmove',e=>{
-    if(!isMobileMode() || isMobileInlineEditing() || !touchGesture || touchGesture.type!=='node-drag' || !e.touches.length) return;
+    if(!isMobileMode() || isMobileInlineEditing() || !touchGesture || !e.touches.length) return;
+    if(touchGesture.type!=='node-press' && touchGesture.type!=='node-drag') return;
     const touch=e.touches[0];
     const moved=Math.hypot(touch.clientX-touchGesture.startX,touch.clientY-touchGesture.startY);
-    if(moved>MOBILE_DRAG_START_PX){
-      touchGesture.moved=true;
-      resetLastMobileNodeTap();
-      updateMobileDragPosition(touch.clientX,touch.clientY);
+    if(touchGesture.type==='node-press' && moved>MOBILE_DRAG_START_PX){
+      if(startMobileNodeDrag(touchGesture.nodeId,touchGesture.startX,touchGesture.startY)){
+        touchGesture.type='node-drag';
+        touchGesture.moved=true;
+        resetLastMobileNodeTap();
+      }
     }
-    e.preventDefault();
-    e.stopPropagation();
+    if(touchGesture.type==='node-drag'){
+      if(moved>MOBILE_DRAG_START_PX){
+        touchGesture.moved=true;
+        resetLastMobileNodeTap();
+        updateMobileDragPosition(touch.clientX,touch.clientY);
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
   },{passive:false});
   NL.addEventListener('touchend',e=>{
-    if(!isMobileMode() || !touchGesture || touchGesture.type!=='node-drag') return;
+    if(!isMobileMode() || !touchGesture || (touchGesture.type!=='node-press' && touchGesture.type!=='node-drag')) return;
     const finishedId=touchGesture.nodeId;
+    const wasDrag=touchGesture.type==='node-drag';
     const moved=!!(touchGesture.moved || drag?.moved);
     const changedTouch=(e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
-    finishPointerLikeDrag();
+    if(wasDrag) finishPointerLikeDrag();
     touchGesture=null;
     if(!moved && finishedId && changedTouch){
       handleMobileNodeTap(finishedId, changedTouch.clientX, changedTouch.clientY);
