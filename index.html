@@ -4718,7 +4718,8 @@ function draw(){
     g.setAttribute('data-id',n.id);
     g.setAttribute('transform',`translate(${geom.x},${geom.y})`);
     g.style.cursor=mobileDraggingNode?'grabbing':'grab';
-    const pressActive=mobileModeActive && mobilePressNodeId===n.id;
+    const __mobilePressNodeId=(typeof mobilePressNodeId!=='undefined' ? mobilePressNodeId : (window.__mobileRuntime?.pressNodeId ?? null));
+    const pressActive=mobileModeActive && __mobilePressNodeId===n.id;
     if(pressActive) g.classList.add('mobile-press-active');
     if(mobileDraggingNode) g.classList.add('mobile-drag-active');
     if(focusModeActive){
@@ -7254,7 +7255,8 @@ if(document.readyState==='complete'){
   let mobileRenameId=null;
   let mobileRenameOriginal='';
   let mobileRenameBlankStart=false;
-  let mobilePressNodeId=null;
+  window.__mobileRuntime=window.__mobileRuntime || { pressNodeId:null };
+  let mobilePressNodeId=window.__mobileRuntime.pressNodeId ?? null;
   let suppressMobileRenameBlur=false;
   let touchGesture=null;
   let lastMobileNodeTap={id:null,time:0,x:0,y:0};
@@ -7623,6 +7625,7 @@ if(document.readyState==='complete'){
     const nextId=(nodeId && nb(nodeId)) ? nodeId : null;
     if(mobilePressNodeId===nextId) return;
     mobilePressNodeId=nextId;
+    if(window.__mobileRuntime) window.__mobileRuntime.pressNodeId=nextId;
     if(redraw) draw();
   }
   function prepareNodeForBlankMobileRename(node){
