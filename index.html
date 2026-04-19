@@ -6892,6 +6892,14 @@ if(document.readyState==='complete'){
 #app.mobile-mode #mobile-actionbar{display:flex !important}
 #app.mobile-mode #mobile-actionbar.rename-mode{display:grid !important}
 #app.mobile-mode #mobile-actionbar[hidden]{display:none !important}
+#app.mobile-mode[data-mobile-mode="normal"] #cw,
+#app.mobile-mode[data-mobile-mode="normal"] #sv{pointer-events:auto !important}
+#app.mobile-mode[data-mobile-mode="rename"] #cw,
+#app.mobile-mode[data-mobile-mode="rename"] #sv,
+#app.mobile-mode[data-mobile-mode="menu"] #cw,
+#app.mobile-mode[data-mobile-mode="menu"] #sv,
+#app.mobile-mode[data-mobile-mode="data"] #cw,
+#app.mobile-mode[data-mobile-mode="data"] #sv{pointer-events:none !important}
 #app.mobile-mode.mobile-node-sheet-open #mobile-node-sheet{display:block;transform:translateY(0)}
 #app.mobile-mode #ep,
 #app.mobile-mode #eep{
@@ -7593,9 +7601,12 @@ if(document.readyState==='complete'){
     const isMobile=isMobileMode();
     const hasNode=!!(activeNodeId && nb(activeNodeId));
     const mobileMode=mobileUiState.mode || 'normal';
+    const renameOpen=isMobile && mobileMode==='rename' && !!mobileRenameId && !meta?.presentationMode;
     const menuOpen=isMobile && mobileMode==='menu' && !meta?.presentationMode;
     const dataOpen=isMobile && mobileMode==='data' && !meta?.presentationMode;
-    const renameOpen=isMobile && mobileMode==='rename' && !!mobileRenameId && !meta?.presentationMode;
+    const showActionbar=isMobile && !meta?.presentationMode && (mobileMode==='normal' || renameOpen);
+
+    app.dataset.mobileMode=isMobile ? (renameOpen ? 'rename' : menuOpen ? 'menu' : dataOpen ? 'data' : 'normal') : 'desktop';
 
     renderMobileActionbar();
     updateMobileActionbarState(hasNode);
@@ -7603,23 +7614,29 @@ if(document.readyState==='complete'){
 
     if(mobileTopbar){
       mobileTopbar.hidden=true;
-      mobileTopbar.style.display='none';
-      mobileTopbar.style.visibility='hidden';
-      mobileTopbar.style.opacity='0';
-      mobileTopbar.style.pointerEvents='none';
+      mobileTopbar.style.cssText='display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;';
     }
     if(mobileFabMenuBtn){
       mobileFabMenuBtn.hidden=true;
-      mobileFabMenuBtn.style.display='none';
-      mobileFabMenuBtn.style.visibility='hidden';
-      mobileFabMenuBtn.style.opacity='0';
-      mobileFabMenuBtn.style.pointerEvents='none';
+      mobileFabMenuBtn.style.cssText='display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;';
     }
 
-    const shouldShowActionbar=isMobile && !meta?.presentationMode && !menuOpen && !dataOpen;
-    setMobileActionbarVisible(shouldShowActionbar);
-    if(shouldShowActionbar && mobileActionbar){
+    mobileActionbar.hidden=!showActionbar;
+    if(showActionbar){
+      mobileActionbar.classList.toggle('rename-mode', !!renameOpen);
+      mobileActionbar.classList.add('visible');
+      mobileActionbar.setAttribute('aria-hidden','false');
       mobileActionbar.style.display=renameOpen ? 'grid' : 'flex';
+      mobileActionbar.style.visibility='visible';
+      mobileActionbar.style.opacity='1';
+      mobileActionbar.style.pointerEvents='auto';
+    }else{
+      mobileActionbar.classList.remove('visible');
+      mobileActionbar.setAttribute('aria-hidden','true');
+      mobileActionbar.style.display='none';
+      mobileActionbar.style.visibility='hidden';
+      mobileActionbar.style.opacity='0';
+      mobileActionbar.style.pointerEvents='none';
     }
 
     if(mobileMenuSheet){
@@ -7635,6 +7652,9 @@ if(document.readyState==='complete'){
       mobileNodeSheet.style.opacity='0';
       mobileNodeSheet.style.pointerEvents='none';
     }
+    if(ioWrapEl){
+      ioWrapEl.classList.toggle('mobile-data-open', !!dataOpen);
+    }
     if(mobileBackdrop){
       const showBackdrop=isMobile && (menuOpen || dataOpen) && !meta?.presentationMode;
       mobileBackdrop.style.display=showBackdrop ? 'block' : 'none';
@@ -7644,7 +7664,10 @@ if(document.readyState==='complete'){
     }
 
     if(cw){
-      cw.style.pointerEvents=(isMobile && (renameOpen || menuOpen || dataOpen)) ? 'none' : '';
+      cw.style.pointerEvents=(renameOpen || menuOpen || dataOpen) ? 'none' : 'auto';
+    }
+    if(sv){
+      sv.style.pointerEvents=(renameOpen || menuOpen || dataOpen) ? 'none' : 'auto';
     }
 
     app.classList.toggle('mobile-menu-open', !!menuOpen);
@@ -7901,6 +7924,8 @@ if(document.readyState==='complete'){
       openMobileInlineEdit(nodeId);
       return;
     }
+    if(!isSelected(nodeId) || selectedNodeIds.size===0) setSingleSelection(nodeId);
+    else { activeNodeId=nodeId; selectedEdgeId=null; draw(); }
     lastMobileNodeTap={id:nodeId,time:now,x:clientX,y:clientY};
     updateMobileUi();
   }
@@ -8093,28 +8118,28 @@ if(document.readyState==='complete'){
     if(shouldMobile && !wasMobile){
       if(app.classList.contains('outline-open')) setOutlineOpen(false);
       if(app.classList.contains('io-open')) _setIoOpen(false);
-      closeMobileNodeSheet();
-      closeMobileMenu();
+      mobileUiState.mode='normal';
+      mobileUiState.lastReason='enter-mobile';
+      mobileRenameId=null;
+      mobileRenameOriginal='';
+      mobileSheetNodeId=null;
+      app.classList.remove('mobile-io-open','mobile-node-sheet-open','mobile-menu-open','mobile-sheet-open','mobile-editor-open','mobile-inline-edit-open','keyboard-open');
     }
     if(!shouldMobile){
       closeTransientUi('leave-mobile');
       app.classList.remove('mobile-io-open','mobile-node-sheet-open','mobile-menu-open','mobile-sheet-open','mobile-editor-open','mobile-inline-edit-open','keyboard-open');
       app.style.setProperty('--keyboard-offset','0px');
+      app.dataset.mobileMode='desktop';
+      if(cw) cw.style.pointerEvents='';
+      if(sv) sv.style.pointerEvents='';
     }
     updateViewportMetrics();
-    updateMobileUi();
+    renderMobileUiFromState();
     if(shouldMobile && !wasMobile){
-      requestAnimationFrame(()=>{ try{ fitV(); }catch(_e){} });
-    }
-    if(shouldMobile){
-      setMobileActionbarVisible(!meta?.presentationMode);
-      if(mobileFabMenuBtn){
-        mobileFabMenuBtn.hidden=true;
-        mobileFabMenuBtn.style.display='none';
-        mobileFabMenuBtn.style.visibility='hidden';
-        mobileFabMenuBtn.style.opacity='0';
-        mobileFabMenuBtn.style.pointerEvents='none';
-      }
+      requestAnimationFrame(()=>{
+        try{ fitV(); }catch(_e){}
+        renderMobileUiFromState();
+      });
     }
   }
   window.addEventListener('resize', updateMobileMode);
