@@ -7800,6 +7800,22 @@ if(document.readyState==='complete'){
     }
     if(ioWrapEl){
       ioWrapEl.classList.toggle('mobile-data-open', !!dataOpen);
+      if(dataOpen){
+        ioWrapEl.style.display='block';
+        ioWrapEl.style.visibility='visible';
+        ioWrapEl.style.pointerEvents='auto';
+        ioWrapEl.style.transform='translateY(0)';
+      }else if(isMobile){
+        ioWrapEl.style.display='block';
+        ioWrapEl.style.visibility='hidden';
+        ioWrapEl.style.pointerEvents='none';
+        ioWrapEl.style.transform='translateY(100%)';
+      }else{
+        ioWrapEl.style.display='';
+        ioWrapEl.style.visibility='';
+        ioWrapEl.style.pointerEvents='';
+        ioWrapEl.style.transform='';
+      }
     }
     if(mobileBackdrop){
       const showBackdrop=isMobile && (menuOpen || dataOpen) && !meta?.presentationMode;
@@ -8294,18 +8310,23 @@ if(document.readyState==='complete'){
     const scrW=window.screen && Number(window.screen.width) ? Number(window.screen.width) : Infinity;
     const scrH=window.screen && Number(window.screen.height) ? Number(window.screen.height) : Infinity;
     const minScreen=Math.min(scrW,scrH);
+    const maxScreen=Math.max(scrW,scrH);
     const coarsePointer=!!(window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches));
     const touchPoints=Number(navigator.maxTouchPoints)||0;
     const hasTouch=('ontouchstart' in window) || touchPoints>0;
     const phoneUA=/iPhone|iPod|Android.+Mobile|Windows Phone/i.test(ua);
     const tabletUA=/iPad|Android(?!.*Mobile)/i.test(ua);
+    const appleMobileUA=/iPhone|iPod|iPad/i.test(ua) || (navigator.platform==='MacIntel' && touchPoints>1);
     const widthCandidates=[innerW,vvW,docW,minScreen].filter(v=>Number.isFinite(v) && v>0);
     const viewportWidth=widthCandidates.length ? Math.min.apply(null,widthCandidates) : innerW;
     const compactTouchDevice=(coarsePointer || hasTouch) && viewportWidth<=MOBILE_BREAKPOINT;
-    const phoneLike=phoneUA || compactTouchDevice || (isIOS && viewportWidth<=1024);
-    const tabletLike=tabletUA && viewportWidth<=900;
+    const iphoneLike=appleMobileUA && hasTouch && minScreen<=1024;
+    const androidLike=isAndroid && hasTouch && minScreen<=1024;
+    const smallTouchLandscape=(coarsePointer || hasTouch) && minScreen<=900 && maxScreen<=1600;
+    const phoneLike=phoneUA || compactTouchDevice || iphoneLike || androidLike || smallTouchLandscape;
+    const tabletLike=tabletUA && hasTouch && minScreen<=1180;
     const shouldMobile=!!(phoneLike || tabletLike);
-    return {shouldMobile,viewportWidth,innerW,vvW,docW,minScreen,coarsePointer,hasTouch,touchPoints,phoneUA,tabletUA,isIOS,isAndroid};
+    return {shouldMobile,viewportWidth,innerW,vvW,docW,minScreen,maxScreen,coarsePointer,hasTouch,touchPoints,phoneUA,tabletUA,appleMobileUA,iphoneLike,androidLike,isIOS,isAndroid};
   }
   function forceVisibleForMobileChrome(){
     if(!isMobileMode()) return;
@@ -8362,6 +8383,16 @@ if(document.readyState==='complete'){
       },180);
     }
   }
+  function forceEnterMobileMode(reason='forced-mobile'){
+    app.classList.add('mobile-mode');
+    app.classList.remove('desktop-mode');
+    app.dataset.mobileProbe='mobile';
+    mobileUiState.mode=mobileUiState.mode || 'normal';
+    updateViewportMetrics();
+    renderMobileUiFromState();
+    forceVisibleForMobileChrome();
+    mobileDebugLog('force enter mobile mode', reason);
+  }
   window.addEventListener('resize', updateMobileMode);
   window.addEventListener('load', ()=>setTimeout(updateMobileMode,0));
   window.addEventListener('pageshow', ()=>setTimeout(updateMobileMode,0));
@@ -8372,9 +8403,31 @@ if(document.readyState==='complete'){
   window.addEventListener('orientationchange', ()=>setTimeout(()=>{ updateViewportMetrics(); updateMobileMode(); },120));
   document.addEventListener('focusin', ()=>setTimeout(()=>{ updateViewportMetrics(); forceVisibleForMobileChrome(); },40));
   document.addEventListener('focusout', ()=>setTimeout(()=>{ updateViewportMetrics(); forceVisibleForMobileChrome(); },120));
+  document.addEventListener('touchstart', ()=>{
+    if(!isMobileMode()){
+      const probe=getMobileModeProbe();
+      if(probe.hasTouch && (probe.appleMobileUA || probe.phoneUA || probe.viewportWidth<=MOBILE_BREAKPOINT+120)){
+        forceEnterMobileMode('touchstart-fallback');
+      }
+    }
+  }, {passive:true});
   if(mapTitleInput) mapTitleInput.addEventListener('input', updateMobileUi);
   updateViewportMetrics();
   updateMobileMode();
+  if(!isMobileMode()){
+    const probe=getMobileModeProbe();
+    if(probe.shouldMobile || (probe.hasTouch && (probe.appleMobileUA || probe.phoneUA || probe.viewportWidth<=MOBILE_BREAKPOINT+120))){
+      forceEnterMobileMode('boot-fallback');
+    }
+  }
+  setTimeout(()=>{
+    if(!isMobileMode()){
+      const probe=getMobileModeProbe();
+      if(probe.shouldMobile || (probe.hasTouch && (probe.appleMobileUA || probe.phoneUA || probe.viewportWidth<=MOBILE_BREAKPOINT+120))){
+        forceEnterMobileMode('late-fallback');
+      }
+    }
+  }, 250);
   updateMobileUi();
 })();
 </script>
