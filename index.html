@@ -6562,7 +6562,8 @@ function runInitialBoot(){
   clearSelection();
   const starterNode=nodes[0];
   if(starterNode){
-    const hero=getHeroViewportForNode(starterNode,{zoom:1.18,screenYRatio:.41});
+    const mobileBoot=window.innerWidth<=820;
+    const hero=getHeroViewportForNode(starterNode,{zoom:mobileBoot?0.92:1.18,screenYRatio:mobileBoot?.33:.41});
     vs=hero.zoom;
     vx=hero.vx;
     vy=hero.vy;
@@ -6865,7 +6866,10 @@ if(document.readyState==='complete'){
 #app.mobile-mode.presentation-mode #mobile-menu-btn{display:none !important}
 #app.mobile-mode.presentation-mode #mobile-fab-menu{display:none !important}
 #app.mobile-mode.presentation-mode #main{padding-bottom:12px}
-#app.mobile-mode #hud{top:64px;left:8px;max-width:calc(100% - 16px)}
+#app.mobile-mode #hud{top:8px;left:6px;gap:4px;max-width:min(58vw,220px);opacity:.74}
+#app.mobile-mode .hud-chip{padding:4px 6px;border-radius:10px;font-size:8.5px;box-shadow:0 6px 14px rgba(0,0,0,.18)}
+#app.mobile-mode .hud-chip strong{font-size:10px;letter-spacing:.02em}
+#app.mobile-mode .hud-chip span:last-child{font-size:8px;max-width:13ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #app.mobile-mode #focus-chip{pointer-events:auto}
 #app.mobile-mode #quickbar,
 #app.mobile-mode #shortcut-dock,
@@ -6885,7 +6889,8 @@ if(document.readyState==='complete'){
 #app.mobile-mode #io-head-actions,.io-head-actions{max-width:100%}
 #app.mobile-mode #io-export-options{gap:8px}
 #app.mobile-mode #io-export-options .tb-check{width:100%;justify-content:flex-start}
-#app.mobile-mode #mobile-actionbar{display:flex}
+#app.mobile-mode #mobile-actionbar{display:flex !important}
+#app.mobile-mode #mobile-actionbar.rename-mode{display:grid !important}
 #app.mobile-mode #mobile-actionbar[hidden]{display:none !important}
 #app.mobile-mode.mobile-node-sheet-open #mobile-node-sheet{display:block;transform:translateY(0)}
 #app.mobile-mode #ep,
@@ -7381,14 +7386,19 @@ if(document.readyState==='complete'){
   function setMobileActionbarVisible(show){
     if(!mobileActionbar) return;
     clearTimeout(mobileActionbarHideTimer);
-    if(show){
+    const shouldShow=!!show;
+    if(shouldShow){
       mobileActionbar.hidden=false;
-      requestAnimationFrame(()=>mobileActionbar.classList.add('visible'));
+      mobileActionbar.style.display=mobileActionbar.classList.contains('rename-mode') ? 'grid' : 'flex';
+      mobileActionbar.classList.add('visible');
       return;
     }
     mobileActionbar.classList.remove('visible');
     mobileActionbarHideTimer=setTimeout(()=>{
-      if(!mobileActionbar.classList.contains('visible')) mobileActionbar.hidden=true;
+      if(!mobileActionbar.classList.contains('visible')){
+        mobileActionbar.hidden=true;
+        mobileActionbar.style.display='none';
+      }
     },220);
   }
   function updateViewportMetrics(){
@@ -7847,6 +7857,18 @@ if(document.readyState==='complete'){
     lastMobileNodeTap={id:nodeId,time:now,x:clientX,y:clientY};
     updateMobileUi();
   }
+
+  NL.addEventListener('dblclick',e=>{
+    if(!isMobileMode()) return;
+    const nodeEl=e.target.closest('[data-id]');
+    if(!nodeEl) return;
+    const id=nodeEl.dataset.id;
+    if(!id || !nb(id)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    mobileDebugLog('double tap accepted', {nodeId:id,source:'dblclick'});
+    openMobileInlineEdit(id);
+  });
   NL.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
     const nodeEl=e.target.closest('[data-id]');
