@@ -7213,6 +7213,7 @@ if(document.readyState==='complete'){
   const mobileNodeSheetTitle=document.getElementById('mobile-node-sheet-title');
   const mobileInlineInput=document.getElementById('mobile-inline-input');
   const ioWrapEl=document.getElementById('io-wrap');
+  const ioEl=document.getElementById('io');
   const ioPanelEl=document.querySelector('#io .io-panel');
   const mobileNodeSheetPanel=mobileNodeSheet.querySelector('.sheet-panel');
   const editorPanelsHome={ep:ep.parentElement,eep:eep.parentElement};
@@ -7458,15 +7459,16 @@ if(document.readyState==='complete'){
   function hardResetMobileViewport(reason='hard-reset'){
     if(!isMobileMode() || !nodes.length) return false;
     try{
-      const rect=(cw&&cw.getBoundingClientRect&&cw.getBoundingClientRect()) || (sv&&sv.getBoundingClientRect&&sv.getBoundingClientRect()) || {width:window.innerWidth||375,height:(window.innerHeight||640)};
-      const W=Math.max(240, rect.width || window.innerWidth || 375);
-      const H=Math.max(240, rect.height || window.innerHeight || 640);
+      const vw=(window.visualViewport&&window.visualViewport.width)||0;
+      const vh=(window.visualViewport&&window.visualViewport.height)||0;
+      const W=Math.max(240, Math.min(window.innerWidth||375, vw||Infinity, document.documentElement?.clientWidth||Infinity));
+      const H=Math.max(260, Math.min(window.innerHeight||640, vh||Infinity, document.documentElement?.clientHeight||Infinity));
       const numberMap=getOutlineNumberMap();
       const xs=[]; const ys=[];
       nodes.forEach(n=>{
         updateNodeMetrics(n, numberMap);
-        const w=Math.max(80, n.w||140);
-        const h=Math.max(44, n.h||64);
+        const w=Math.max(96, n.w||160);
+        const h=Math.max(52, n.h||72);
         xs.push(n.x-w/2, n.x+w/2);
         ys.push(n.y-h/2, n.y+h/2);
       });
@@ -7474,10 +7476,10 @@ if(document.readyState==='complete'){
       const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
       const graphW=Math.max(160, maxX-minX);
       const graphH=Math.max(120, maxY-minY);
-      const padX=28; const padY=140;
-      vs=Math.min(1.35, Math.max(0.22, Math.min((W-padX*2)/graphW, (H-padY)/graphH)));
+      const padX=20; const padY=96;
+      vs=Math.min(1.08, Math.max(0.28, Math.min((W-padX*2)/graphW, (H-padY)/graphH)));
       vx=W/2-((minX+maxX)/2)*vs;
-      vy=H/2-((minY+maxY)/2)*vs;
+      vy=(H/2)-((minY+maxY)/2)*vs-8;
       applyT();
       syncViewportUi();
       draw();
@@ -7485,6 +7487,38 @@ if(document.readyState==='complete'){
       return mobileVisibleNodeCount()>0;
     }catch(err){
       mobileDebugLog('hard reset viewport failed', err&&err.message);
+      return false;
+    }
+  }
+  function ultraResetMobileViewport(reason='ultra-reset'){
+    if(!isMobileMode() || !nodes.length) return false;
+    try{
+      const W=(window.visualViewport&&window.visualViewport.width)||window.innerWidth||375;
+      const H=(window.visualViewport&&window.visualViewport.height)||window.innerHeight||640;
+      const numberMap=getOutlineNumberMap();
+      try{ applyAutoLayout(meta.layoutMode); }catch(_e){}
+      const xs=[]; const ys=[];
+      nodes.forEach(n=>{
+        updateNodeMetrics(n, numberMap);
+        const w=Math.max(96, n.w||160);
+        const h=Math.max(52, n.h||72);
+        xs.push(n.x-w/2, n.x+w/2);
+        ys.push(n.y-h/2, n.y+h/2);
+      });
+      if(!xs.length || !ys.length) return false;
+      const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+      const graphW=Math.max(160, maxX-minX);
+      const graphH=Math.max(120, maxY-minY);
+      vs=Math.min(0.92, Math.max(0.34, Math.min((W-32)/graphW, (H-120)/graphH)));
+      vx=W/2-((minX+maxX)/2)*vs;
+      vy=H/2-((minY+maxY)/2)*vs-6;
+      applyT();
+      syncViewportUi();
+      draw();
+      mobileDebugLog('ultra reset viewport', {reason, W, H, vs, vx, vy, visible: mobileVisibleNodeCount()});
+      return mobileVisibleNodeCount()>0;
+    }catch(err){
+      mobileDebugLog('ultra reset viewport failed', err&&err.message);
       return false;
     }
   }
@@ -7497,7 +7531,9 @@ if(document.readyState==='complete'){
     if(ok) return;
     ok=hardResetMobileViewport(reason+'-hard');
     if(ok) return;
-    setTimeout(()=>{ hardResetMobileViewport(reason+'-late'); }, 120);
+    ok=ultraResetMobileViewport(reason+'-ultra');
+    if(ok) return;
+    setTimeout(()=>{ if(!hardResetMobileViewport(reason+'-late')) ultraResetMobileViewport(reason+'-late-ultra'); }, 120);
   }
   function ensureMobileDataPanelVisible(){
     if(!ioWrapEl) return;
@@ -7511,7 +7547,7 @@ if(document.readyState==='complete'){
       return;
     }
     ioWrapEl.hidden=false;
-    ioWrapEl.style.display='flex';
+    ioWrapEl.style.display='block';
     ioWrapEl.style.visibility='visible';
     ioWrapEl.style.opacity='1';
     ioWrapEl.style.pointerEvents='auto';
@@ -7520,18 +7556,43 @@ if(document.readyState==='complete'){
     ioWrapEl.style.right='0';
     ioWrapEl.style.top='0';
     ioWrapEl.style.bottom='0';
-    ioWrapEl.style.width='auto';
-    ioWrapEl.style.height='auto';
-    ioWrapEl.style.maxHeight='none';
-    ioWrapEl.style.padding='8px 8px calc(84px + env(safe-area-inset-bottom,0px)) 8px';
-    ioWrapEl.style.alignItems='flex-end';
+    ioWrapEl.style.width='100vw';
+    ioWrapEl.style.height='100dvh';
+    ioWrapEl.style.maxHeight='100dvh';
+    ioWrapEl.style.padding='0';
+    ioWrapEl.style.margin='0';
+    ioWrapEl.style.border='none';
+    ioWrapEl.style.background='rgba(4,8,14,.82)';
+    ioWrapEl.style.alignItems='stretch';
     ioWrapEl.style.justifyContent='stretch';
     ioWrapEl.style.transform='none';
-    ioWrapEl.style.zIndex='2650';
+    ioWrapEl.style.zIndex='2680';
+    ioWrapEl.style.overflow='hidden';
+    if(ioEl){
+      ioEl.style.display='flex';
+      ioEl.style.flexDirection='column';
+      ioEl.style.width='100%';
+      ioEl.style.height='100%';
+      ioEl.style.padding='12px 10px calc(88px + env(safe-area-inset-bottom,0px)) 10px';
+      ioEl.style.overflow='hidden';
+      ioEl.style.background='transparent';
+    }
     if(ioPanelEl){
-      ioPanelEl.style.maxHeight='min(78vh,680px)';
+      ioPanelEl.style.display='flex';
+      ioPanelEl.style.flexDirection='column';
+      ioPanelEl.style.width='100%';
+      ioPanelEl.style.maxWidth='100%';
+      ioPanelEl.style.minHeight='0';
+      ioPanelEl.style.maxHeight='calc(100dvh - 100px - env(safe-area-inset-bottom,0px))';
       ioPanelEl.style.overflow='auto';
-      ioPanelEl.style.borderRadius='20px';
+      ioPanelEl.style.borderRadius='18px';
+      ioPanelEl.style.margin='0';
+      ioPanelEl.style.background='rgba(14,19,28,.98)';
+      ioPanelEl.style.border='1px solid rgba(132,145,164,.22)';
+      ioPanelEl.style.boxShadow='0 18px 40px rgba(0,0,0,.38)';
+      ioPanelEl.style.transform='none';
+      ioPanelEl.style.position='relative';
+      ioPanelEl.style.zIndex='1';
     }
   }
 
