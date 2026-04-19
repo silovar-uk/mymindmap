@@ -1329,7 +1329,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
         </div>
 
         <div id="io-export-options" class="io-export-options" hidden>
-          <label id="export-opt-omit-numbering" class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox" checked><span>ナンバリングを含めない</span></label>
+          <label id="export-opt-omit-numbering" class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox"><span>ナンバリングを含めない</span></label>
           <label id="export-opt-omit-subtext" class="tb-check" for="export-omit-subtext"><input id="export-omit-subtext" type="checkbox"><span>補足を含めない</span></label>
           <label id="export-opt-omit-done" class="tb-check" for="export-omit-done"><input id="export-omit-done" type="checkbox"><span>完了済みを含めない</span></label>
         </div>
@@ -7388,7 +7388,8 @@ if(document.readyState==='complete'){
   }
   function prepareNodeForBlankMobileRename(node){
     if(!node) return null;
-    node.label='';
+    // スマホ新規追加時は入力欄だけ空にする。ノード本体は可視状態を優先してプレースホルダを残す。
+    if(!String(node.label||'').trim()) node.label='新規案件';
     try{ updateNodeMetrics(node, getOutlineNumberMap()); }catch(_e){}
     return node;
   }
