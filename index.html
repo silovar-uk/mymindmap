@@ -6771,6 +6771,7 @@ if(document.readyState==='complete'){
 }
 #mobile-actionbar button .mobile-btn-main{font-size:12.5px;font-weight:800;line-height:1.06}
 #mobile-actionbar button .mobile-btn-sub{font-size:9.5px;font-weight:700;line-height:1.08;color:var(--sf-text-2)}
+#mobile-actionbar button:disabled{opacity:.42;filter:saturate(.2);pointer-events:none}
 #mobile-node-sheet{
   position:fixed;left:0;right:0;bottom:0;transform:translateY(100%);transition:transform .22s ease;
   z-index:105;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));
@@ -6823,6 +6824,7 @@ if(document.readyState==='complete'){
 #app.mobile-mode{padding-top:0}
 #app.mobile-mode #tb{display:none !important}
 #app.mobile-mode #mobile-topbar{display:none !important}
+#app.mobile-mode #mobile-fab-menu{display:none !important}
 #app.mobile-mode #mobile-fab-menu{display:flex}
 #app.mobile-mode #mobile-backdrop{display:block}
 #app.mobile-mode.mobile-sheet-open #mobile-backdrop{opacity:1;pointer-events:auto}
@@ -6836,11 +6838,9 @@ if(document.readyState==='complete'){
 #app.mobile-mode.mobile-editor-open #focus-chip,
 #app.mobile-mode.mobile-editor-open #mobile-topbar,
 #app.mobile-mode.mobile-editor-open #mobile-fab-menu{pointer-events:none !important}
-#app.mobile-mode.mobile-editor-open #mobile-actionbar,
 #app.mobile-mode.mobile-editor-open #mobile-node-sheet,
 #app.mobile-mode.mobile-editor-open #mobile-menu-sheet,
 #app.mobile-mode.mobile-editor-open #io-wrap{pointer-events:none !important;opacity:0 !important}
-#app.mobile-mode.mobile-inline-edit-open #mobile-actionbar{pointer-events:none !important;opacity:0 !important}
 #app.mobile-mode.mobile-inline-edit-open #main{padding-bottom:12px !important}
 #app.mobile-mode.mobile-editor-open #mobile-backdrop{opacity:1;pointer-events:auto;z-index:118}
 #app.mobile-mode #location-chip,#app.mobile-mode #path-chip{display:none !important}
@@ -7023,11 +7023,6 @@ if(document.readyState==='complete'){
 #mobile-node-sheet .sheet-panel{
   max-height:calc(var(--mobile-vh) - var(--mobile-topbar-h) - 14px - env(safe-area-inset-top,0px));
 }
-#app.mobile-mode.keyboard-open #mobile-actionbar{
-  opacity:0;
-  transform:translateY(28px) scale(.98);
-  pointer-events:none;
-}
 #app.mobile-mode.keyboard-open #mobile-menu-btn,#app.mobile-mode.keyboard-open #mobile-title-btn,#app.mobile-mode.keyboard-open #mobile-fab-menu{opacity:0;pointer-events:none;transform:translateY(-6px)}
 #app.mobile-mode.keyboard-open #hud,#app.mobile-mode.keyboard-open #focus-chip{display:none !important}
 #app.mobile-mode.keyboard-open #mobile-topbar{box-shadow:none;background:linear-gradient(180deg, rgba(20,25,34,.76), rgba(10,14,20,.58));backdrop-filter:blur(6px)}
@@ -7090,7 +7085,7 @@ if(document.readyState==='complete'){
 
   const mobileActionbar=document.createElement('div');
   mobileActionbar.id='mobile-actionbar';
-  mobileActionbar.hidden=true;
+  mobileActionbar.hidden=false;
   mobileActionbar.innerHTML=`
     <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前変更</span><span class="mobile-btn-sub">ダブルタップ可</span></button>
     <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子追加</span><span class="mobile-btn-sub">そのまま命名</span></button>
@@ -7129,7 +7124,7 @@ if(document.readyState==='complete'){
 
   const mobileTitleBtn=document.getElementById('mobile-title-btn');
   const mobileMenuBtn=document.getElementById('mobile-menu-btn');
-  const mobileFabMenu=document.getElementById('mobile-fab-menu');
+  const mobileFabMenuBtn=document.getElementById('mobile-fab-menu');
   const mobileTitleMenuBtn=document.getElementById('mobile-title-menu-btn');
   const mobileDataBtn=document.getElementById('mobile-data-btn');
   const mobileAddBtn=document.getElementById('mobile-add-btn');
@@ -7243,7 +7238,7 @@ if(document.readyState==='complete'){
       });
     }
   }
-  function closeMobileInlineEdit  function closeMobileInlineEdit({restoreFocus=true}={}){
+  function closeMobileInlineEdit({restoreFocus=true}={}){
     if(!isMobileInlineEditing()){
       mobileInlineEditId=null;
       mobileInlineEditOriginal='';
@@ -7307,7 +7302,7 @@ if(document.readyState==='complete'){
     const next=!!open && isMobileMode() && !meta?.presentationMode;
     app.classList.toggle('mobile-menu-open', next);
     if(mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
-    if(mobileFabMenu) mobileFabMenu.setAttribute('aria-expanded', next ? 'true' : 'false');
+    if(mobileFabMenuBtn) mobileFabMenuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
     updateMobileUi();
   }
   function closeMobileMenu(){ setMobileMenuOpen(false); }
@@ -7516,19 +7511,31 @@ if(document.readyState==='complete'){
     if(doneBtn && id && nb(id)) doneBtn.textContent=nb(id).status==='done'?'未完了':'完了';
     if(focusBtn && id) focusBtn.textContent=(isFocusModeActive() && getFocusSeedNodeId()===id)?'集中解除':'枝集中';
   }
+  function updateMobileActionbarState(hasNode){
+    const editBtn=mobileActionbar.querySelector('[data-mobile-action="edit"]');
+    const childBtn=mobileActionbar.querySelector('[data-mobile-action="child"]');
+    const siblingBtn=mobileActionbar.querySelector('[data-mobile-action="sibling"]');
+    const moreBtn=mobileActionbar.querySelector('[data-mobile-action="more"]');
+    [editBtn,childBtn,siblingBtn].forEach(btn=>{ if(btn) btn.disabled=!hasNode; });
+    if(moreBtn){
+      const main=moreBtn.querySelector('.mobile-btn-main');
+      const sub=moreBtn.querySelector('.mobile-btn-sub');
+      if(main) main.textContent=hasNode ? 'その他' : 'メニュー';
+      if(sub) sub.textContent=hasNode ? '完了・削除など' : 'データ・共有表示';
+    }
+  }
   function updateMobileUi(){
     app.classList.toggle('presentation-mode', !!(meta&&meta.presentationMode));
     if(mobileTitleBtn) mobileTitleBtn.textContent=currentTitle();
     const hasNode=!!(activeNodeId && nb(activeNodeId));
-    const keyboardOpen=app.classList.contains('keyboard-open');
     const editorOpen=((typeof ep!=='undefined' && ep && ep.style.display==='block') || (typeof eep!=='undefined' && eep && eep.style.display==='block'));
     const inlineEditOpen=isMobileInlineEditing();
     const sheetOrMenuOpen=app.classList.contains('mobile-io-open') || app.classList.contains('mobile-node-sheet-open') || app.classList.contains('mobile-menu-open');
     if(meta?.presentationMode && app.classList.contains('mobile-menu-open')) closeMobileMenu();
-    setMobileActionbarVisible(isMobileMode() && hasNode && !meta?.presentationMode && !keyboardOpen && !editorOpen && !inlineEditOpen && !sheetOrMenuOpen);
-    if(mobileFabMenu){
-      const showFab=isMobileMode() && !meta?.presentationMode && !keyboardOpen && !editorOpen && !inlineEditOpen;
-      mobileFabMenu.style.display=showFab ? 'flex' : 'none';
+    updateMobileActionbarState(hasNode);
+    setMobileActionbarVisible(isMobileMode() && !meta?.presentationMode);
+    if(mobileFabMenuBtn){
+      mobileFabMenuBtn.style.display='none';
     }
     if(mobileDataBtn) mobileDataBtn.classList.toggle('act', !!(isMobileMode() && app.classList.contains('io-open')));
     if(mobileShareBtn) mobileShareBtn.classList.toggle('act', !!(meta&&meta.presentationMode));
@@ -7570,6 +7577,10 @@ if(document.readyState==='complete'){
   function runMobileNodeAction(action,nodeId){
     if(isMobileInlineEditing()) commitMobileInlineEdit({restoreFocus:false});
     const id=nodeId || (activeNodeId && nb(activeNodeId) ? activeNodeId : mobileSheetNodeId);
+    if((!id || !nb(id)) && action==='more'){
+      toggleMobileMenu();
+      return;
+    }
     if(!id || !nb(id)) return;
     if(action==='edit'){
       closeMobileMenu();
@@ -7702,7 +7713,7 @@ if(document.readyState==='complete'){
     runAfterClosingMobileTransientUi(()=>{ addStandaloneFromMobile(); });
   });
   mobileMenuBtn.addEventListener('click',toggleMobileMenu);
-  if(mobileFabMenu) mobileFabMenu.addEventListener('click',toggleMobileMenu);
+  if(mobileFabMenuBtn) mobileFabMenuBtn.addEventListener('click',toggleMobileMenu);
   mobileShareBtn.addEventListener('click',()=>{
     if(!presentationToggle) return;
     runAfterClosingMobileTransientUi(()=>{
