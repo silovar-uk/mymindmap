@@ -8722,5 +8722,146 @@ if(document.readyState==='complete'){
 })();
 </script>
 
+
+<style id="mobile-ios-hardening-style">
+html.mobile-layout-lock,
+body.mobile-layout-lock{overflow:hidden !important;height:100% !important;width:100% !important;overscroll-behavior:none !important;}
+body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !important;padding:0 !important;}
+#mobile-overlay-root{position:fixed;inset:0;z-index:3000;pointer-events:none;}
+#mobile-overlay-root > *{pointer-events:auto;}
+#app.mobile-mode{position:fixed !important;inset:0 !important;width:100% !important;height:100% !important;overflow:hidden !important;}
+#app.mobile-mode #main{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:var(--mobile-overlay-bottom-space,86px) !important;height:auto !important;min-height:0 !important;padding:0 !important;margin:0 !important;overflow:hidden !important;display:block !important;align-items:stretch !important;}
+#app.mobile-mode #cw{position:absolute !important;inset:0 !important;min-height:0 !important;overflow:hidden !important;}
+#app.mobile-mode #sv,
+#app.mobile-mode svg{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;display:block !important;}
+#app.mobile-mode #mobile-backdrop{position:fixed !important;inset:0 !important;background:rgba(3,5,8,.55) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+#app.mobile-mode #mobile-actionbar{position:fixed !important;left:8px !important;right:8px !important;bottom:calc(8px + env(safe-area-inset-bottom,0px)) !important;transform:none !important;max-width:none !important;}
+#app.mobile-mode.keyboard-open #mobile-actionbar.rename-mode{bottom:calc(8px + env(safe-area-inset-bottom,0px)) !important;}
+#app.mobile-mode #mobile-menu-sheet{position:fixed !important;left:10px !important;right:10px !important;bottom:calc(var(--mobile-overlay-bottom-space,86px) + 8px) !important;max-height:min(52vh,420px) !important;overflow:auto !important;transform:none !important;}
+#app.mobile-mode #io-wrap{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:0 !important;display:none !important;align-items:flex-end !important;justify-content:stretch !important;padding:10px 10px calc(var(--mobile-overlay-bottom-space,86px) + 8px) 10px !important;transform:none !important;background:transparent !important;}
+#app.mobile-mode[data-mobile-mode="data"] #io-wrap,
+#app.mobile-mode.mobile-io-open #io-wrap,
+#app.mobile-mode.io-open #io-wrap{display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;}
+#app.mobile-mode #io,
+#app.mobile-mode #io .io-panel{width:100% !important;max-height:none !important;}
+#app.mobile-mode #io .io-panel{height:min(calc(100dvh - var(--mobile-overlay-bottom-space,86px) - 20px), 86dvh) !important;overflow:auto !important;border-radius:18px !important;}
+#app.mobile-mode #hud{z-index:1200 !important;}
+</style>
+
+<script id="mobile-ios-hardening-script">
+(function(){
+  const app=document.getElementById('app');
+  if(!app) return;
+  let overlayRoot=document.getElementById('mobile-overlay-root');
+  if(!overlayRoot){
+    overlayRoot=document.createElement('div');
+    overlayRoot.id='mobile-overlay-root';
+    document.body.appendChild(overlayRoot);
+  }
+  const overlayIds=['mobile-backdrop','mobile-actionbar','mobile-menu-sheet','io-wrap'];
+  function isMobileActive(){ return app.classList.contains('mobile-mode') || (app.dataset.mobileMode && app.dataset.mobileMode!=='desktop'); }
+  function attachOverlayChildren(){
+    overlayIds.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && el.parentNode!==overlayRoot) overlayRoot.appendChild(el);
+    });
+  }
+  function syncBodyLock(){
+    const mobile=isMobileActive();
+    document.documentElement.classList.toggle('mobile-layout-lock', mobile);
+    document.body.classList.toggle('mobile-layout-lock', mobile);
+  }
+  function syncBottomSpace(){
+    const bar=document.getElementById('mobile-actionbar');
+    let space=86;
+    if(bar){
+      const cs=getComputedStyle(bar);
+      if(!bar.hidden && cs.display!=='none' && cs.visibility!=='hidden' && parseFloat(cs.opacity||'1')>0){
+        const rect=bar.getBoundingClientRect();
+        if(rect.height>0) space=Math.max(space, Math.ceil(rect.height)+18);
+      }
+    }
+    app.style.setProperty('--mobile-overlay-bottom-space', space+'px');
+  }
+  function rectVisibleInMain(rect,mainRect){
+    return rect.width>2 && rect.height>2 && rect.right>mainRect.left+6 && rect.left<mainRect.right-6 && rect.bottom>mainRect.top+6 && rect.top<mainRect.bottom-6;
+  }
+  function anyNodeVisible(){
+    const main=document.getElementById('main');
+    if(!main) return true;
+    const mainRect=main.getBoundingClientRect();
+    const nodes=[...document.querySelectorAll('#sv [data-id]')];
+    if(!nodes.length) return true;
+    return nodes.some(el=>rectVisibleInMain(el.getBoundingClientRect(),mainRect));
+  }
+  function hardCenterOnce(reason){
+    if(!isMobileActive()) return;
+    syncBodyLock();
+    attachOverlayChildren();
+    syncBottomSpace();
+    const main=document.getElementById('main');
+    const cw=document.getElementById('cw');
+    if(!main || !cw) return;
+    if(anyNodeVisible()) return;
+    try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+    requestAnimationFrame(()=>{
+      syncBottomSpace();
+      if(anyNodeVisible()) return;
+      try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+    });
+  }
+  function applyStableMobileLayout(reason){
+    const mobile=isMobileActive();
+    syncBodyLock();
+    if(!mobile) return;
+    attachOverlayChildren();
+    syncBottomSpace();
+    const bar=document.getElementById('mobile-actionbar');
+    if(bar){
+      const mode=app.dataset.mobileMode || 'normal';
+      bar.hidden=false;
+      bar.style.visibility='visible';
+      bar.style.opacity='1';
+      bar.style.pointerEvents='auto';
+      bar.style.display=(mode==='rename') ? 'grid' : 'flex';
+    }
+    const backdrop=document.getElementById('mobile-backdrop');
+    if(backdrop){
+      backdrop.style.backdropFilter='none';
+      backdrop.style.webkitBackdropFilter='none';
+    }
+    hardCenterOnce(reason||'apply');
+  }
+  const wrap=(name, after)=>{
+    const orig=window[name];
+    if(typeof orig!=='function') return;
+    window[name]=function(...args){
+      const res=orig.apply(this,args);
+      try{ after(name,args); }catch(_e){}
+      return res;
+    };
+  };
+  wrap('updateMobileMode', ()=>applyStableMobileLayout('updateMobileMode'));
+  wrap('renderMobileUiFromState', ()=>applyStableMobileLayout('renderMobileUiFromState'));
+  wrap('updateMobileUi', ()=>applyStableMobileLayout('updateMobileUi'));
+  wrap('updateViewportMetrics', ()=>applyStableMobileLayout('updateViewportMetrics'));
+  const guarded=[
+    'touchstart','touchmove','touchend'
+  ];
+  // Additional safety: no-op here; touch handlers in app already mostly guarded.
+  requestAnimationFrame(()=>applyStableMobileLayout('boot-raf-1'));
+  setTimeout(()=>applyStableMobileLayout('boot-timeout-120'),120);
+  setTimeout(()=>applyStableMobileLayout('boot-timeout-420'),420);
+  setTimeout(()=>applyStableMobileLayout('boot-timeout-900'),900);
+  window.addEventListener('pageshow',()=>applyStableMobileLayout('pageshow'),{passive:true});
+  window.addEventListener('resize',()=>applyStableMobileLayout('resize'),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(()=>applyStableMobileLayout('orientationchange'),120),{passive:true});
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize',()=>applyStableMobileLayout('vv-resize'),{passive:true});
+    visualViewport.addEventListener('scroll',()=>applyStableMobileLayout('vv-scroll'),{passive:true});
+  }
+})();
+</script>
+
 </body>
 </html>
