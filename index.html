@@ -1122,6 +1122,11 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <div class="tb-row">
         <button id="b-svg">SVGで保存</button>
         <button id="b-png">PNGで保存</button>
+        <label class="tb-label" style="padding-top:0;font-size:10px;color:var(--sf-text-2)">背景</label>
+        <select id="export-bg-mode" aria-label="書き出し背景">
+          <option value="dark" selected>黒</option>
+          <option value="transparent">透明</option>
+        </select>
         <button id="b-md">Markdownで保存</button>
         <button id="b-help" class="secondary-action">使い方</button>
         <button id="b-history" class="secondary-action">更新履歴</button>
@@ -6768,48 +6773,114 @@ function downloadBlob(blob,filename){
   setTimeout(()=>URL.revokeObjectURL(url),400);
   markSaved();
 }
-function getSvgExportString(){
-  const clone=sv.cloneNode(true);
-  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  clone.setAttribute('width',sv.clientWidth);
-  clone.setAttribute('height',sv.clientHeight);
-  clone.setAttribute('viewBox',`0 0 ${sv.clientWidth} ${sv.clientHeight}`);
-  const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-  bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',sv.clientWidth);
-  bg.setAttribute('height',sv.clientHeight);
-  bg.setAttribute('fill','#fafafa');
-  clone.insertBefore(bg, clone.firstChild);
-  if(meta.title){
-    const title=document.createElementNS('http://www.w3.org/2000/svg','text');
-    title.setAttribute('x','18'); title.setAttribute('y','28');
-    title.setAttribute('font-size','16'); title.setAttribute('font-weight','700');
-    title.setAttribute('fill','#111827');
-    title.textContent=meta.title;
-    clone.appendChild(title);
+function getExportBackgroundMode(){
+  return document.getElementById('export-bg-mode')?.value || 'dark';
+}
+function getExportBounds(){
+  const visibleNodes=getVisibleNodes();
+  if(!visibleNodes.length) return null;
+  const numberMap=getOutlineNumberMap();
+  visibleNodes.forEach(n=>updateNodeMetrics(n, numberMap));
+  const base=getNodeBoundsWorld(visibleNodes);
+  if(!base) return null;
+  const pad=110;
+  const titlePad=meta.title ? 42 : 0;
+  return {
+    left:base.left-pad,
+    top:base.top-pad-titlePad,
+    width:Math.max(420, Math.ceil(base.width + pad*2)),
+    height:Math.max(280, Math.ceil(base.height + pad*2 + titlePad)),
+    pad,
+    titlePad
+  };
+}
+function withTemporaryExportViewport(bounds, callback){
+  const prev={vx,vy,vs};
+  try{
+    vs=1;
+    vx=-bounds.left;
+    vy=-bounds.top;
+    applyT();
+    syncViewportUi();
+    draw();
+    return callback();
+  } finally {
+    vx=prev.vx;
+    vy=prev.vy;
+    vs=prev.vs;
+    applyT();
+    syncViewportUi();
+    draw();
   }
-  return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(clone);
+}
+function createSvgExportSnapshot(){
+  const bgMode=getExportBackgroundMode();
+  const bounds=getExportBounds();
+  if(!bounds){
+    const fallback=sv.cloneNode(true);
+    fallback.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    fallback.setAttribute('width',sv.clientWidth);
+    fallback.setAttribute('height',sv.clientHeight);
+    fallback.setAttribute('viewBox',`0 0 ${sv.clientWidth} ${sv.clientHeight}`);
+    return {svgString:'<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n'+new XMLSerializer().serializeToString(fallback), width:sv.clientWidth, height:sv.clientHeight, bgMode};
+  }
+  return withTemporaryExportViewport(bounds, ()=>{
+    const clone=sv.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    clone.setAttribute('width',bounds.width);
+    clone.setAttribute('height',bounds.height);
+    clone.setAttribute('viewBox',`0 0 ${bounds.width} ${bounds.height}`);
+    if(bgMode==='dark'){
+      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x','0'); bg.setAttribute('y','0');
+      bg.setAttribute('width',bounds.width);
+      bg.setAttribute('height',bounds.height);
+      bg.setAttribute('fill','#0b0f16');
+      clone.insertBefore(bg, clone.firstChild);
+    }
+    if(meta.title){
+      const title=document.createElementNS('http://www.w3.org/2000/svg','text');
+      title.setAttribute('x',String(bounds.pad));
+      title.setAttribute('y',String(bounds.titlePad-12));
+      title.setAttribute('font-size','16');
+      title.setAttribute('font-weight','700');
+      title.setAttribute('fill',bgMode==='dark' ? '#f7f2eb' : '#111827');
+      title.textContent=meta.title;
+      clone.appendChild(title);
+    }
+    return {
+      svgString:'<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n'+new XMLSerializer().serializeToString(clone),
+      width:bounds.width,
+      height:bounds.height,
+      bgMode
+    };
+  });
 }
 document.getElementById('b-svg').addEventListener('click',()=>{
   if(!ensureMapTitle()) return;
-  const svgString=getSvgExportString();
-  downloadBlob(new Blob([svgString],{type:'image/svg+xml;charset=utf-8'}),'mindmap.svg');
+  const snap=createSvgExportSnapshot();
+  downloadBlob(new Blob([snap.svgString],{type:'image/svg+xml;charset=utf-8'}),'mindmap.svg');
 });
 document.getElementById('b-png').addEventListener('click',()=>{
   if(!ensureMapTitle()) return;
-  const svgString=getSvgExportString();
+  const snap=createSvgExportSnapshot();
   const img=new Image();
-  const svgBlob=new Blob([svgString],{type:'image/svg+xml;charset=utf-8'});
+  const svgBlob=new Blob([snap.svgString],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(svgBlob);
   img.onload=()=>{
+    const scale=2;
     const canvas=document.createElement('canvas');
-    canvas.width=sv.clientWidth*2;
-    canvas.height=sv.clientHeight*2;
+    canvas.width=Math.max(1,Math.round(snap.width*scale));
+    canvas.height=Math.max(1,Math.round(snap.height*scale));
     const ctx=canvas.getContext('2d');
-    ctx.scale(2,2);
-    ctx.fillStyle='#fafafa';
-    ctx.fillRect(0,0,sv.clientWidth,sv.clientHeight);
-    ctx.drawImage(img,0,0,sv.clientWidth,sv.clientHeight);
+    ctx.scale(scale,scale);
+    if(snap.bgMode==='dark'){
+      ctx.fillStyle='#0b0f16';
+      ctx.fillRect(0,0,snap.width,snap.height);
+    } else {
+      ctx.clearRect(0,0,snap.width,snap.height);
+    }
+    ctx.drawImage(img,0,0,snap.width,snap.height);
     canvas.toBlob(blob=>{
       if(blob) downloadBlob(blob,'mindmap.png');
       URL.revokeObjectURL(url);
