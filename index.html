@@ -3408,11 +3408,17 @@ function layoutOutlineVisible(){
 function buildVisibleTreeForest(){
   const visibleNodes=getVisibleNodes();
   const visibleEdges=getVisibleEdges();
-  if(!visibleNodes.length) return {visibleNodes:[],visibleEdges:[],roots:[],treeChildren:{},weights:{},depth:{}};
+  if(!visibleNodes.length) return {visibleNodes:[],visibleEdges:[],roots:[],treeChildren:{},weights:{},depth:{},minSlice:{},visibleDescendants:{}};
   const numberMap=getOutlineNumberMap();
   const hierarchy=getHierarchyMaps(visibleNodes,visibleEdges,{visibleIdsSet:new Set(visibleNodes.map(n=>n.id))});
   const roots=hierarchy.roots.length?hierarchy.roots:[visibleNodes[0]?.id].filter(Boolean);
-  const treeChildren=hierarchy.childMap;
+  const treeChildren={};
+  Object.keys(hierarchy.childMap).forEach(id=>{
+    treeChildren[id]=[...(hierarchy.childMap[id]||[])].sort((a,b)=>{
+      const na=nb(a), nbNode=nb(b);
+      return ((na?.order??0)-(nbNode?.order??0)) || ((na?.y??0)-(nbNode?.y??0)) || ((na?.x??0)-(nbNode?.x??0)) || String(a).localeCompare(String(b));
+    });
+  });
   const depth={};
   visibleNodes.forEach(n=>updateNodeMetrics(n, numberMap));
   function assignDepth(id,d){
@@ -3421,18 +3427,34 @@ function buildVisibleTreeForest(){
   }
   roots.forEach(rootId=>assignDepth(rootId,0));
   const weights={};
+  const visibleDescendants={};
+  const minSlice={};
   function calcWeight(id){
     if(weights[id]!=null) return weights[id];
-    let sum=1;
-    (treeChildren[id]||[]).forEach(ch=>{ sum+=calcWeight(ch); });
-    weights[id]=sum;
-    return sum;
+    const node=nb(id);
+    const kids=treeChildren[id]||[];
+    let descendantCount=0;
+    let childWeightSum=0;
+    kids.forEach(ch=>{
+      childWeightSum+=calcWeight(ch);
+      descendantCount+=1+(visibleDescendants[ch]||0);
+    });
+    visibleDescendants[id]=descendantCount;
+    const labelLen=Math.max(String(node?.label||'').trim().length, 4);
+    const labelBoost=Math.min(3.2, labelLen/10)*0.55;
+    const childBoost=Math.min(2.4, kids.length*0.32);
+    const densityBoost=Math.min(4.4, descendantCount*0.18);
+    weights[id]=1 + childWeightSum + labelBoost + childBoost + densityBoost;
+    const nodeWidth=node?.w||NODE_W_MIN;
+    const baseSlice=0.11 + Math.min(0.26, nodeWidth/860) + Math.min(0.12, labelLen/180) + Math.min(0.12, kids.length*0.012);
+    minSlice[id]=baseSlice;
+    return weights[id];
   }
   roots.forEach(calcWeight);
-  return {visibleNodes,visibleEdges,roots,treeChildren,weights,depth,parentMap:hierarchy.parentMap};
+  return {visibleNodes,visibleEdges,roots,treeChildren,weights,depth,parentMap:hierarchy.parentMap,minSlice,visibleDescendants};
 }
 function layoutRadialVisible(options={}){
-  const {visibleNodes,roots,treeChildren,weights,depth,parentMap}=buildVisibleTreeForest();
+  const {visibleNodes,roots,treeChildren,weights,depth,parentMap,minSlice,visibleDescendants}=buildVisibleTreeForest();
   if(!visibleNodes.length) return;
 
   const angleStart=options.angleStart ?? (-Math.PI/2);
@@ -3444,6 +3466,10 @@ function layoutRadialVisible(options={}){
   const targetY=options.targetY ?? 180;
   const baseGap=Math.max(4, options.nodeGap ?? 10);
   const radiusSeed=Math.max(18, options.radiusStep ?? 72);
+  const xScale=options.xScale ?? (isFullCircle ? 1.12 : 1.04);
+  const yScale=options.yScale ?? (isFullCircle ? 0.84 : 0.94);
+  const anglePadding=options.anglePadding ?? (isFullCircle ? 0.06 : 0.03);
+  const outerBoost=options.outerBoost ?? (isFullCircle ? 0.16 : 0.11);
   const angleById={};
   const rootRadius=options.rootRadius ?? (roots.length>1 ? 18 : 0);
   const totalRootWeight=roots.reduce((sum,id)=>sum+(weights[id]||1),0) || roots.length || 1;
@@ -3467,6 +3493,10 @@ function layoutRadialVisible(options={}){
   function rectOverlap(a,b){
     return !(a.l>=b.r || b.l>=a.r || a.t>=b.b || b.t>=a.b);
   }
+  function getSlicePadding(id){
+    const descendants=visibleDescendants[id]||0;
+    return anglePadding + Math.min(0.08, descendants*0.006);
+  }
 
   function placeSubtree(id,startAngle,endAngle){
     const node=nb(id); if(!node) return;
@@ -3474,11 +3504,18 @@ function layoutRadialVisible(options={}){
     angleById[id]=angle;
     const kids=(treeChildren[id]||[]);
     if(!kids.length) return;
-    const total=kids.reduce((sum,ch)=>sum+(weights[ch]||1),0) || kids.length;
-    let cursor=startAngle;
+    const rawSpan=Math.max(0.001, endAngle-startAngle);
+    const availableSpan=Math.max(0.001, rawSpan - getSlicePadding(id)*2);
+    const innerStart=startAngle + (rawSpan-availableSpan)/2;
+    const childMinTotal=kids.reduce((sum,ch)=>sum+(minSlice[ch]||0),0);
+    const extraTotal=Math.max(0.001, kids.reduce((sum,ch)=>sum+Math.max(0.001,(weights[ch]||1)-(minSlice[ch]||0)),0));
+    const freeSpan=Math.max(0, availableSpan-childMinTotal);
+    let cursor=innerStart;
     kids.forEach((ch,idx)=>{
-      const share=(endAngle-startAngle)*((weights[ch]||1)/total);
-      const next=idx===kids.length-1 ? endAngle : cursor+share;
+      const minPart=minSlice[ch]||0;
+      const extraPart=freeSpan * (Math.max(0.001,(weights[ch]||1)-minPart)/extraTotal);
+      const share=Math.max(minPart, minPart+extraPart);
+      const next=idx===kids.length-1 ? innerStart+availableSpan : cursor+share;
       placeSubtree(ch,cursor,next);
       cursor=next;
     });
@@ -3489,20 +3526,29 @@ function layoutRadialVisible(options={}){
     angleById[rootId]=(angleStart+angleEnd)/2;
     const kids=treeChildren[rootId]||[];
     if(kids.length){
-      const total=kids.reduce((sum,id)=>sum+(weights[id]||1),0) || kids.length;
-      let cursor=angleStart;
+      const usableSpan=Math.max(0.001, span-anglePadding*2);
+      const childMinTotal=kids.reduce((sum,id)=>sum+(minSlice[id]||0),0);
+      const freeSpan=Math.max(0, usableSpan-childMinTotal);
+      const totalExtra=kids.reduce((sum,id)=>sum+Math.max(0.001,(weights[id]||1)-(minSlice[id]||0)),0) || kids.length;
+      let cursor=angleStart + anglePadding;
       kids.forEach((ch,idx)=>{
-        const share=span*((weights[ch]||1)/total);
-        const next=idx===kids.length-1 ? angleEnd : cursor+share;
+        const minPart=minSlice[ch]||0;
+        const share=minPart + freeSpan * (Math.max(0.001,(weights[ch]||1)-minPart)/totalExtra);
+        const next=idx===kids.length-1 ? angleEnd-anglePadding : cursor+share;
         placeSubtree(ch,cursor,next);
         cursor=next;
       });
     }
   }else{
-    let cursor=angleStart;
+    let cursor=angleStart + anglePadding;
+    const usableSpan=Math.max(0.001, span-anglePadding*2);
+    const rootMinTotal=roots.reduce((sum,id)=>sum+(minSlice[id]||0),0);
+    const rootFree=Math.max(0, usableSpan-rootMinTotal);
+    const rootExtraTotal=roots.reduce((sum,id)=>sum+Math.max(0.001,(weights[id]||1)-(minSlice[id]||0)),0) || roots.length;
     roots.forEach((rootId,idx)=>{
-      const share=span*((weights[rootId]||1)/totalRootWeight);
-      const next=idx===roots.length-1 ? angleEnd : cursor+share;
+      const minPart=minSlice[rootId]||0;
+      const share=minPart + rootFree * (Math.max(0.001,(weights[rootId]||1)-minPart)/rootExtraTotal);
+      const next=idx===roots.length-1 ? angleEnd-anglePadding : cursor+share;
       placeSubtree(rootId,cursor,next);
       cursor=next;
     });
@@ -3522,8 +3568,8 @@ function layoutRadialVisible(options={}){
     const positions={};
     for(const node of list){
       const angle=(angleById[node.id] ?? 0)+offset;
-      const x=Math.cos(angle)*radius;
-      const y=Math.sin(angle)*radius;
+      const x=Math.cos(angle)*radius*xScale;
+      const y=Math.sin(angle)*radius*yScale;
       positions[node.id]={x,y};
       rects.push(inflateRect(node,x,y,pad));
     }
@@ -3549,11 +3595,15 @@ function layoutRadialVisible(options={}){
         levelRadius[level]=0;
         continue;
       }
-      let lo=(level===0 ? 0 : Math.max(0,(levelRadius[level-1]||0)-4));
-      let hi=Math.max(rootRadius, lo+1, radiusSeed, (levelRadius[level-1]||0)+radiusSeed*0.45);
+      const avgNodeSpan=list.reduce((sum,node)=>sum+Math.max(node.w,node.h),0)/Math.max(1,list.length);
+      const crowdBoost=Math.min(64, avgNodeSpan*0.24 + list.length*3.2);
+      const prevRadius=level===0 ? 0 : (levelRadius[level-1]||0);
+      const levelSeed=radiusSeed * (1 + Math.max(0,level-1)*outerBoost);
+      let lo=(level===0 ? 0 : Math.max(0, prevRadius + Math.max(baseGap*0.4, 6)));
+      let hi=Math.max(rootRadius, lo+1, levelSeed, prevRadius + levelSeed*0.74 + crowdBoost);
       let probe=candidateForLevel(list,hi,offset);
       let guard=0;
-      while(guard<40){
+      while(guard<48){
         if(probe.ok){
           let bad=false;
           for(const rect of probe.rects){
@@ -3564,11 +3614,11 @@ function layoutRadialVisible(options={}){
           }
           if(!bad) break;
         }
-        hi=hi*1.22+10;
+        hi=hi*1.18+10;
         probe=candidateForLevel(list,hi,offset);
         guard++;
       }
-      for(let iter=0;iter<18;iter++){
+      for(let iter=0;iter<20;iter++){
         const mid=(lo+hi)/2;
         const cand=candidateForLevel(list,mid,offset);
         let ok=cand.ok;
@@ -3745,9 +3795,9 @@ function applyAutoLayout(mode){
   document.getElementById('layout-mode').value=meta.layoutMode;
   if(meta.layoutMode==='vertical') layoutTreeVisible('vertical');
   else if(meta.layoutMode==='outline') layoutOutlineVisible();
-  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:124,targetY:176,radiusStep:56,nodeGap:10,optimizeRotation:false});
-  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI/3,angleEnd:Math.PI/3,targetX:118,targetY:178,radiusStep:54,nodeGap:10,optimizeRotation:false});
-  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:182,targetY:168,radiusStep:58,nodeGap:10,optimizeRotation:true});
+  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:132,targetY:176,radiusStep:58,nodeGap:12,optimizeRotation:false,xScale:1.04,yScale:0.96,anglePadding:0.04,outerBoost:0.1});
+  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI*0.42,angleEnd:Math.PI*0.42,targetX:126,targetY:182,radiusStep:58,nodeGap:12,optimizeRotation:false,xScale:1.06,yScale:0.92,anglePadding:0.045,outerBoost:0.1});
+  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:188,targetY:172,radiusStep:62,nodeGap:12,optimizeRotation:true,xScale:1.12,yScale:0.84,anglePadding:0.06,outerBoost:0.16});
   else layoutTreeVisible('horizontal');
 }
 function getNodeNumberLabel(node, numberMap=null){
