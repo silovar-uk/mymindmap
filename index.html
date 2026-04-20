@@ -102,15 +102,15 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #io{height:100%;display:flex;flex-direction:column;padding:10px 12px;overflow:auto}
 .io-panel{display:flex;flex-direction:column;gap:10px;min-height:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px}
 .io-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:2px}
-.io-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:flex-start;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.io-head-actions{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;justify-content:space-between;min-width:0;max-width:100%;overflow:visible;padding-bottom:0}
 .io-head-actions::-webkit-scrollbar,.io-actions::-webkit-scrollbar{height:8px}
 .io-head-actions::-webkit-scrollbar-thumb,.io-actions::-webkit-scrollbar-thumb{background:rgba(132,145,164,.28);border-radius:999px}
-.io-head-actions > *{flex:0 0 auto}
+.io-head-actions > *{flex:0 1 auto}
 .io-ttl{font-size:13px;font-weight:700;color:#111827;line-height:1.35}
 .io-sub{font-size:11px;color:#6b7280;line-height:1.5;margin-top:2px}
 .io-label{font-size:12px;font-weight:700;color:#374151;line-height:1.35}
-.io-tabs{display:flex;gap:6px;flex-wrap:nowrap}
-.io-tab{font-size:12px;padding:5px 12px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;cursor:pointer}
+.io-tabs{display:flex;gap:6px;flex-wrap:nowrap;min-width:0}
+.io-tab{font-size:12px;padding:5px 12px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;cursor:pointer;white-space:nowrap;flex:0 1 auto}
 .io-tab.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
 .io-mini{font-size:12px;padding:5px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
 #b-io-side{position:absolute;left:-84px;top:14px;min-width:84px;font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;border-right:none;border-radius:10px 0 0 10px;background:#fff;color:#334155;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:20}
@@ -118,8 +118,8 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #j-io{width:100%;min-height:220px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:rgba(5,8,12,.78);color:var(--sf-text-0);resize:vertical;outline:none;line-height:1.5;white-space:pre;color-scheme:dark;caret-color:#f7f2eb}
 #j-io:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:rgba(8,12,18,.92);color:var(--sf-text-0);color-scheme:dark}
 #j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
-.io-actions{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
-.io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer;flex:0 0 auto;white-space:nowrap}
+.io-actions{display:flex;gap:8px;flex-wrap:wrap;overflow:visible;padding-bottom:0;scrollbar-width:auto;-webkit-overflow-scrolling:auto}
+.io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer;flex:0 1 auto;white-space:nowrap}
 .io-copy-buttons{display:flex;align-items:center;justify-content:flex-end;margin-top:2px}
 .io-copy-buttons .io-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 14px;border:1px solid rgba(132,145,164,.2);border-radius:999px;background:linear-gradient(180deg, rgba(20,25,34,.92), rgba(10,14,20,.96));color:var(--sf-text-0);font-size:12px;font-weight:700;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.18);transition:transform .16s var(--sf-ease-standard),border-color .16s var(--sf-ease-standard),background .16s var(--sf-ease-standard),box-shadow .16s var(--sf-ease-standard)}
 .io-copy-buttons .io-copy-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.22);background:linear-gradient(180deg, rgba(28,34,46,.96), rgba(13,18,25,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 20px rgba(0,0,0,.22)}
@@ -1235,7 +1235,6 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
 
     <div id="hud">
       <div id="mode-chip" class="hud-chip select"><span class="dot"></span><strong>選ぶ</strong><span>ノードを選んだり動かしたりできます</span></div>
-      <div id="selection-chip" class="hud-chip"><strong>表示 100%</strong><span>何も選んでいません</span></div>
     </div>
     <div id="quickbar" aria-hidden="true">
       <button id="qb-edit" class="primary" type="button">編集</button>
@@ -1388,7 +1387,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
             <div class="io-tabs">
               <button id="b-exp-json" class="io-tab act" type="button">JSON</button>
               <button id="b-exp-text" class="io-tab" type="button">テキスト</button>
-              <button id="b-exp-md" class="io-tab" type="button">Markdown</button>
+              <button id="b-exp-md" class="io-tab" type="button">MD</button>
             </div>
             <button id="b-io-inline" class="io-mini" type="button">閉じる</button>
           </div>
@@ -1397,7 +1396,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
         <div id="io-export-options" class="io-export-options" hidden>
           <label id="export-opt-omit-numbering" class="tb-check" for="export-omit-numbering"><input id="export-omit-numbering" type="checkbox"><span>ナンバリングを含めない</span></label>
           <label id="export-opt-omit-subtext" class="tb-check" for="export-omit-subtext"><input id="export-omit-subtext" type="checkbox"><span>補足を含めない</span></label>
-          <label id="export-opt-omit-done" class="tb-check" for="export-omit-done"><input id="export-omit-done" type="checkbox"><span>完了済みを含めない</span></label>
+          <label id="export-opt-omit-done" class="tb-check" for="export-omit-done"><input id="export-omit-done" type="checkbox"><span>完了済みを含める</span></label>
         </div>
 
         <label class="io-label" for="j-io">内容</label>
@@ -1833,7 +1832,8 @@ function getSelectionExportNodeIds(){
 }
 function getStructuredExportContext(onlySelection=false,options={}){
   const pickedIds = onlySelection ? getSelectionExportNodeIds() : new Set(nodes.map(n=>n.id));
-  const omitDone=!!options.omitDone;
+  const includeDone = options.includeDone===true ? true : (options.omitDone===false ? true : false);
+  const omitDone=!includeDone;
   const exportNodes = nodes.filter(n=>pickedIds.has(n.id) && !(omitDone && n.status==='done')).slice();
   const exportNodeIds = new Set(exportNodes.map(n=>n.id));
   const exportEdges = edges.filter(e=>exportNodeIds.has(e.from)&&exportNodeIds.has(e.to)).slice();
@@ -2353,7 +2353,7 @@ function getExportFormattingOptions(){
   return {
     omitNumbering:!!exportOmitNumberingToggle?.checked,
     omitSubtext:!!exportOmitSubtextToggle?.checked,
-    omitDone:!!exportOmitDoneToggle?.checked
+    includeDone:!!exportOmitDoneToggle?.checked
   };
 }
 function updateExportOptionsUi(kind=currentExportKind){
@@ -6418,7 +6418,8 @@ document.getElementById('confirm-no').addEventListener('click',()=>{
 });
 
 function buildExportObject(options={}){
-  const omitDone=!!options.omitDone;
+  const includeDone = options.includeDone===true ? true : (options.omitDone===false ? true : false);
+  const omitDone=!includeDone;
   const exportNodes=nodes.filter(n=>!(omitDone && n.status==='done'));
   const exportNodeIds=new Set(exportNodes.map(n=>n.id));
   const exportEdges=edges.filter(e=>exportNodeIds.has(e.from)&&exportNodeIds.has(e.to));
@@ -6441,7 +6442,7 @@ function getExportString(kind=currentExportKind){
 }
 function copyExportKind(kind='json'){
   const hasSelection=getSelectionExportNodeIds().size>0;
-  const label=kind==='md' ? 'Markdown' : (kind==='text' ? 'テキスト' : 'JSON');
+  const label=kind==='md' ? 'MD' : (kind==='text' ? 'テキスト' : 'JSON');
   return copyTextToClipboard(getExportString(kind),{
     successMessage: hasSelection ? `選択中ノードの${label}をコピーしました` : `${label}をコピーしました`,
     buttonId:'b-cpy-export'
@@ -6450,7 +6451,7 @@ function copyExportKind(kind='json'){
 function updateExportCopyButton(kind=currentExportKind){
   const btn=document.getElementById('b-cpy-export');
   if(!btn) return;
-  const label=kind==='md' ? 'Markdownをコピー' : (kind==='text' ? 'テキストをコピー' : 'JSONをコピー');
+  const label=kind==='md' ? 'MDをコピー' : (kind==='text' ? 'テキストをコピー' : 'JSONをコピー');
   btn.textContent=label;
   btn.setAttribute('aria-label',label);
 }
@@ -6899,7 +6900,7 @@ if(document.readyState==='complete'){
   const hud=document.getElementById('hud');
   const exportOptions=document.getElementById('io-export-options');
 
-  if(hud){
+  if(false && hud){
     const locationChip=document.createElement('div');
     locationChip.id='location-chip';
     locationChip.className='hud-chip';
@@ -6956,6 +6957,7 @@ if(document.readyState==='complete'){
     return path.reverse().join(' › ');
   }
   function updateCurrentLocationUi(){
+    return;
     const locationChip=document.getElementById('location-chip');
     const pathChip=document.getElementById('path-chip');
     if(locationChip){
@@ -7347,6 +7349,8 @@ if(document.readyState==='complete'){
   max-height:calc(var(--mobile-vh) - var(--mobile-topbar-h) - 14px - env(safe-area-inset-top,0px));
 }
 #app.mobile-mode.keyboard-open #mobile-menu-btn,#app.mobile-mode.keyboard-open #mobile-title-btn,#app.mobile-mode.keyboard-open #mobile-fab-menu{opacity:0;pointer-events:none;transform:translateY(-6px)}
+
+#selection-chip,#location-chip,#path-chip{display:none !important;}
 #app.mobile-mode.keyboard-open #hud,#app.mobile-mode.keyboard-open #focus-chip{display:none !important}
 #app.mobile-mode.keyboard-open #mobile-topbar{box-shadow:none;background:linear-gradient(180deg, rgba(20,25,34,.76), rgba(10,14,20,.58));backdrop-filter:blur(6px)}
 #app.mobile-mode.keyboard-open #main{padding-bottom:18px}
