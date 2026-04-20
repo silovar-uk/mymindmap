@@ -10729,6 +10729,22 @@ html,body{
   top:5px;
   right:5px;
 }
+
+/* v1.6.21: mindmap canvas should not create text selection while dragging */
+#cw,
+#sv,
+#sv text,
+#sv tspan,
+#sv [data-node-id],
+#sv [data-edge-id],
+#sv g{
+  -webkit-user-select:none !important;
+  user-select:none !important;
+}
+#cw{
+  -webkit-user-drag:none;
+}
+
 </style>
 
 <script id="io-sync-indicator-v1618">
@@ -10938,6 +10954,29 @@ html,body{
 
   scheduleIoSyncIndicator();
 })();
+
+/* v1.6.21: prevent text highlight on the mindmap canvas while dragging */
+(function(){
+  const canvasWrap = document.getElementById('cw');
+  const svgRoot = document.getElementById('sv');
+  const isEditableTarget = (target)=>{
+    if(!target || !(target instanceof Element)) return false;
+    return !!target.closest('input, textarea, select, [contenteditable="true"], #io-wrap, #outline-wrap, #mobile-rename-sheet, #ep, #eep');
+  };
+  const blockSelection = (e)=>{
+    if(isEditableTarget(e.target)) return;
+    e.preventDefault();
+  };
+  if(canvasWrap){
+    canvasWrap.addEventListener('selectstart', blockSelection);
+    canvasWrap.addEventListener('dragstart', blockSelection);
+  }
+  if(svgRoot){
+    svgRoot.addEventListener('selectstart', blockSelection);
+    svgRoot.addEventListener('dragstart', blockSelection);
+  }
+})();
+
 </script>
 
 </body>
