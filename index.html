@@ -121,7 +121,7 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
 .io-actions{display:flex;gap:8px;flex-wrap:wrap;overflow:visible;padding:8px 0 0;scrollbar-width:auto;-webkit-overflow-scrolling:auto;border-top:1px solid rgba(132,145,164,.16);margin-top:8px}
 .io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer;flex:0 1 auto;white-space:nowrap}
-.io-copy-buttons{display:flex;align-items:center;justify-content:flex-end;margin-top:2px}
+.io-copy-buttons{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:2px}
 .io-copy-buttons .io-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 14px;border:1px solid rgba(132,145,164,.2);border-radius:999px;background:linear-gradient(180deg, rgba(20,25,34,.92), rgba(10,14,20,.96));color:var(--sf-text-0);font-size:12px;font-weight:700;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.18);transition:transform .16s var(--sf-ease-standard),border-color .16s var(--sf-ease-standard),background .16s var(--sf-ease-standard),box-shadow .16s var(--sf-ease-standard)}
 .io-copy-buttons .io-copy-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.22);background:linear-gradient(180deg, rgba(28,34,46,.96), rgba(13,18,25,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 20px rgba(0,0,0,.22)}
 .io-copy-buttons .io-copy-btn::before{content:"";display:block;width:8px;height:8px;border-radius:999px;background:linear-gradient(180deg, rgba(255,111,44,.95), rgba(18,198,255,.88));box-shadow:0 0 10px rgba(18,198,255,.18)}
@@ -1455,16 +1455,15 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
         <label class="io-label" for="j-io">内容</label>
         <textarea id="j-io" placeholder="JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を表示します"></textarea>
         <div class="io-copy-buttons">
+          <button id="b-imp" class="io-copy-btn primary-btn" type="button">今のマップを置き換える</button>
           <button id="b-cpy-export" class="io-copy-btn" type="button">JSONをコピー</button>
         </div>
         <div class="io-actions">
           <button id="b-out-refresh" type="button">更新</button>
-          <button id="b-cpy" type="button">コピー</button>
-          <button id="b-share-url-hi" type="button">高忠実度URLをコピー</button>
-          <button id="b-share-url-lite" type="button">軽量URLをコピー</button>
+          <button id="b-share-url-hi" type="button">URLでコピー</button>
+          <button id="b-short-url-site" type="button">短縮URL</button>
           <button id="b-findreplace" type="button">検索・置換</button>
           <button id="b-in-clear" type="button">空にする</button>
-          <button id="b-imp" class="primary-btn" type="button">今のマップを置き換える</button>
         </div>
         <div id="io-findreplace" class="io-findreplace" hidden>
           <div class="io-findreplace-head">
@@ -2125,12 +2124,14 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.7';
-const APP_UPDATED_AT='2026-04-20 04:20 JST';
+const APP_VERSION='1.6.9';
+const APP_UPDATED_AT='2026-04-20 19:46 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.9',date:'2026-04-20 19:46 JST',summary:'共有URLのコピー導線を一本化し、表記を整理。',items:['軽量URLコピー機能を撤去し、高忠実度URLコピーのみ残す構成に変更','高忠実度URLのボタン名を「URLでコピー」に変更','コピー完了メッセージと生成完了メッセージも新しい名称に合わせて整理']},
+{version:'1.6.8',date:'2026-04-20 18:20 JST',summary:'データ画面のコピー導線を整理し、短縮URLサイトへのリンクを追加。',items:['データ欄の重複していた「コピー」ボタンを削除し、コピー導線を「JSONをコピー」に一本化','「今のマップを置き換える」を「JSONをコピー」の左側へ移し、読み込み導線を上段に整理','共有URLの近くに「短縮URL」ボタンを追加し、00m.in を新しいタブで開けるよう対応','スマホのメニューにも「短縮URL」を追加し、同じく 00m.in へ飛べるよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.7',date:'2026-04-20 04:20 JST',summary:'データ画面にノード名と補足を対象にした一括検索・置換パネルを追加。',items:['データ欄の操作行に「検索・置換」ボタンを追加し、ノード名と補足をまとめて検索・置換できる専用パネルを実装','検索文字列と置換文字列の入力欄、対象チェック、大小文字区別、件数プレビュー、実行/閉じるボタンを追加','置換はノード名と補足の両方に対応し、実行前に一致件数を表示、実行時は履歴に残して再描画とデータ欄の再生成まで反映','通常の文字列として検索するため正規表現エスケープ不要で、補足だけ・ノード名だけの置換もできるように調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.6',date:'2026-04-20 03:20 JST',summary:'追加日時表示とスマホ/PCの操作整理を加え、ドラッグ中の描画をさらに軽量化。',items:['追加日時を保持する createdAt を各ノードに追加し、PCではチェック切り替えで小さく表示できるよう対応','ナンバリングは現在見えているノード集合を基準に計算するよう見直し、完了非表示時は表示中ノードだけで連番になるよう調整','ドラッグ中は接続中のエッジだけ描画するよう変更し、モバイルでの移動体験をさらに軽く改善','上部の「全体に戻す」ボタンは非表示にし、データやMarkdown等の書き出しには追加日時を含めない方針を維持']},
 {version:'1.6.5',date:'2026-04-20 00:06 JST',summary:'スマホのインライン編集をノード幅・位置によりぴったり沿う表示へ調整。',items:['スマホのインライン編集をノードの横幅に近いサイズへ寄せ、左右に余白が出すぎないよう調整','入力欄の位置をノードの中央付近に合わせ、一覧画面上でより直接編集している感覚に寄せた','インライン編集のシェル余白と影を小さくし、ノードに被せたときの浮きすぎを軽減','補助ヒントは常時表示をやめ、入力欄そのものを主役にしたミニマルな見た目へ調整']},
@@ -6736,6 +6737,7 @@ function updateExportCopyButton(kind=currentExportKind){
 
 const SHARE_URL_PARAM='mm';
 const SHARE_URL_MAX_RECOMMENDED=7000;
+const SHORT_URL_TOOL_URL='https://00m.in/';
 
 function stripUndefinedDeep(value){
   if(Array.isArray(value)) return value.map(stripUndefinedDeep);
@@ -6854,14 +6856,17 @@ function buildShareUrl(options={}){
 function copyShareUrlHighFidelity(){
   const result=buildShareUrl({includeColors:true, coordStep:1});
   const extra=result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? ' URLがかなり長いため、大きいマップでは開けない環境があります。' : '';
-  setIoStatus('高忠実度URLを生成しました。'+(result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? '長めのURLです。':'') ,'ok');
-  return copyTextToClipboard(result.url,{successMessage:'高忠実度URLをコピーしました。'+extra,buttonId:'b-share-url-hi'});
+  setIoStatus('共有用URLを生成しました。'+(result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? '長めのURLです。':'') ,'ok');
+  return copyTextToClipboard(result.url,{successMessage:'URLでコピーしました。'+extra,buttonId:'b-share-url-hi'});
 }
-function copyShareUrlLite(){
-  const result=buildShareUrl({includeColors:false, coordStep:24});
-  const extra=result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? ' URLが長めです。さらに短くしたい場合は補足やノード数も減らすと有効です。' : '';
-  setIoStatus('軽量URLを生成しました。色を省略し、座標を24px単位で丸めています。'+(result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? 'まだ長めです。':'') ,'ok');
-  return copyTextToClipboard(result.url,{successMessage:'軽量URLをコピーしました。色は共有せず、座標を丸めています。'+extra,buttonId:'b-share-url-lite'});
+function openShortUrlTool(){
+  try{
+    window.open(SHORT_URL_TOOL_URL,'_blank','noopener,noreferrer');
+    showToast('短縮URLサイトを開きました');
+    setIoStatus('短縮URLサイトを開きました。共有URLを貼って短縮できます。','ok');
+  }catch(err){
+    setIoStatus('短縮URLサイトを開けませんでした: '+err.message,'err');
+  }
 }
 let sharedMapLoadedFromUrl=false;
 let sharedUrlBannerShown=false;
@@ -7161,12 +7166,8 @@ document.getElementById('b-imp').addEventListener('click',()=>{
     alert('インポートできませんでした: '+err.message);
   }
 });
-document.getElementById('b-cpy').addEventListener('click',()=>{
-  const out=document.getElementById('j-io').value;
-  copyTextToClipboard(out,{successMessage:'内容をコピーしました'});
-});
 document.getElementById('b-share-url-hi')?.addEventListener('click',copyShareUrlHighFidelity);
-document.getElementById('b-share-url-lite')?.addEventListener('click',copyShareUrlLite);
+document.getElementById('b-short-url-site')?.addEventListener('click',openShortUrlTool);
 document.getElementById('b-shared-save')?.addEventListener('click',saveSharedUrlAsCurrentMap);
 document.getElementById('b-shared-dismiss')?.addEventListener('click',dismissSharedUrlBanner);
 document.getElementById('b-cpy-export')?.addEventListener('click',()=>copyExportKind(currentExportKind));
@@ -8032,6 +8033,7 @@ if(document.readyState==='complete'){
     html += '<button data-mobile-menu-action="data" type="button">データ</button>';
     html += '<button data-mobile-menu-action="add" class="primary" type="button">新規ノード</button>';
     html += '<button data-mobile-menu-action="share" type="button">共有表示</button>';
+    html += '<button data-mobile-menu-action="short-url" type="button">短縮URL</button>';
     if(hasNode){
       html += '<button data-mobile-menu-action="details" type="button">詳細編集</button>';
       html += '<button data-mobile-menu-action="done" type="button">'+doneLabel+'</button>';
@@ -9087,6 +9089,10 @@ if(document.readyState==='complete'){
         presentationToggle.dispatchEvent(new Event('change',{bubbles:true}));
         if(isMobileMode() && presentationToggle.checked && app.classList.contains('io-open')) _setIoOpen(false);
       });
+      return;
+    }
+    if(act==='short-url'){
+      runAfterClosingMobileTransientUi(()=>{ openShortUrlTool(); });
       return;
     }
     if(act==='close'){
