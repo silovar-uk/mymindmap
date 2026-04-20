@@ -2124,12 +2124,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.9';
-const APP_UPDATED_AT='2026-04-20 19:46 JST';
+const APP_VERSION='1.6.10';
+const APP_UPDATED_AT='2026-04-20 19:50 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.10',date:'2026-04-20 19:50 JST',summary:'起動直後に先頭ノードの名称変更へすぐ入れるよう初期表示を調整。',items:['runInitialBoot 内で先頭ノードを選択したあと、名称編集パネルを自動で開くよう変更','開始オーバーレイを閉じたあとに編集パネルを表示する順番へ見直し、初回表示で隠れにくいよう調整','サンプル開始時も共有URL読込時も、起動直後から最初のノード名をそのまま打ち替えやすい流れに改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.9',date:'2026-04-20 19:46 JST',summary:'共有URLのコピー導線を一本化し、表記を整理。',items:['軽量URLコピー機能を撤去し、高忠実度URLコピーのみ残す構成に変更','高忠実度URLのボタン名を「URLでコピー」に変更','コピー完了メッセージと生成完了メッセージも新しい名称に合わせて整理']},
 {version:'1.6.8',date:'2026-04-20 18:20 JST',summary:'データ画面のコピー導線を整理し、短縮URLサイトへのリンクを追加。',items:['データ欄の重複していた「コピー」ボタンを削除し、コピー導線を「JSONをコピー」に一本化','「今のマップを置き換える」を「JSONをコピー」の左側へ移し、読み込み導線を上段に整理','共有URLの近くに「短縮URL」ボタンを追加し、00m.in を新しいタブで開けるよう対応','スマホのメニューにも「短縮URL」を追加し、同じく 00m.in へ飛べるよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.7',date:'2026-04-20 04:20 JST',summary:'データ画面にノード名と補足を対象にした一括検索・置換パネルを追加。',items:['データ欄の操作行に「検索・置換」ボタンを追加し、ノード名と補足をまとめて検索・置換できる専用パネルを実装','検索文字列と置換文字列の入力欄、対象チェック、大小文字区別、件数プレビュー、実行/閉じるボタンを追加','置換はノード名と補足の両方に対応し、実行前に一致件数を表示、実行時は履歴に残して再描画とデータ欄の再生成まで反映','通常の文字列として検索するため正規表現エスケープ不要で、補足だけ・ノード名だけの置換もできるように調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -7345,6 +7346,7 @@ function runInitialBoot(){
   updateHUD();
   updateQuickbar();
   setStartSceneOpen(false);
+  if(starterNode) openEp(starterNode.id);
   updateUndoUI();
   if(app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
   markSaved();
