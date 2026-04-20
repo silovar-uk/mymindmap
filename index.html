@@ -7565,9 +7565,9 @@ if(document.readyState==='complete'){
     return null;
   }
   function currentTitle(){ return String((mapTitleInput&&mapTitleInput.value) || (meta&&meta.title) || '案件マインドマップ').trim() || '案件マインドマップ'; }
-  const MOBILE_DOUBLE_TAP_MS=520;
-  const MOBILE_DOUBLE_TAP_RADIUS=36;
-  const MOBILE_DRAG_START_PX=8;
+  const MOBILE_DOUBLE_TAP_MS=650;
+  const MOBILE_DOUBLE_TAP_RADIUS=44;
+  const MOBILE_DRAG_START_PX=11;
   const MOBILE_DRAG_ATTACH_PREVIEW_MS=80;
   function getMobileNodeEl(nodeId){
     if(!nodeId) return null;
@@ -7818,19 +7818,15 @@ if(document.readyState==='complete'){
       if(input){
         input.value=mobileRenameBlankStart ? '' : (mobileRenameOriginal || '');
         applyMobileInlineEditorSkin(mobileRenameId);
-        lockMobileRenameViewport('render-rename-tray');
         const focusRenameInput=()=>{
-          stabilizeMobileRenameViewport('before-rename-focus');
           try{ input.focus({preventScroll:true}); }catch(_e){ try{ input.focus(); }catch(__e){} }
           try{
-            if(mobileRenameBlankStart) input.setSelectionRange(0, 0);
-            else input.setSelectionRange(0, input.value.length);
+            const pos = mobileRenameBlankStart ? 0 : String(input.value || '').length;
+            input.setSelectionRange(pos, pos);
           }catch(_e){}
-          stabilizeMobileRenameViewport('after-rename-focus');
         };
-        requestAnimationFrame(focusRenameInput);
-        setTimeout(focusRenameInput, 80);
-        setTimeout(focusRenameInput, 220);
+        requestAnimationFrame(()=>requestAnimationFrame(focusRenameInput));
+        setTimeout(focusRenameInput, 120);
       }
       return;
     }
@@ -8598,7 +8594,7 @@ if(document.readyState==='complete'){
     else {activeNodeId=id; selectedEdgeId=null; draw();}
     setMobilePressNode(id);
     touchGesture={type:'node-press',nodeId:id,startX:touch.clientX,startY:touch.clientY,moved:false};
-    e.preventDefault();
+    if(e.cancelable) e.preventDefault();
     e.stopPropagation();
   },{passive:false});
   NL.addEventListener('touchmove',e=>{
@@ -8621,7 +8617,7 @@ if(document.readyState==='complete'){
         mobileUserMovedViewport=true;
         updateMobileDragPosition(touch.clientX,touch.clientY);
       }
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
       e.stopPropagation();
     }
   },{passive:false});
@@ -8654,13 +8650,13 @@ if(document.readyState==='complete'){
       const cy=((a.clientY+b.clientY)/2)-rect.top;
       touchGesture={type:'pinch',startDist:touchDistance(a,b),startVs:vs,worldCenter:{x:cx*vs+vx,y:cy*vs+vy}};
       resetLastMobileNodeTap();
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
       return;
     }
     if(e.touches.length===1 && !e.target.closest('[data-id]') && !e.target.closest('[data-eid]')){
       const t=e.touches[0];
       touchGesture={type:'pan',startX:t.clientX,startY:t.clientY,startVx:vx,startVy:vy,moved:false};
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
     }
   },{passive:false});
   cw.addEventListener('touchmove',e=>{
@@ -8674,7 +8670,7 @@ if(document.readyState==='complete'){
         resetLastMobileNodeTap();
         updateMobileDragPosition(t.clientX,t.clientY);
       }
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
       return;
     }
     if(touchGesture.type==='pan' && e.touches.length===1){
@@ -8687,7 +8683,7 @@ if(document.readyState==='complete'){
       vy=touchGesture.startVy+dy;
       applyT();
       syncViewportUi();
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
       return;
     }
     if(touchGesture.type==='pinch' && e.touches.length===2){
@@ -8703,7 +8699,7 @@ if(document.readyState==='complete'){
       vy=touchGesture.worldCenter.y - cy*vs;
       applyT();
       syncViewportUi();
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
     }
   },{passive:false});
   cw.addEventListener('touchend',e=>{
@@ -8720,7 +8716,7 @@ if(document.readyState==='complete'){
       finishPointerLikeDrag();
       if(!moved && finishedId && changedTouch) handleMobileNodeTap(finishedId, changedTouch.clientX, changedTouch.clientY);
       if(!e.touches.length){ touchGesture=null; setMobilePressNode(null); }
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
       return;
     }
     if(touchGesture && touchGesture.type==='pan' && !touchGesture.moved){
@@ -9037,5 +9033,50 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
 })();
 </script>
 
+
+<style id="mobile-v42-responsive-fix">
+@media (max-width: 900px){
+  html,body{width:100%;max-width:100%;overflow:hidden !important;overscroll-behavior:none !important;-webkit-text-size-adjust:100%;}
+  body{position:fixed !important;inset:0 !important;height:100dvh !important;}
+  #app.mobile-mode{position:fixed !important;inset:0 !important;width:100vw !important;height:100dvh !important;max-width:100vw !important;overflow:hidden !important;}
+  #app.mobile-mode #main{position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:calc(74px + env(safe-area-inset-bottom,0px)) !important;height:auto !important;min-height:0 !important;padding:0 !important;overflow:hidden !important;}
+  #app.mobile-mode #cw,#app.mobile-mode #sv{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;max-width:100% !important;max-height:100% !important;overflow:hidden !important;}
+  #app.mobile-mode #hud{top:max(6px, env(safe-area-inset-top,0px)) !important;left:max(6px, env(safe-area-inset-left,0px)) !important;max-width:min(52vw,190px) !important;}
+  #app.mobile-mode #mobile-actionbar,#app.mobile-mode #mobile-fallback-bar{left:max(6px, env(safe-area-inset-left,0px)) !important;right:max(6px, env(safe-area-inset-right,0px)) !important;bottom:calc(8px + env(safe-area-inset-bottom,0px)) !important;width:auto !important;max-width:none !important;box-sizing:border-box !important;overflow:hidden !important;}
+  #app.mobile-mode #mobile-actionbar button,#app.mobile-mode #mobile-fallback-bar button{min-width:0 !important;overflow:hidden !important;}
+  #app.mobile-mode #mobile-actionbar button .mobile-btn-main,#app.mobile-mode #mobile-fallback-bar button .mobile-btn-main{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+  #app.mobile-mode #mobile-actionbar button .mobile-btn-sub,#app.mobile-mode #mobile-fallback-bar button .mobile-btn-sub{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+  #app.mobile-mode #mobile-menu-sheet,#app.mobile-mode #io-wrap{left:max(8px, env(safe-area-inset-left,0px)) !important;right:max(8px, env(safe-area-inset-right,0px)) !important;width:auto !important;max-width:none !important;box-sizing:border-box !important;}
+  #app.mobile-mode #mobile-menu-sheet{bottom:calc(74px + env(safe-area-inset-bottom,0px) + 8px) !important;max-height:min(44vh,320px) !important;overflow:hidden !important;}
+  #app.mobile-mode #mobile-menu-sheet .menu-panel,#app.mobile-mode #io-wrap .io-panel{max-width:100% !important;overflow:auto !important;overscroll-behavior:contain !important;-webkit-overflow-scrolling:touch !important;}
+  #app.mobile-mode.keyboard-open #mobile-actionbar.rename-mode{bottom:calc(8px + env(safe-area-inset-bottom,0px) + var(--keyboard-offset,0px)) !important;}
+}
+</style>
+<script id="mobile-v42-behavior-fix">
+(function(){
+  const app=document.getElementById('app');
+  const isPhoneLike=()=>app && app.classList.contains('mobile-mode');
+  function ensureMobileViewportLock(){
+    if(!isPhoneLike()) return;
+    document.documentElement.style.overflow='hidden';
+    document.body.style.overflow='hidden';
+  }
+  function ensureRenameFocus(){
+    if(!isPhoneLike()) return;
+    const input=document.getElementById('mobile-rename-input');
+    if(!input) return;
+    const place=()=>{
+      try{ input.focus({preventScroll:true}); }catch(_e){ try{ input.focus(); }catch(__e){} }
+      try{ const pos=input.value ? input.value.length : 0; input.setSelectionRange(pos,pos); }catch(_e){}
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(place));
+    setTimeout(place,120);
+  }
+  window.addEventListener('resize', ensureMobileViewportLock, {passive:true});
+  window.addEventListener('orientationchange', ()=>setTimeout(ensureMobileViewportLock, 120), {passive:true});
+  document.addEventListener('focusin', e=>{ if(e.target && e.target.id==='mobile-rename-input') ensureRenameFocus(); });
+  setTimeout(ensureMobileViewportLock, 60);
+})();
+</script>
 </body>
 </html>
