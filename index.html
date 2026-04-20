@@ -117,6 +117,8 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
 .io-actions{display:flex;gap:8px;flex-wrap:wrap}
 .io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
+.io-copy-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:-2px}
+.io-copy-buttons button{font-size:12px;padding:6px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
 .io-export-options{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
 .io-export-options .tb-check{background:rgba(255,255,255,.03);border-color:rgba(132,145,164,.18)}
 #io-status{padding:9px 11px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-size:12px;line-height:1.55;color:#475569;white-space:pre-wrap}
@@ -1345,6 +1347,11 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
 
         <label class="io-label" for="j-io">内容</label>
         <textarea id="j-io" placeholder="JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を表示します"></textarea>
+        <div class="io-copy-buttons">
+          <button id="b-cpy-json" type="button">JSONをコピー</button>
+          <button id="b-cpy-text" type="button">テキストをコピー</button>
+          <button id="b-cpy-md" type="button">Markdownをコピー</button>
+        </div>
         <div id="io-status" class="warn">JSON / テキスト / Markdown を貼り付けるか、タブを押して今の内容を確認してください。</div>
         <div class="io-actions">
           <button id="b-out-refresh" type="button">更新</button>
@@ -6228,6 +6235,15 @@ function getExportString(kind=currentExportKind){
   if(kind==='md') return buildMarkdownText(onlySelection,options);
   return JSON.stringify(buildExportObject(options),null,2);
 }
+function copyExportKind(kind='json'){
+  const hasSelection=getSelectionExportNodeIds().size>0;
+  const label=kind==='md' ? 'Markdown' : (kind==='text' ? 'テキスト' : 'JSON');
+  return copyTextToClipboard(getExportString(kind),{
+    successMessage: hasSelection ? `選択中ノードの${label}をコピーしました` : `${label}をコピーしました`,
+    buttonId: kind==='md' ? 'b-cpy-md' : (kind==='text' ? 'b-cpy-text' : 'b-cpy-json')
+  });
+}
+
 function copyTextToClipboard(value,{successMessage='内容をコピーしました',buttonId='b-cpy'}={}){
   const textValue=String(value??'');
   if(!textValue) return Promise.resolve(false);
@@ -6475,6 +6491,9 @@ document.getElementById('b-cpy').addEventListener('click',()=>{
   const out=document.getElementById('j-io').value;
   copyTextToClipboard(out,{successMessage:'内容をコピーしました'});
 });
+document.getElementById('b-cpy-json')?.addEventListener('click',()=>copyExportKind('json'));
+document.getElementById('b-cpy-text')?.addEventListener('click',()=>copyExportKind('text'));
+document.getElementById('b-cpy-md')?.addEventListener('click',()=>copyExportKind('md'));
 document.getElementById('j-io').addEventListener('input',()=>{
   const raw=document.getElementById('j-io').value;
   if(!String(raw||'').trim()){
@@ -6839,7 +6858,7 @@ if(document.readyState==='complete'){
   z-index:105;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));
 }
 #mobile-menu-sheet{
-  position:fixed;left:8px;right:8px;bottom:calc(70px + env(safe-area-inset-bottom,0px));top:auto;min-width:0;transform:none;opacity:0;pointer-events:none;
+  position:fixed;left:8px;right:8px;bottom:calc(82px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset, 0px));top:auto;min-width:0;transform:none;opacity:0;pointer-events:none;
   z-index:2650;transition:opacity .18s ease;
 }
 #mobile-menu-sheet .menu-panel{
@@ -6891,7 +6910,7 @@ if(document.readyState==='complete'){
 #app.mobile-mode.mobile-sheet-open #mobile-backdrop{opacity:1;pointer-events:auto}
 #app.mobile-mode.mobile-menu-open #mobile-menu-sheet{display:block;opacity:1;pointer-events:auto;transform:none}
 #app.mobile-mode #mobile-node-sheet{display:none !important}
-#app.mobile-mode #main{height:calc(var(--mobile-vh));padding-top:0;padding-bottom:calc(74px + env(safe-area-inset-bottom,0px))}
+#app.mobile-mode #main{height:calc(var(--mobile-vh));padding-top:0;padding-bottom:calc(86px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset, 0px))}
 #app.mobile-mode.mobile-editor-open #main{z-index:109;pointer-events:none !important}
 #app.mobile-mode #cw,#app.mobile-mode svg{touch-action:none}
 #app.mobile-mode.mobile-editor-open #cw,
@@ -7025,6 +7044,7 @@ if(document.readyState==='complete'){
   --mobile-topbar-h:0px;
   --mobile-vh:100vh;
   --keyboard-offset:0px;
+  --mobile-browser-offset:0px;
   --sheet-ease:cubic-bezier(.22,1,.36,1);
   -webkit-tap-highlight-color:transparent;
   overscroll-behavior:none;
@@ -7048,14 +7068,14 @@ if(document.readyState==='complete'){
 #mobile-menu-sheet button:active{transform:scale(.97)}
 #mobile-backdrop{transition:opacity .24s ease}
 #mobile-actionbar{
-  bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  bottom:calc(10px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset, 0px));
   opacity:0;
   transform:translateY(18px) scale(.985);
   transition:transform .28s var(--sheet-ease), opacity .18s ease, bottom .24s ease;
 }
 #mobile-actionbar.visible{opacity:1;transform:translateY(0) scale(1)}
 #app.mobile-mode.keyboard-open #mobile-actionbar.rename-mode{
-  bottom:calc(max(8px, var(--keyboard-offset)) + 6px);
+  bottom:calc(max(8px, var(--keyboard-offset)) + 6px + env(safe-area-inset-bottom,0px));
 }
 #mobile-node-sheet,
 #app.mobile-mode #io-wrap{
@@ -7371,34 +7391,17 @@ if(document.readyState==='complete'){
     try{ document.body.scrollTop=target.y||0; }catch(_e){}
   }
   function lockMobileRenameViewport(reason='lock-rename'){
-    if(!isIOS || !isMobileMode()) return;
+    if(!isMobileMode()) return;
     if(!mobileRenameScrollLock) mobileRenameScrollLock=getViewportScrollPos();
-    document.documentElement.classList.add('mobile-rename-scroll-lock');
-    document.body.classList.add('mobile-rename-scroll-lock');
-    document.body.style.top=`${-(mobileRenameScrollLock.y||0)}px`;
-    document.body.style.left=`${-(mobileRenameScrollLock.x||0)}px`;
-    mobileDebugLog('rename viewport lock', {reason, pos:mobileRenameScrollLock});
-    requestAnimationFrame(()=>restoreViewportScroll(mobileRenameScrollLock));
-    setTimeout(()=>restoreViewportScroll(mobileRenameScrollLock), 0);
-    setTimeout(()=>restoreViewportScroll(mobileRenameScrollLock), 80);
+    mobileDebugLog('rename viewport lock (soft)', {reason, pos:mobileRenameScrollLock});
   }
   function unlockMobileRenameViewport(reason='unlock-rename'){
-    if(!isIOS) return;
-    const pos=mobileRenameScrollLock || getViewportScrollPos();
-    document.documentElement.classList.remove('mobile-rename-scroll-lock');
-    document.body.classList.remove('mobile-rename-scroll-lock');
-    document.body.style.top='';
-    document.body.style.left='';
-    mobileDebugLog('rename viewport unlock', {reason, pos});
-    requestAnimationFrame(()=>restoreViewportScroll(pos));
-    setTimeout(()=>restoreViewportScroll(pos), 0);
+    mobileDebugLog('rename viewport unlock (soft)', {reason, pos:mobileRenameScrollLock});
     mobileRenameScrollLock=null;
   }
   function stabilizeMobileRenameViewport(reason='stabilize-rename'){
-    if(!isIOS || !isMobileInlineEditing()) return;
-    lockMobileRenameViewport(reason);
-    requestAnimationFrame(()=>restoreViewportScroll(mobileRenameScrollLock));
-    setTimeout(()=>restoreViewportScroll(mobileRenameScrollLock), 50);
+    if(!isMobileInlineEditing()) return;
+    mobileDebugLog('rename viewport stabilize (soft)', {reason});
   }
 
   function isMobileMode(){ return app.classList.contains('mobile-mode'); }
@@ -7788,13 +7791,15 @@ if(document.readyState==='complete'){
     const vv=window.visualViewport;
     const height=vv ? vv.height : window.innerHeight;
     const offsetTop=vv ? vv.offsetTop : 0;
-    const keyboardDelta=vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
-    const keyboardOpen=keyboardDelta > 120;
+    const rawBottomInset=vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+    const keyboardOpen=rawBottomInset > 120;
     const inlineEditing=isMobileInlineEditing();
-    const effectiveKeyboardOffset=inlineEditing ? 0 : (keyboardOpen ? keyboardDelta : 0);
+    const effectiveKeyboardOffset=inlineEditing ? 0 : (keyboardOpen ? rawBottomInset : 0);
+    const browserOffset=(isMobileMode() && !keyboardOpen) ? Math.min(72, rawBottomInset) : 0;
     app.style.setProperty('--mobile-vh', `${Math.max(320,height)}px`);
     app.style.setProperty('--mobile-topbar-h', `${Math.max(0,offsetTop)}px`);
     app.style.setProperty('--keyboard-offset', `${effectiveKeyboardOffset}px`);
+    app.style.setProperty('--mobile-browser-offset', `${browserOffset}px`);
     app.classList.toggle('keyboard-open', keyboardOpen && isMobileMode() && !inlineEditing);
   }
   function getSheetDragTarget(type){
@@ -8735,8 +8740,8 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
 #app.mobile-mode #sv,
 #app.mobile-mode svg{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;display:block !important;}
 #app.mobile-mode #mobile-backdrop{position:fixed !important;inset:0 !important;background:rgba(3,5,8,.55) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
-#app.mobile-mode #mobile-actionbar{position:fixed !important;left:8px !important;right:8px !important;bottom:calc(8px + env(safe-area-inset-bottom,0px)) !important;transform:none !important;max-width:none !important;}
-#app.mobile-mode.keyboard-open #mobile-actionbar.rename-mode{bottom:calc(8px + env(safe-area-inset-bottom,0px)) !important;}
+#app.mobile-mode #mobile-actionbar{position:fixed !important;left:8px !important;right:8px !important;bottom:calc(14px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset, 0px)) !important;transform:none !important;max-width:none !important;}
+#app.mobile-mode.keyboard-open #mobile-actionbar.rename-mode{bottom:calc(8px + env(safe-area-inset-bottom,0px) + var(--keyboard-offset, 0px)) !important;}
 #app.mobile-mode #mobile-menu-sheet{position:fixed !important;left:10px !important;right:10px !important;bottom:calc(var(--mobile-overlay-bottom-space,86px) + 8px) !important;max-height:min(52vh,420px) !important;overflow:auto !important;transform:none !important;}
 #app.mobile-mode #io-wrap{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:0 !important;display:none !important;align-items:flex-end !important;justify-content:stretch !important;padding:10px 10px calc(var(--mobile-overlay-bottom-space,86px) + 8px) 10px !important;transform:none !important;background:transparent !important;}
 #app.mobile-mode[data-mobile-mode="data"] #io-wrap,
