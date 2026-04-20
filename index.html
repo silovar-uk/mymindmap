@@ -3247,6 +3247,7 @@ function parseImportData(raw,{kind}={}){
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial',
     hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone),
+    showCreatedAt:!!((parsed.meta&&parsed.meta.showCreatedAt)??parsed.showCreatedAt),
     focusMode:false,
     focusNodeId:null,
     presentationMode:!!((parsed.meta&&parsed.meta.presentationMode)??parsed.presentationMode)
@@ -4654,6 +4655,7 @@ function draw(){
   hideTooltip();
   const visibleNodes=getVisibleNodes();
   const visibleEdges=getVisibleEdges();
+  const mobileModeActive=!!document.getElementById('app')?.classList.contains('mobile-mode');
   const mobileDragRenderingActive=mobileModeActive && !!drag?.moved && Array.isArray(drag?.ids) && drag.ids.length>0;
   const outlineNumberMap=mobileDragRenderingActive
     ? (window.__dragRenderCache?.outlineNumberMap || getOutlineNumberMap())
@@ -4741,7 +4743,6 @@ function draw(){
   });
 
   NL.innerHTML='';
-  const mobileModeActive=!!document.getElementById('app')?.classList.contains('mobile-mode');
   const showSubtextGlobal=!meta?.presentationMode;
   const showStatusGlobal=!meta?.presentationMode && !mobileModeActive;
   const compactTitles=false;
