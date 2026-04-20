@@ -1461,7 +1461,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
         <div class="io-actions">
           <button id="b-out-refresh" type="button">更新</button>
           <button id="b-share-url-hi" type="button">URLでコピー</button>
-          <button id="b-short-url-site" type="button">短縮URL</button>
+          <button id="b-short-url-site" type="button" title="外部サイト 00m.in を開きます">短縮URL ↗</button>
           <button id="b-findreplace" type="button">検索・置換</button>
           <button id="b-in-clear" type="button">空にする</button>
         </div>
@@ -2124,12 +2124,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.10';
-const APP_UPDATED_AT='2026-04-20 19:50 JST';
+const APP_VERSION='1.6.11';
+const APP_UPDATED_AT='2026-04-20 20:10 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.11',date:'2026-04-20 20:10 JST',summary:'共有URL起動時の入り方とスマホ操作まわりを調整。',items:['共有URLパラメータ付きで開いた場合は名称編集を開かず、全体表示から始まるよう runInitialBoot を分岐','短縮URLボタンは外部サイト遷移と分かるよう「短縮URL ↗」表記へ変更し、モバイルメニュー側も同じ表示へ統一','スマホ下部バーは通常時を常に5列グリッドに固定し、「完了を非表示」を1行目右端の小さなチップとして安定表示','スマホの名前変更トレイを拡大し、入力欄と保存/キャンセルをより大きくしてタップしやすく調整','タップ時はその場で選択状態が見えるよう更新しつつ、ノードドラッグは window 捕捉の touchmove / touchend を追加して移動が途切れにくいよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.10',date:'2026-04-20 19:50 JST',summary:'起動直後に先頭ノードの名称変更へすぐ入れるよう初期表示を調整。',items:['runInitialBoot 内で先頭ノードを選択したあと、名称編集パネルを自動で開くよう変更','開始オーバーレイを閉じたあとに編集パネルを表示する順番へ見直し、初回表示で隠れにくいよう調整','サンプル開始時も共有URL読込時も、起動直後から最初のノード名をそのまま打ち替えやすい流れに改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.9',date:'2026-04-20 19:46 JST',summary:'共有URLのコピー導線を一本化し、表記を整理。',items:['軽量URLコピー機能を撤去し、高忠実度URLコピーのみ残す構成に変更','高忠実度URLのボタン名を「URLでコピー」に変更','コピー完了メッセージと生成完了メッセージも新しい名称に合わせて整理']},
 {version:'1.6.8',date:'2026-04-20 18:20 JST',summary:'データ画面のコピー導線を整理し、短縮URLサイトへのリンクを追加。',items:['データ欄の重複していた「コピー」ボタンを削除し、コピー導線を「JSONをコピー」に一本化','「今のマップを置き換える」を「JSONをコピー」の左側へ移し、読み込み導線を上段に整理','共有URLの近くに「短縮URL」ボタンを追加し、00m.in を新しいタブで開けるよう対応','スマホのメニューにも「短縮URL」を追加し、同じく 00m.in へ飛べるよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -7330,9 +7331,26 @@ if(!nodes.length){
 function runInitialBoot(){
   const loadedFromUrl=tryLoadSharedMapFromUrl();
   draw();
-  if(!loadedFromUrl) placeGraphAtViewportCenter({resetViewport:true});
   clearSelection();
   const starterNode=nodes[0];
+  if(loadedFromUrl){
+    try{
+      fitV();
+    }catch(_err){
+      placeGraphAtViewportCenter({resetViewport:true});
+    }
+    closeEp();
+    closeEep();
+    draw();
+    updateHUD();
+    updateQuickbar();
+    setStartSceneOpen(false);
+    updateUndoUI();
+    if(app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open')) renderOutlineEditor();
+    markSaved();
+    return;
+  }
+  placeGraphAtViewportCenter({resetViewport:true});
   if(starterNode){
     const mobileBoot=window.innerWidth<=820;
     const hero=getHeroViewportForNode(starterNode,{zoom:mobileBoot?0.92:1.18,screenYRatio:mobileBoot?0.5:0.41});
@@ -7815,6 +7833,48 @@ if(document.readyState==='complete'){
 }
 #mobile-node-sheet .sheet-panel.has-drag-handle::before,
 #app.mobile-mode #io .io-panel.has-drag-handle::before{display:none}
+
+#app.mobile-mode #mobile-actionbar:not(.rename-mode){
+  display:grid !important;
+  grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  align-items:stretch;
+}
+#app.mobile-mode #mobile-actionbar:not(.rename-mode) .mobile-actionbar-extra{
+  grid-column:1 / -1 !important;
+  display:flex !important;
+  justify-content:flex-end !important;
+  align-items:center !important;
+  min-width:0;
+  padding:0 2px 2px !important;
+}
+#app.mobile-mode #mobile-actionbar:not(.rename-mode) .mobile-hide-done-chip{
+  margin-left:auto;
+  font-size:9.6px;
+}
+#app.mobile-mode #mobile-actionbar.rename-mode{
+  grid-template-columns:minmax(84px,auto) minmax(0,1fr) minmax(84px,auto) !important;
+  gap:8px !important;
+  padding:8px 8px 8px 10px !important;
+}
+#app.mobile-mode #mobile-actionbar.rename-mode button{
+  min-height:52px !important;
+  padding:0 12px !important;
+}
+#app.mobile-mode #mobile-actionbar .mobile-rename-field{
+  height:52px !important;
+  padding:0 12px !important;
+  border-radius:14px !important;
+}
+#app.mobile-mode #mobile-actionbar .mobile-rename-field input{
+  font-size:18px !important;
+}
+@media (max-width:380px){
+  #app.mobile-mode #mobile-actionbar:not(.rename-mode){grid-template-columns:repeat(5,minmax(0,1fr)) !important;}
+  #app.mobile-mode #mobile-actionbar.rename-mode button{min-height:48px !important;}
+  #app.mobile-mode #mobile-actionbar .mobile-rename-field{height:48px !important;}
+  #app.mobile-mode #mobile-actionbar .mobile-rename-field input{font-size:17px !important;}
+}
+
 .sheet-drag-handle{
   position:relative;
   display:flex;
@@ -8035,7 +8095,7 @@ if(document.readyState==='complete'){
     html += '<button data-mobile-menu-action="data" type="button">データ</button>';
     html += '<button data-mobile-menu-action="add" class="primary" type="button">新規ノード</button>';
     html += '<button data-mobile-menu-action="share" type="button">共有表示</button>';
-    html += '<button data-mobile-menu-action="short-url" type="button">短縮URL</button>';
+    html += '<button data-mobile-menu-action="short-url" type="button" title="外部サイト 00m.in を開きます">短縮URL ↗</button>';
     if(hasNode){
       html += '<button data-mobile-menu-action="details" type="button">詳細編集</button>';
       html += '<button data-mobile-menu-action="done" type="button">'+doneLabel+'</button>';
@@ -9236,14 +9296,22 @@ if(document.readyState==='complete'){
     closeMobileMenu();
     closeMobileNodeSheet();
     if(isMobileInlineEditing() && mobileRenameId!==id) commitMobileInlineEdit({restoreFocus:false});
-    if(!isSelected(id) || selectedNodeIds.size===0) setSingleSelection(id);
-    else {activeNodeId=id; selectedEdgeId=null; draw();}
+    if(!isSelected(id) || selectedNodeIds.size===0){
+      setSingleSelection(id);
+      draw();
+    }else{
+      activeNodeId=id;
+      selectedEdgeId=null;
+      draw();
+    }
+    updateMobileUi();
     setMobilePressNode(id);
     touchGesture={type:'node-press',nodeId:id,startX:touch.clientX,startY:touch.clientY,moved:false};
     if(e.cancelable) e.preventDefault();
     e.stopPropagation();
   },{passive:false});
   NL.addEventListener('touchmove',e=>{
+    if(e.__mobileNodeGestureHandled) return;
     if(!isMobileMode() || isMobileInlineEditing() || !touchGesture || !e.touches.length) return;
     if(touchGesture.type!=='node-press' && touchGesture.type!=='node-drag') return;
     const touch=e.touches[0];
@@ -9268,6 +9336,7 @@ if(document.readyState==='complete'){
     }
   },{passive:false});
   NL.addEventListener('touchend',e=>{
+    if(e.__mobileNodeGestureHandled) return;
     if(!isMobileMode() || !touchGesture || (touchGesture.type!=='node-press' && touchGesture.type!=='node-drag')) return;
     const finishedId=touchGesture.nodeId;
     const wasDrag=touchGesture.type==='node-drag';
@@ -9283,7 +9352,66 @@ if(document.readyState==='complete'){
     if(e.cancelable) e.preventDefault();
     e.stopPropagation();
   },{passive:false});
-  NL.addEventListener('touchcancel',()=>{ touchGesture=null; finishPointerLikeDrag(); setMobilePressNode(null); resetLastMobileNodeTap(); },{passive:true});
+  NL.addEventListener('touchcancel',e=>{ if(e.__mobileNodeGestureHandled) return; touchGesture=null; finishPointerLikeDrag(); setMobilePressNode(null); resetLastMobileNodeTap(); },{passive:true});
+
+
+  function handleActiveNodeTouchMoveEvent(e){
+    if(e.__mobileNodeGestureHandled) return;
+    if(!isMobileMode() || isMobileInlineEditing() || !touchGesture || !e.touches.length) return;
+    if(touchGesture.type!=='node-press' && touchGesture.type!=='node-drag') return;
+    if(e.target.closest('#ep') || e.target.closest('#eep') || e.target.closest('#mobile-inline-editor') || e.target.closest('#io-wrap') || e.target.closest('#mobile-menu-sheet') || e.target.closest('#mobile-node-sheet')) return;
+    const touch=e.touches[0];
+    const moved=Math.hypot(touch.clientX-touchGesture.startX,touch.clientY-touchGesture.startY);
+    if(touchGesture.type==='node-press' && moved>MOBILE_DRAG_START_PX){
+      if(startMobileNodeDrag(touchGesture.nodeId,touchGesture.startX,touchGesture.startY)){
+        touchGesture.type='node-drag';
+        touchGesture.moved=true;
+        mobileUserMovedViewport=true;
+        resetLastMobileNodeTap();
+      }
+    }
+    if(touchGesture.type==='node-drag'){
+      if(moved>MOBILE_DRAG_START_PX){
+        touchGesture.moved=true;
+        resetLastMobileNodeTap();
+        mobileUserMovedViewport=true;
+        updateMobileDragPosition(touch.clientX,touch.clientY);
+      }
+      if(e.cancelable) e.preventDefault();
+      e.stopPropagation();
+      e.__mobileNodeGestureHandled=true;
+    }
+  }
+  function handleActiveNodeTouchEndEvent(e){
+    if(e.__mobileNodeGestureHandled) return;
+    if(!isMobileMode() || !touchGesture || (touchGesture.type!=='node-press' && touchGesture.type!=='node-drag')) return;
+    const finishedId=touchGesture.nodeId;
+    const wasDrag=touchGesture.type==='node-drag';
+    const moved=!!(touchGesture.moved || drag?.moved);
+    const changedTouch=(e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+    if(wasDrag && changedTouch) updateMobileDragPosition(changedTouch.clientX,changedTouch.clientY,{flush:true});
+    if(wasDrag) finishPointerLikeDrag();
+    else setMobilePressNode(null);
+    touchGesture=null;
+    if(!moved && finishedId && changedTouch){
+      handleMobileNodeTap(finishedId, changedTouch.clientX, changedTouch.clientY);
+    }
+    if(e.cancelable) e.preventDefault();
+    e.stopPropagation();
+    e.__mobileNodeGestureHandled=true;
+  }
+  function handleActiveNodeTouchCancelEvent(e){
+    if(e.__mobileNodeGestureHandled) return;
+    if(!isMobileMode() || !touchGesture || (touchGesture.type!=='node-press' && touchGesture.type!=='node-drag')) return;
+    touchGesture=null;
+    finishPointerLikeDrag();
+    setMobilePressNode(null);
+    resetLastMobileNodeTap();
+    e.__mobileNodeGestureHandled=true;
+  }
+  window.addEventListener('touchmove',handleActiveNodeTouchMoveEvent,{passive:false,capture:true});
+  window.addEventListener('touchend',handleActiveNodeTouchEndEvent,{passive:false,capture:true});
+  window.addEventListener('touchcancel',handleActiveNodeTouchCancelEvent,{passive:true,capture:true});
 
   cw.addEventListener('touchstart',e=>{
     if(!isMobileMode()) return;
