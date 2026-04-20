@@ -2124,12 +2124,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.11';
-const APP_UPDATED_AT='2026-04-20 20:10 JST';
+const APP_VERSION='1.6.12';
+const APP_UPDATED_AT='2026-04-20 20:33 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.12',date:'2026-04-20 20:33 JST',summary:'スマホ下部バーの「完了を非表示」が左へ崩れることがある不具合を修正。',items:['モバイル下部バーを再表示する処理で inline display を flex に戻していた箇所を grid に統一し、レイアウト崩れの原因を解消','「完了を非表示」のラッパーに grid-row / justify-self / width 指定を追加し、常に1行目右端へ固定されるよう補強','右寄せチップ側にも margin-left:auto と justify-self:end を強めに指定し、Safari系でも左へ落ちにくいよう調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.11',date:'2026-04-20 20:10 JST',summary:'共有URL起動時の入り方とスマホ操作まわりを調整。',items:['共有URLパラメータ付きで開いた場合は名称編集を開かず、全体表示から始まるよう runInitialBoot を分岐','短縮URLボタンは外部サイト遷移と分かるよう「短縮URL ↗」表記へ変更し、モバイルメニュー側も同じ表示へ統一','スマホ下部バーは通常時を常に5列グリッドに固定し、「完了を非表示」を1行目右端の小さなチップとして安定表示','スマホの名前変更トレイを拡大し、入力欄と保存/キャンセルをより大きくしてタップしやすく調整','タップ時はその場で選択状態が見えるよう更新しつつ、ノードドラッグは window 捕捉の touchmove / touchend を追加して移動が途切れにくいよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.10',date:'2026-04-20 19:50 JST',summary:'起動直後に先頭ノードの名称変更へすぐ入れるよう初期表示を調整。',items:['runInitialBoot 内で先頭ノードを選択したあと、名称編集パネルを自動で開くよう変更','開始オーバーレイを閉じたあとに編集パネルを表示する順番へ見直し、初回表示で隠れにくいよう調整','サンプル開始時も共有URL読込時も、起動直後から最初のノード名をそのまま打ち替えやすい流れに改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.9',date:'2026-04-20 19:46 JST',summary:'共有URLのコピー導線を一本化し、表記を整理。',items:['軽量URLコピー機能を撤去し、高忠実度URLコピーのみ残す構成に変更','高忠実度URLのボタン名を「URLでコピー」に変更','コピー完了メッセージと生成完了メッセージも新しい名称に合わせて整理']},
@@ -7841,14 +7842,18 @@ if(document.readyState==='complete'){
 }
 #app.mobile-mode #mobile-actionbar:not(.rename-mode) .mobile-actionbar-extra{
   grid-column:1 / -1 !important;
+  grid-row:1 !important;
   display:flex !important;
   justify-content:flex-end !important;
+  justify-self:end !important;
   align-items:center !important;
+  width:100% !important;
   min-width:0;
   padding:0 2px 2px !important;
 }
 #app.mobile-mode #mobile-actionbar:not(.rename-mode) .mobile-hide-done-chip{
-  margin-left:auto;
+  margin-left:auto !important;
+  justify-self:end !important;
   font-size:9.6px;
 }
 #app.mobile-mode #mobile-actionbar.rename-mode{
@@ -8595,7 +8600,7 @@ if(document.readyState==='complete'){
     mobileActionbar.hidden=!shouldShow;
     mobileActionbar.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
     if(shouldShow){
-      mobileActionbar.style.display=mobileActionbar.classList.contains('rename-mode') ? 'grid' : 'flex';
+      mobileActionbar.style.display='grid';
       mobileActionbar.style.visibility='visible';
       mobileActionbar.style.opacity='1';
       mobileActionbar.style.pointerEvents='auto';
@@ -9537,7 +9542,7 @@ if(document.readyState==='complete'){
       mobileActionbar.style.opacity='1';
       mobileActionbar.style.pointerEvents='auto';
       if(!mobileActionbar.style.display || mobileActionbar.style.display==='none'){
-        mobileActionbar.style.display=mobileActionbar.classList.contains('rename-mode') ? 'grid' : 'flex';
+        mobileActionbar.style.display='grid';
       }
     }
     ensureMobileCanvasVisible();
@@ -9814,6 +9819,202 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
     visualViewport.addEventListener('resize',()=>scheduleApplyStableMobileLayout('vv-resize'),{passive:true});
     visualViewport.addEventListener('scroll',()=>scheduleApplyStableMobileLayout('vv-scroll'),{passive:true});
   }
+})();
+</script>
+
+
+<style id="reload-guard-style">
+html,body{
+  overscroll-behavior-x:none;
+  overscroll-behavior-y:none;
+}
+</style>
+<script id="reload-guard-script">
+(function(){
+  const AUTOSAVE_KEY='mindmap_autosave_v2';
+  const AUTOSAVE_MAX_AGE=1000*60*60*24*14;
+  let autosaveTimer=null;
+  let autosaveBooted=false;
+  let autosaveRestoring=false;
+  let lastAutosaveRaw='';
+  let touchStartY=0;
+  let touchStartX=0;
+  let touchStartTime=0;
+
+  function hasShareParam(){
+    try{
+      const key=(typeof SHARE_URL_PARAM==='string' && SHARE_URL_PARAM) ? SHARE_URL_PARAM : 'share';
+      return new URLSearchParams(window.location.search).has(key);
+    }catch(_err){
+      return false;
+    }
+  }
+  function canUseStorage(){
+    try{
+      const k='__mm_reload_guard__';
+      localStorage.setItem(k,'1');
+      localStorage.removeItem(k);
+      return true;
+    }catch(_err){
+      return false;
+    }
+  }
+  function getAutosavePayload(){
+    return {
+      savedAt:Date.now(),
+      appVersion:(typeof APP_VERSION!=='undefined'?APP_VERSION:''),
+      state:{nodes,edges,nid,meta},
+      viewport:{vx,vy,vs},
+      selection:{activeNodeId,selectedEdgeId,selectedNodeIds:Array.from(selectedNodeIds||[])},
+      mode:typeof mode==='string'?mode:'select'
+    };
+  }
+  function applyViewport(viewport){
+    if(!viewport) return;
+    if(Number.isFinite(viewport.vx)) vx=viewport.vx;
+    if(Number.isFinite(viewport.vy)) vy=viewport.vy;
+    if(Number.isFinite(viewport.vs) && viewport.vs>0) vs=Math.max(0.05,viewport.vs);
+    if(typeof applyT==='function') applyT();
+  }
+  function restoreSelection(selection){
+    try{
+      if(selection?.activeNodeId && typeof setSingleSelection==='function' && nodes.some(n=>n.id===selection.activeNodeId)){
+        setSingleSelection(selection.activeNodeId);
+      }else if(typeof clearSelection==='function'){
+        clearSelection();
+      }
+      if(selection?.selectedEdgeId && typeof eb==='function' && eb(selection.selectedEdgeId)) selectedEdgeId=selection.selectedEdgeId;
+    }catch(_err){}
+  }
+  function flushAutosave(reason='auto'){
+    if(!autosaveBooted || autosaveRestoring || hasShareParam() || !canUseStorage()) return false;
+    try{
+      const payload=getAutosavePayload();
+      const raw=JSON.stringify(payload);
+      if(raw===lastAutosaveRaw) return false;
+      localStorage.setItem(AUTOSAVE_KEY,raw);
+      lastAutosaveRaw=raw;
+      return true;
+    }catch(err){
+      console.warn('autosave failed', reason, err);
+      return false;
+    }
+  }
+  function scheduleAutosave(reason='auto'){
+    if(!autosaveBooted || autosaveRestoring || hasShareParam()) return;
+    if(autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer=setTimeout(()=>{
+      autosaveTimer=null;
+      flushAutosave(reason);
+    },180);
+  }
+  function readAutosave(){
+    if(!canUseStorage() || hasShareParam()) return null;
+    try{
+      const raw=localStorage.getItem(AUTOSAVE_KEY);
+      if(!raw) return null;
+      const parsed=JSON.parse(raw);
+      if(!parsed?.state?.nodes?.length) return null;
+      if(parsed.savedAt && (Date.now()-parsed.savedAt)>AUTOSAVE_MAX_AGE) return null;
+      lastAutosaveRaw=raw;
+      return parsed;
+    }catch(err){
+      console.warn('autosave read failed', err);
+      return null;
+    }
+  }
+  function restoreAutosaveAfterBoot(){
+    if(autosaveRestoring || hasShareParam()) return false;
+    const payload=readAutosave();
+    if(!payload) return false;
+    try{
+      autosaveRestoring=true;
+      if(typeof replaceMapData==='function') replaceMapData(payload.state,{toastMessage:'前回の内容を復元しました',skipHistory:true});
+      applyViewport(payload.viewport);
+      restoreSelection(payload.selection);
+      if(typeof sm==='function' && typeof payload.mode==='string') sm(payload.mode);
+      if(typeof draw==='function') draw();
+      if(typeof updateHUD==='function') updateHUD();
+      if(typeof updateQuickbar==='function') updateQuickbar();
+      if(typeof renderOutlineEditor==='function' && (app?.classList.contains('io-open') || outlineBackdrop?.classList.contains('open'))) renderOutlineEditor();
+      if(typeof markSaved==='function') markSaved();
+      return true;
+    }catch(err){
+      console.warn('autosave restore failed', err);
+      return false;
+    }finally{
+      autosaveRestoring=false;
+    }
+  }
+  function afterBootInit(){
+    autosaveBooted=true;
+    const restored=restoreAutosaveAfterBoot();
+    if(!restored) flushAutosave('boot');
+  }
+  function queueAfterBootInit(){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(afterBootInit)));
+  }
+
+  if(typeof markDirty==='function'){
+    const __markDirty=markDirty;
+    markDirty=function(){
+      const result=__markDirty.apply(this,arguments);
+      scheduleAutosave('dirty');
+      return result;
+    };
+  }
+  if(typeof restoreState==='function'){
+    const __restoreState=restoreState;
+    restoreState=function(){
+      const result=__restoreState.apply(this,arguments);
+      if(!autosaveRestoring) scheduleAutosave('restoreState');
+      return result;
+    };
+  }
+  if(typeof replaceMapData==='function'){
+    const __replaceMapData=replaceMapData;
+    replaceMapData=function(){
+      const result=__replaceMapData.apply(this,arguments);
+      if(!autosaveRestoring) scheduleAutosave('replaceMapData');
+      return result;
+    };
+  }
+  if(typeof snapshot==='function'){
+    const __snapshot=snapshot;
+    snapshot=function(){
+      const result=__snapshot.apply(this,arguments);
+      scheduleAutosave('snapshot');
+      return result;
+    };
+  }
+
+  window.addEventListener('pagehide',()=>{ flushAutosave('pagehide'); },{capture:true});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden') flushAutosave('visibilitychange');
+  },{capture:true});
+  window.addEventListener('beforeunload',()=>{ flushAutosave('beforeunload'); },{capture:true});
+
+  document.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1) return;
+    const t=e.touches[0];
+    touchStartY=t.clientY;
+    touchStartX=t.clientX;
+    touchStartTime=Date.now();
+  },{passive:true,capture:true});
+  document.addEventListener('touchmove',e=>{
+    if(e.touches.length!==1) return;
+    const t=e.touches[0];
+    const dy=t.clientY-touchStartY;
+    const dx=Math.abs(t.clientX-touchStartX);
+    const startedNearTop=touchStartY<=96;
+    const fastEnough=(Date.now()-touchStartTime)<=1200;
+    if(startedNearTop && fastEnough && dy>12 && dx<36){
+      e.preventDefault();
+    }
+  },{passive:false,capture:true});
+
+  if(document.readyState==='complete') queueAfterBootInit();
+  else window.addEventListener('load',queueAfterBootInit,{once:true});
 })();
 </script>
 
