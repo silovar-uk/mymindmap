@@ -827,9 +827,7 @@ svg{background:transparent;position:relative;z-index:1}
 .outline-action:focus-visible{outline:2px solid rgba(18,198,255,.48);outline-offset:2px}
 .outline-status{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;border:1px solid rgba(132,145,164,.18);background:rgba(255,255,255,.035);color:var(--sf-text-1);white-space:nowrap}
 .outline-status::before{content:'';width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.88}
-.outline-status.in_progress{color:#ffd8c7;border-color:rgba(255,111,44,.28);background:rgba(255,111,44,.10)}
 .outline-status.done{color:#e9ffe7;border-color:rgba(152,245,123,.24);background:rgba(152,245,123,.10)}
-.outline-status.paused{color:#ffe8ec;border-color:rgba(255,107,120,.24);background:rgba(255,107,120,.10)}
 .outline-note{font-size:12px;line-height:1.6;color:var(--sf-text-2);margin-top:14px}
 .outline-row.focus-dim{opacity:.42;filter:saturate(.18)}
 .dimmed{opacity:.15;transition:opacity .2s ease}
@@ -1194,10 +1192,8 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <textarea id="ep-sub" placeholder="補足を入力"></textarea>
       <label>状態</label>
       <select id="ep-status">
-        <option value="none">設定しない</option>
-        <option value="in_progress">進行中</option>
+        <option value="none">未完了</option>
         <option value="done">完了</option>
-        <option value="paused">保留</option>
       </select>
       <label>文字の表示</label>
       <select id="ep-fitmode">
@@ -1816,10 +1812,8 @@ function setOutlineOpen(open){
 }
 
 const STATUS_META={
-  none:{label:'なし',chip:'',dot:'#7d8794',pillFill:'rgba(125,135,148,.08)',pillStroke:'rgba(125,135,148,.18)',pillText:'#b4beca',icon:''},
-  in_progress:{label:'進行中',chip:'進行中',dot:'#ffb36b',pillFill:'rgba(255,111,44,.10)',pillStroke:'rgba(255,111,44,.28)',pillText:'#ffd8c7',icon:''},
-  done:{label:'完了',chip:'完了',dot:'#99ebb0',pillFill:'rgba(152,245,123,.10)',pillStroke:'rgba(152,245,123,.24)',pillText:'#e9ffe7',icon:''},
-  paused:{label:'保留',chip:'保留',dot:'#ff9aac',pillFill:'rgba(255,107,120,.10)',pillStroke:'rgba(255,107,120,.24)',pillText:'#ffe8ec',icon:''}
+  none:{label:'未完了',chip:'',dot:'#7d8794',pillFill:'rgba(125,135,148,.08)',pillStroke:'rgba(125,135,148,.18)',pillText:'#b4beca',icon:''},
+  done:{label:'完了',chip:'完了',dot:'#99ebb0',pillFill:'rgba(152,245,123,.10)',pillStroke:'rgba(152,245,123,.24)',pillText:'#e9ffe7',icon:''}
 };
 
 function getStatusChipMetrics(status){
@@ -2177,7 +2171,7 @@ const STARTER_PRESETS={
     schemaVersion:'1.0',
     meta:{title:'企画整理マップ',layoutMode:'horizontal'},
     nodes:[
-      {id:'n1',label:'新しい企画',subtext:'中心テーマ',status:'in_progress',collapsed:false,fitMode:'shrink',order:1,x:0,y:0,color:{...PRESETS[0]}},
+      {id:'n1',label:'新しい企画',subtext:'中心テーマ',status:'none',collapsed:false,fitMode:'shrink',order:1,x:0,y:0,color:{...PRESETS[0]}},
       {id:'n2',label:'目的',subtext:'何を達成したいか',status:'none',collapsed:false,fitMode:'shrink',favorite:false,order:1,x:240,y:-110,color:{...PRESETS[1]}},
       {id:'n3',label:'やること',subtext:'最初のアクション',status:'none',collapsed:false,fitMode:'shrink',favorite:false,order:2,x:240,y:110,color:{...PRESETS[2]}}
     ],
@@ -3088,7 +3082,14 @@ function createPastedSubtree(payload,{parentId=null,anchor=null}={}){
   return newRootId || null;
 }
 
-const STATUS_KEY_BY_LABEL=Object.fromEntries(Object.entries(STATUS_META).map(([key,value])=>[value.label,key]));
+const STATUS_KEY_BY_LABEL={
+  '完了':'done',
+  '未完了':'none',
+  '未設定':'none',
+  '設定しない':'none',
+  '進行中':'none',
+  '保留':'none'
+};
 function detectImportKind(raw='',preferred=currentExportKind){
   const s=String(raw||'').trim();
   if(!s) return 'json';
@@ -4240,7 +4241,7 @@ function markSelectedNodesStatus(status){
   const childMap=status==='done' ? getChildrenMap() : null;
   ids.map(id=>nb(id)).filter(Boolean).forEach(node=>{ applyNodeStatusWithChildCompletion(node,status,childMap); });
   renderNow();
-  const labels={in_progress:'進行中',done:'完了',paused:'保留',none:'未設定'};
+  const labels={done:'完了',none:'未完了'};
   showToast(`選択中のノードを${labels[status]||status}にしました`);
 }
 function toggleNodeDone(id,{withHistory=true}={}){
@@ -4283,13 +4284,7 @@ function toggleFocusMode(force,{seedId=null,silent=false}={}){
 function cycleSingleNodeStatus(){
   const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
   if(!node) return;
-  const order=['none','in_progress','done','paused'];
-  const next=order[(order.indexOf(node.status)+1)%order.length];
-  snapshot();
-  applyNodeStatusWithChildCompletion(node,next,next==='done' ? getChildrenMap() : null);
-  draw();
-  const labels={in_progress:'進行中',done:'完了',paused:'保留',none:'未設定'};
-  showToast(`${node.label} を${labels[next]}にしました`);
+  toggleNodeDone(node.id);
 }
 function duplicateActiveNode(){
   const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
@@ -4466,9 +4461,6 @@ function runQuickbarAction(action){
       break;
     case 'distribute-v':
       arrangeSelectedNodes('distribute-v');
-      break;
-    case 'mark-progress':
-      markSelectedNodesStatus('in_progress');
       break;
     case 'mark-done':
       if(selectedNodeIds.size===1 && activeNodeId) toggleNodeDone(activeNodeId);
