@@ -124,6 +124,20 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 .io-copy-buttons .io-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 14px;border:1px solid rgba(132,145,164,.2);border-radius:999px;background:linear-gradient(180deg, rgba(20,25,34,.92), rgba(10,14,20,.96));color:var(--sf-text-0);font-size:12px;font-weight:700;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.18);transition:transform .16s var(--sf-ease-standard),border-color .16s var(--sf-ease-standard),background .16s var(--sf-ease-standard),box-shadow .16s var(--sf-ease-standard)}
 .io-copy-buttons .io-copy-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.22);background:linear-gradient(180deg, rgba(28,34,46,.96), rgba(13,18,25,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 20px rgba(0,0,0,.22)}
 .io-copy-buttons .io-copy-btn::before{content:"";display:block;width:8px;height:8px;border-radius:999px;background:linear-gradient(180deg, rgba(255,111,44,.95), rgba(18,198,255,.88));box-shadow:0 0 10px rgba(18,198,255,.18)}
+#io-wrap .io-head-export{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"copy close" "tabs tabs";align-items:start;gap:10px 12px}
+#io-wrap .io-head-export .io-copy{grid-area:copy;min-width:0}
+#io-wrap .io-head-export .io-head-close{grid-area:close;display:flex;justify-content:flex-end;align-items:flex-start}
+#io-wrap .io-head-export .io-tabs-row{grid-area:tabs;min-width:0}
+#io-wrap .io-head-export .io-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-width:100%}
+#io-wrap .io-head-export .io-tab{text-align:center;justify-content:center}
+#io-wrap .io-actions{display:flex;gap:8px;flex-wrap:wrap;overflow:visible;padding-bottom:0}
+#io-wrap .io-actions button{flex:0 0 auto}
+#io-wrap .io-head-actions{overflow:visible;padding-bottom:0;max-width:100%}
+#io-wrap .io-head-export .io-mini{white-space:nowrap}
+@media (max-width:960px){
+  #io-wrap .io-head-export{grid-template-columns:1fr;grid-template-areas:"copy" "tabs" "close"}
+  #io-wrap .io-head-export .io-head-close{justify-content:flex-start}
+}
 .io-export-options{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
 .io-export-options .tb-check{background:rgba(255,255,255,.03);border-color:rgba(132,145,164,.18)}
 #io-status{padding:9px 11px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-size:12px;line-height:1.55;color:#475569;white-space:pre-wrap}
@@ -668,6 +682,7 @@ svg{background:transparent;position:relative;z-index:1}
   box-shadow:none;
 }
 
+#location-chip,#path-chip{display:none !important}
 #help-panel h2,#history-panel h2,.io-ttl{
   color:var(--sf-text-0);
   font-family:var(--font-display-en), var(--font-ui-ja);
@@ -1032,7 +1047,6 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <span class="tb-label" data-en="ACTION">主な操作</span>
       <div class="tb-row tb-row-main-actions">
         <button id="b-add" class="primary-action">＋ ノードを追加</button>
-        <button id="b-auto" class="primary-action">整える</button>
         <select id="layout-mode" title="整え方を選ぶ" aria-label="整え方を選ぶ">
           <option value="radial">放射に広げる</option>
           <option value="radial_half">右に広げる</option>
@@ -1041,6 +1055,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
           <option value="vertical">縦に並べる</option>
           <option value="outline">リストっぽく並べる</option>
         </select>
+        <button id="b-auto" class="primary-action">整える</button>
         <button id="b-fit" style="display:none" aria-hidden="true" tabindex="-1">全体に戻す</button>
       </div>
     </div>
@@ -1330,18 +1345,20 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
     <button id="b-outline-side" type="button" aria-label="アウトライナーの開閉">アウトライナー</button>
     <div id="io">
       <div class="io-panel">
-        <div class="io-head">
-          <div>
+        <div class="io-head io-head-export">
+          <div class="io-copy">
             <div class="io-ttl">データ</div>
             <div class="io-sub">この画面で、書き出しと読み込みができます。</div>
           </div>
-          <div class="io-head-actions">
+          <div class="io-head-close">
+            <button id="b-io-inline" class="io-mini" type="button">閉じる</button>
+          </div>
+          <div class="io-tabs-row">
             <div class="io-tabs">
               <button id="b-exp-json" class="io-tab act" type="button">JSON</button>
               <button id="b-exp-text" class="io-tab" type="button">テキスト</button>
               <button id="b-exp-md" class="io-tab" type="button">Markdown</button>
             </div>
-            <button id="b-io-inline" class="io-mini" type="button">閉じる</button>
           </div>
         </div>
 
@@ -6797,18 +6814,6 @@ if(document.readyState==='complete'){
   const exportOptions=document.getElementById('io-export-options');
 
   if(hud){
-    const locationChip=document.createElement('div');
-    locationChip.id='location-chip';
-    locationChip.className='hud-chip';
-    locationChip.innerHTML='<span class="dot"></span><strong>表示位置</strong><span>全体表示</span>';
-    hud.appendChild(locationChip);
-
-    const pathChip=document.createElement('div');
-    pathChip.id='path-chip';
-    pathChip.className='hud-chip';
-    pathChip.innerHTML='<span class="dot"></span><strong>現在地</strong><span>未選択</span>';
-    hud.appendChild(pathChip);
-
     const focusChip=document.createElement('div');
     focusChip.id='focus-chip';
     focusChip.className='hud-chip';
