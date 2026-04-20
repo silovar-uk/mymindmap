@@ -2105,9 +2105,10 @@ const NODE_W_MAX=380;
 const NODE_H_MIN=68;
 const SUBTEXT_MAX_LINES=99;
 const TITLE_WRAP_MAX_LINES=99;
-const NODE_INNER_PAD_X=16;
-const NODE_TEXT_SAFE_PAD_RIGHT=16;
-const NODE_TEXT_LAYOUT_SAFE_WIDTH=12;
+const NODE_INNER_PAD_X=18;
+const NODE_TEXT_SAFE_PAD_RIGHT=20;
+const NODE_SUBTEXT_SAFE_PAD_RIGHT=24;
+const NODE_TEXT_LAYOUT_SAFE_WIDTH=20;
 const NODE_TOP_PAD=14;
 const NODE_FAVORITE_ICON_SIZE=16;
 const NODE_FAVORITE_HEADER_RESERVE=46;
@@ -2228,12 +2229,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.17';
-const APP_UPDATED_AT='2026-04-21 00:08 JST';
+const APP_VERSION='1.6.20';
+const APP_UPDATED_AT='2026-04-21 00:35 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.20',date:'2026-04-21 00:35 JST',summary:'補足テキストがノード端で見切れにくいよう、内側余白と安全幅を広げて描画を安定化。',items:['ノード本文の左右内側余白を 16px から 18px へ増やし、補足が端に寄りすぎないよう調整','本文の右側セーフパディングとレイアウト安全幅を拡大し、表示幅推定の誤差が出ても末尾文字が切れにくいよう改善','補足テキスト専用の安全余白を追加し、折り返し判定を少し手前で行うことでノード端での見切れを防ぎやすくした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.19',date:'2026-04-21 00:33 JST',summary:'スマホの名前編集を専用シートへ刷新し、即時表示・大型入力・保存導線を最優先で再設計。',items:['名前編集を下部バー差し替え方式から専用の mobile-rename-sheet へ変更し、表示遅延やもっさり感の原因だった毎回の innerHTML 差し替えをやめた','入力欄を大型化し、見出し・補助文・保存/キャンセルの2ボタンを持つ本物の編集シートへ変更。初回表示時は即シート表示→フォーカス再試行で見失いにくくした','通常のアクションバーは rename モードでは隠し、名前編集は 1タップ選択→「名前」→専用シート という主導線に整理した','rename 中は専用シートの状態だけを更新し、編集中の文字列が renderNow で巻き戻りにくい構成へ変更した','rename 時にも backdrop を軽く出し、今は編集モードだとひと目で分かる見た目にした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.17',date:'2026-04-21 00:08 JST',summary:'JSON読込エラーの見える化と、モバイル下部バーの最終CSSをさらに固定。',items:['JSON.parse 失敗時に位置から行番号・列番号を逆算し、データ欄へ該当箇所の抜粋と矢印を出す詳細エラー表示を追加','インポートボタン失敗時の alert は短くし、詳しい原因はデータ欄の赤いステータスに残るよう変更','モバイル下部バーの最終スタイルを mobile-authority-v1617 として末尾に集約し、通常時 grid / rename時3列 / 右上の「完了を非表示」固定をさらに強めた','モバイルのデータ欄 textarea と名称変更入力欄のサイズ指定を最終ブロック側でも上書きし、再上書きで崩れにくい構成へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.16',date:'2026-04-20 23:58 JST',summary:'モバイル起動とタッチ処理を整理し、下部バーと再読み込み保護の実装を安定化。',items:['起動処理を Boot source / phase ベースへ整理し、共有URL起動は全体表示、通常起動は先頭ノード選択→名称変更という流れを一本化','モバイル下部バーの最終CSSを共通ブロックへ寄せ、通常時は常に grid、rename 時だけ専用レイアウトへ切り替わるよう整理','ノードのタップ・ダブルタップ・ドラッグ・ピンチの処理を共通関数へ寄せ、スマホでの選択と移動の競合を抑えた','JSON読み込み前のプレビュー結果を強制しつつ、置き換え前のスナップショットを保存して復旧しやすくした','未保存警告はモバイルで出にくいよう beforeunload 条件を見直し、オートセーブ中心の挙動へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -4148,7 +4150,7 @@ function getNodePreferredInnerWidth(n, numberMap=null){
   const subLines=presentationMode ? [] : String(n.subtext||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
   const subWidth=subLines.length ? Math.max(...subLines.map(line=>Math.ceil(estimateTextWidth(line,NODE_SUB_FONT_SIZE)))) : 0;
   const maxInnerWidth=(presentationMode ? (mobilePresentation ? 620 : 520) : NODE_W_MAX)-NODE_INNER_PAD_X*2;
-  return Math.max(presentationMode ? (mobilePresentation ? 210 : 180) : 144, Math.min(maxInnerWidth, Math.max(headerWidth, titleWidth + (presentationMode ? 6 : NODE_TEXT_SAFE_PAD_RIGHT), subWidth + NODE_TEXT_SAFE_PAD_RIGHT)));
+  return Math.max(presentationMode ? (mobilePresentation ? 210 : 180) : 144, Math.min(maxInnerWidth, Math.max(headerWidth, titleWidth + (presentationMode ? 6 : NODE_TEXT_SAFE_PAD_RIGHT), subWidth + NODE_SUBTEXT_SAFE_PAD_RIGHT)));
 }
 function getNodeTitleLayout(n, numberMap=null){
   const presentationMode=!!meta?.presentationMode;
@@ -4196,8 +4198,8 @@ function updateNodeMetrics(n, numberMap=null){
   n.h=Math.max(NODE_H_MIN, NODE_TOP_PAD + titleLayout.headerHeight + headerGap + titleHeight + subGap + subHeight + NODE_BOTTOM_PAD);
 }
 function getNodeSubLines(n){
-  const usable=Math.max(104, n.w-NODE_INNER_PAD_X*2-NODE_TEXT_LAYOUT_SAFE_WIDTH);
-  const maxUnits=Math.max(12, usable/Math.max(6.2,NODE_SUB_FONT_SIZE*.9));
+  const usable=Math.max(100, n.w-NODE_INNER_PAD_X*2-NODE_TEXT_LAYOUT_SAFE_WIDTH-NODE_SUBTEXT_SAFE_PAD_RIGHT*0.35);
+  const maxUnits=Math.max(11.5, usable/Math.max(6.2,NODE_SUB_FONT_SIZE*.9));
   return wrapText(n.subtext||'',maxUnits,SUBTEXT_MAX_LINES).filter(Boolean);
 }
 function isMobilePresentationMode(){
