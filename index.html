@@ -102,11 +102,14 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #io{height:100%;display:flex;flex-direction:column;padding:10px 12px;overflow:auto}
 .io-panel{display:flex;flex-direction:column;gap:10px;min-height:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px}
 .io-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:2px}
-.io-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.io-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;justify-content:flex-start;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.io-head-actions::-webkit-scrollbar,.io-actions::-webkit-scrollbar{height:8px}
+.io-head-actions::-webkit-scrollbar-thumb,.io-actions::-webkit-scrollbar-thumb{background:rgba(132,145,164,.28);border-radius:999px}
+.io-head-actions > *{flex:0 0 auto}
 .io-ttl{font-size:13px;font-weight:700;color:#111827;line-height:1.35}
 .io-sub{font-size:11px;color:#6b7280;line-height:1.5;margin-top:2px}
 .io-label{font-size:12px;font-weight:700;color:#374151;line-height:1.35}
-.io-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.io-tabs{display:flex;gap:6px;flex-wrap:nowrap}
 .io-tab{font-size:12px;padding:5px 12px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;cursor:pointer}
 .io-tab.act{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
 .io-mini{font-size:12px;padding:5px 10px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
@@ -115,8 +118,8 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 #j-io{width:100%;min-height:220px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:rgba(5,8,12,.78);color:var(--sf-text-0);resize:vertical;outline:none;line-height:1.5;white-space:pre;color-scheme:dark;caret-color:#f7f2eb}
 #j-io:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);background:rgba(8,12,18,.92);color:var(--sf-text-0);color-scheme:dark}
 #j-io::selection{background:rgba(70,206,255,.28);color:var(--sf-text-0)}
-.io-actions{display:flex;gap:8px;flex-wrap:wrap}
-.io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer}
+.io-actions{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.io-actions button{font-size:12px;padding:5px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;cursor:pointer;flex:0 0 auto;white-space:nowrap}
 .io-copy-buttons{display:flex;align-items:center;justify-content:flex-end;margin-top:2px}
 .io-copy-buttons .io-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 14px;border:1px solid rgba(132,145,164,.2);border-radius:999px;background:linear-gradient(180deg, rgba(20,25,34,.92), rgba(10,14,20,.96));color:var(--sf-text-0);font-size:12px;font-weight:700;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.18);transition:transform .16s var(--sf-ease-standard),border-color .16s var(--sf-ease-standard),background .16s var(--sf-ease-standard),box-shadow .16s var(--sf-ease-standard)}
 .io-copy-buttons .io-copy-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.22);background:linear-gradient(180deg, rgba(28,34,46,.96), rgba(13,18,25,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 20px rgba(0,0,0,.22)}
@@ -1038,7 +1041,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
           <option value="vertical">縦に並べる</option>
           <option value="outline">リストっぽく並べる</option>
         </select>
-        <button id="b-fit">全体に戻す</button>
+        <button id="b-fit" style="display:none" aria-hidden="true" tabindex="-1">全体に戻す</button>
       </div>
     </div>
 
@@ -1048,6 +1051,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
         <button id="b-undo">戻す</button>
         <button id="b-redo">やり直す</button>
         <label class="tb-check" for="hide-done-toggle"><input id="hide-done-toggle" type="checkbox"><span>完了を非表示</span></label>
+        <label class="tb-check" for="show-created-at-toggle"><input id="show-created-at-toggle" type="checkbox"><span>追加日時を表示</span></label>
         <button id="b-branch-focus" class="secondary-action" aria-pressed="false">枝集中</button>
         <label class="tb-check" for="presentation-toggle"><input id="presentation-toggle" type="checkbox"><span>共有表示</span></label>
         <button id="b-more" class="secondary-action" aria-expanded="false">詳細を開く</button>
@@ -1188,7 +1192,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <button id="qb-edit" class="primary" type="button">編集</button>
       <button id="qb-child" type="button">子を追加</button>
       <button id="qb-connect" type="button">つなぐ</button>
-      <button id="qb-fit" type="button">全体に戻す</button>
+      <button id="qb-fit" type="button" style="display:none" aria-hidden="true" tabindex="-1">全体に戻す</button>
       <button id="qb-align-left" type="button">左揃え</button>
       <button id="qb-align-center-h" type="button">中央(横)</button>
       <button id="qb-align-right" type="button">右揃え</button>
@@ -1538,11 +1542,13 @@ function getSiblingIds(parentId,nodeList=nodes,edgeList=edges){
 function getNextOutlineOrder(parentId,nodeList=nodes,edgeList=edges){
   return getSiblingIds(parentId,nodeList,edgeList).length+1;
 }
-function getOutlineNumberMap(nodeList=nodes, edgeList=edges, options={}){
+function getOutlineNumberMap(nodeList=null, edgeList=null, options={}){
   const includeHiddenDone=!!options.includeHiddenDone;
-  const filteredNodes=(nodeList||[]).filter(node=>includeHiddenDone || !(meta?.hideDone && node?.status==='done'));
+  const sourceNodes=nodeList|| (includeHiddenDone ? nodes : getVisibleNodes());
+  const sourceEdges=edgeList|| (includeHiddenDone ? edges : getVisibleEdges());
+  const filteredNodes=(sourceNodes||[]).filter(node=>includeHiddenDone || !(meta?.hideDone && node?.status==='done'));
   const allowedIds=new Set(filteredNodes.map(node=>node.id));
-  const filteredEdges=(edgeList||[]).filter(edge=>allowedIds.has(edge.from) && allowedIds.has(edge.to));
+  const filteredEdges=(sourceEdges||[]).filter(edge=>allowedIds.has(edge.from) && allowedIds.has(edge.to));
   const hierarchy=getHierarchyMaps(filteredNodes,filteredEdges,options);
   const numbers={};
   function walk(id,prefix){
@@ -1880,7 +1886,7 @@ const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
-let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,focusMode:false,focusNodeId:null,presentationMode:false};
+let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,showCreatedAt:false,focusMode:false,focusNodeId:null,presentationMode:false};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -1953,11 +1959,21 @@ function normalizeNode(n){
     y:Number.isFinite(n.y)?n.y:0,
     order:normalizeOrderValue(n.order,1),
     favorite,
+    createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
     w:n.w||NODE_W_MIN,
     h:n.h||h,
     color:ensureDarkThemeColor(n.color,{...PRESETS[0]})
   };
 }
+
+function pad2(num){ return String(num).padStart(2,'0'); }
+function formatNodeCreatedAt(value){
+  if(!Number.isFinite(value)) return '';
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime())) return '';
+  return `${pad2(d.getMonth()+1)}/${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 function normalizeEdge(e){
   return {id:e.id,from:e.from,to:e.to,label:(e.label||'').trim()};
 }
@@ -1977,12 +1993,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.3';
-const APP_UPDATED_AT='2026-04-19 23:45 JST';
+const APP_VERSION='1.6.6';
+const APP_UPDATED_AT='2026-04-20 03:20 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.6',date:'2026-04-20 03:20 JST',summary:'追加日時表示とスマホ/PCの操作整理を加え、ドラッグ中の描画をさらに軽量化。',items:['追加日時を保持する createdAt を各ノードに追加し、PCではチェック切り替えで小さく表示できるよう対応','ナンバリングは現在見えているノード集合を基準に計算するよう見直し、完了非表示時は表示中ノードだけで連番になるよう調整','ドラッグ中は接続中のエッジだけ描画するよう変更し、モバイルでの移動体験をさらに軽く改善','上部の「全体に戻す」ボタンは非表示にし、データやMarkdown等の書き出しには追加日時を含めない方針を維持']},
 {version:'1.6.5',date:'2026-04-20 00:06 JST',summary:'スマホのインライン編集をノード幅・位置によりぴったり沿う表示へ調整。',items:['スマホのインライン編集をノードの横幅に近いサイズへ寄せ、左右に余白が出すぎないよう調整','入力欄の位置をノードの中央付近に合わせ、一覧画面上でより直接編集している感覚に寄せた','インライン編集のシェル余白と影を小さくし、ノードに被せたときの浮きすぎを軽減','補助ヒントは常時表示をやめ、入力欄そのものを主役にしたミニマルな見た目へ調整']},
 {version:'1.7.0',date:'2026-04-20 00:26 JST',summary:'スマホ操作を選択・移動・命名・追加に整理し、ダブルタップ命名とドラッグ移動を安定化。',items:['スマホで編集パネルが開いている間はキャンバス本体と上部バーのポインター操作を止め、背面ジェスチャーが入力を奪わないよう整理','編集パネル本体に touchstart / pointerdown / click の伝播停止を追加し、タップが背後やバックドロップへ漏れにくいよう補強','ノード編集・矢印編集の初回フォーカス後に再度 scrollIntoView をかけ、キーボード表示後も入力欄が見切れにくいよう調整','下部アクションバーの4ボタンをさらに大型化し、主ラベルと補助ラベルの文字サイズを引き上げて読みやすさを改善','極小幅向けの 340px / 380px ブレークポイントでも文字を潰しすぎないよう最小サイズを底上げ','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.2',date:'2026-04-17 11:52 JST',summary:'共有用に補足を隠してタイトルを大きく見せる表示モードを追加し、通常表示とPNG保存の両方へ反映。',items:['上部に「共有表示」チェックを追加し、初期状態はOFFのまま任意で切り替えられるよう対応','共有表示中はノード補足を描画せず、タイトルの基準フォントと折り返しレイアウトを拡大して読みやすく調整','ノード幅と高さの計算も共有表示に合わせて見直し、補足を消したぶんタイトルが大きく収まるよう変更','JSONの meta に共有表示フラグを保持し、読み込み後も表示モードを再現できるよう更新','描画本体で切り替える方式にしたため、PNG保存でも共有表示の見た目がそのまま反映されるよう整理']},
@@ -2155,6 +2172,7 @@ const shortcutTitleEl=document.getElementById('shortcut-title');
 const shortcutBodyEl=document.getElementById('shortcut-body');
 const coachToggleBtn=document.getElementById('coach-toggle');
 const hideDoneToggle=document.getElementById('hide-done-toggle');
+const showCreatedAtToggle=document.getElementById('show-created-at-toggle');
 const presentationToggle=document.getElementById('presentation-toggle');
 const focusModeSideBtn=document.getElementById('b-branch-focus');
 const exportOptionsEl=document.getElementById('io-export-options');
@@ -2187,6 +2205,9 @@ function updateDocumentTitle(){
 }
 function updateHideDoneUi(){
   if(hideDoneToggle) hideDoneToggle.checked=!!meta?.hideDone;
+}
+function updateCreatedAtUi(){
+  if(showCreatedAtToggle) showCreatedAtToggle.checked=!!meta?.showCreatedAt;
 }
 function updatePresentationUi(){
   if(presentationToggle) presentationToggle.checked=!!meta?.presentationMode;
@@ -2325,6 +2346,7 @@ function renderNow(){
   applyT();
   updateDocumentTitle();
   updateHideDoneUi();
+  updateCreatedAtUi();
   updateFocusModeUi();
   updateUndoUI();
   updateHUD();
@@ -2370,7 +2392,7 @@ function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),focusMode:false,focusNodeId:null,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),showCreatedAt:!!(payload.meta&&payload.meta.showCreatedAt),focusMode:false,focusNodeId:null,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
@@ -2853,7 +2875,7 @@ function createChildNode(parentId, options={}){
   const newId='n'+(nid++);
   const child=normalizeNode({
     id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-    fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
+    fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(child);
   edges.push(normalizeEdge({id:'e'+(nid++),from:parentId,to:newId,label:options.edgeLabel||''}));
@@ -2877,7 +2899,7 @@ function createSiblingNode(sourceId, options={}){
   const newId='n'+(nid++);
   const sibling=normalizeNode({
     id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-    fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
+    fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(sibling);
   if(parentId){
@@ -2892,7 +2914,7 @@ function createStandaloneNode(options={}){
   const id='n'+(nid++);
   const node=normalizeNode({
     id,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
-    fitMode:draft.fitMode,favorite:draft.favorite,x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
+    fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
   });
   nodes.push(node);
   setSingleSelection(id);
@@ -2917,6 +2939,7 @@ function buildSubtreeClipboardPayload(rootId){
       fitMode:node.fitMode,
       order:normalizeOrderValue(node.order,1),
       favorite:!!node.favorite,
+      createdAt:Number.isFinite(node.createdAt)?node.createdAt:null,
       x:Math.round((node.x-baseX)*100)/100,
       y:Math.round((node.y-baseY)*100)/100,
       color:{...(node.color||PRESETS[0])}
@@ -4631,22 +4654,32 @@ function draw(){
   hideTooltip();
   const visibleNodes=getVisibleNodes();
   const visibleEdges=getVisibleEdges();
-  const outlineNumberMap=getOutlineNumberMap();
-  const focusModeActive=isFocusModeActive();
+  const mobileDragRenderingActive=mobileModeActive && !!drag?.moved && Array.isArray(drag?.ids) && drag.ids.length>0;
+  const outlineNumberMap=mobileDragRenderingActive
+    ? (window.__dragRenderCache?.outlineNumberMap || getOutlineNumberMap())
+    : getOutlineNumberMap();
+  if(!mobileDragRenderingActive){
+    window.__dragRenderCache=window.__dragRenderCache||{};
+    window.__dragRenderCache.outlineNumberMap=outlineNumberMap;
+  }
+  const focusModeActive=mobileDragRenderingActive ? false : isFocusModeActive();
   const focusGroups=focusModeActive ? getFocusGroups() : null;
-  updateFocusModeUi();
+  if(!mobileDragRenderingActive) updateFocusModeUi();
 
-  visibleNodes.forEach(n=>updateNodeMetrics(n, outlineNumberMap));
+  if(!mobileDragRenderingActive){
+    visibleNodes.forEach(n=>updateNodeMetrics(n, outlineNumberMap));
+  }
   const renderNodeGeometryMap=getRenderNodeGeometryMap(visibleNodes);
 
   EL.innerHTML='';
-  visibleEdges.forEach(e=>{
+  const renderedEdges=mobileDragRenderingActive ? visibleEdges.filter(e=>drag.ids.includes(e.from) || drag.ids.includes(e.to)) : visibleEdges;
+  renderedEdges.forEach(e=>{
     const f=renderNodeGeometryMap.get(e.from),t=renderNodeGeometryMap.get(e.to); if(!f||!t) return;
     const info=getPathInfo(f,t);
     const selected=selectedEdgeId===e.id;
     const edgeRole=focusModeActive ? getEdgeFocusRole(e, focusGroups) : 'normal';
     const edgeInFocus=edgeRole!=='background';
-    const showEdgeLabel=selected || vs>=0.46;
+    const showEdgeLabel=!mobileDragRenderingActive && (selected || vs>=0.46);
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('data-eid',e.id);
     if(focusModeActive){
@@ -4736,6 +4769,50 @@ function draw(){
     if(focusModeActive){
       g.classList.add(`focus-node-${focusRole}`);
       if(selected) g.classList.add('is-selected');
+    }
+
+    if(mobileDragRenderingActive){
+      const simpleBase=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      simpleBase.setAttribute('class','node-base');
+      simpleBase.setAttribute('x',-n.w/2);
+      simpleBase.setAttribute('y',-n.h/2);
+      simpleBase.setAttribute('width',n.w);
+      simpleBase.setAttribute('height',n.h);
+      simpleBase.setAttribute('rx',14);
+      simpleBase.setAttribute('fill',renderPalette.fill);
+      simpleBase.setAttribute('stroke',selected?'rgba(255,247,236,.94)':edgeSeed?'#ff6f2c':renderPalette.stroke);
+      simpleBase.setAttribute('stroke-width',selected?'2.2':edgeSeed?'2.6':'1.45');
+      g.appendChild(simpleBase);
+
+      const simpleTitle=document.createElementNS('http://www.w3.org/2000/svg','text');
+      simpleTitle.setAttribute('class','node-title');
+      simpleTitle.setAttribute('x',-n.w/2+NODE_INNER_PAD_X);
+      simpleTitle.setAttribute('y',-Math.min(10, n.h*0.18));
+      simpleTitle.setAttribute('dominant-baseline','middle');
+      simpleTitle.setAttribute('font-size','14');
+      simpleTitle.setAttribute('font-weight','800');
+      simpleTitle.setAttribute('fill',renderPalette.text);
+      simpleTitle.setAttribute('pointer-events','none');
+      simpleTitle.setAttribute('font-family','Noto Sans JP, Rajdhani, sans-serif');
+      simpleTitle.textContent=shortenText(String(n.label||''), 26);
+      g.appendChild(simpleTitle);
+
+      if(selected){
+        const simpleRing=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        simpleRing.setAttribute('x',-n.w/2-4);
+        simpleRing.setAttribute('y',-n.h/2-4);
+        simpleRing.setAttribute('width',n.w+8);
+        simpleRing.setAttribute('height',n.h+8);
+        simpleRing.setAttribute('rx',17);
+        simpleRing.setAttribute('fill','none');
+        simpleRing.setAttribute('stroke','rgba(255,247,236,.92)');
+        simpleRing.setAttribute('stroke-width','1.8');
+        simpleRing.setAttribute('pointer-events','none');
+        g.appendChild(simpleRing);
+      }
+
+      NL.appendChild(g);
+      return;
     }
 
     const mobileHitMode=!!document.getElementById('app')?.classList.contains('mobile-mode');
@@ -4951,6 +5028,25 @@ function draw(){
       tx.textContent=line;
       contentGroup.appendChild(tx);
     });
+
+    if(!mobileModeActive && meta?.showCreatedAt && Number.isFinite(n.createdAt)){
+      const createdLabel=formatNodeCreatedAt(n.createdAt);
+      if(createdLabel){
+        const createdText=document.createElementNS('http://www.w3.org/2000/svg','text');
+        createdText.setAttribute('class','node-created-at');
+        createdText.setAttribute('x',n.w/2-NODE_INNER_PAD_X);
+        createdText.setAttribute('y',n.h/2-12);
+        createdText.setAttribute('text-anchor','end');
+        createdText.setAttribute('dominant-baseline','middle');
+        createdText.setAttribute('font-size','9.2');
+        createdText.setAttribute('font-weight','600');
+        createdText.setAttribute('letter-spacing','.02em');
+        createdText.setAttribute('fill',isDoneNode?'rgba(214,222,232,.42)':'rgba(214,222,232,.46)');
+        createdText.setAttribute('pointer-events','none');
+        createdText.textContent=createdLabel;
+        contentGroup.appendChild(createdText);
+      }
+    }
 
     if(showStatus && n.status!=='none'){
       const meta=STATUS_META[n.status];
@@ -6226,7 +6322,7 @@ function buildExportObject(options={}){
     schemaVersion:'1.0',
     meta,
     nodes:exportNodes.map(n=>({
-      id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,
+      id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
       x:Math.round(n.x),y:Math.round(n.y),color:n.color
     })),
     edges:exportEdges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
@@ -6432,6 +6528,14 @@ if(presentationToggle){
     showToast(meta.presentationMode?'共有表示をONにしました':'共有表示をOFFにしました');
   });
 }
+if(showCreatedAtToggle){
+  showCreatedAtToggle.addEventListener('change',e=>{
+    snapshot();
+    meta.showCreatedAt=!!e.target.checked;
+    renderNow();
+    showToast(meta.showCreatedAt?'追加日時を表示します':'追加日時の表示をオフにしました');
+  });
+}
 document.getElementById('b-outline').addEventListener('click',()=>{ if(!ensureMapTitle({toast:true,focus:true})) return; setOutlineOpen(!appEl.classList.contains('outline-open')); });
 if(document.getElementById('b-outline-inline')) document.getElementById('b-outline-inline').addEventListener('click',()=>setOutlineOpen(false));
 if(document.getElementById('b-outline-layout-side')) document.getElementById('b-outline-layout-side').addEventListener('click',()=>{ if(!ensureMapTitle()) return; applyAutoLayout(meta.layoutMode); renderNow(); showToast('今の順番で整列しました'); });
@@ -6601,6 +6705,7 @@ meta={
   title:'',
   layoutMode:(initialPreset.meta&&initialPreset.meta.layoutMode)||'horizontal',
   hideDone:false,
+  showCreatedAt:false,
   presentationMode:false
 };
 document.getElementById('map-title').value='';
@@ -8780,13 +8885,14 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
 #app.mobile-mode{position:fixed !important;inset:0 !important;width:100% !important;height:100% !important;overflow:hidden !important;}
 #app.mobile-mode #main{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:var(--mobile-overlay-bottom-space,86px) !important;height:auto !important;min-height:0 !important;padding:0 !important;margin:0 !important;overflow:hidden !important;display:block !important;align-items:stretch !important;}
 #app.mobile-mode #cw{position:absolute !important;inset:0 !important;min-height:0 !important;overflow:hidden !important;}
+#app.mobile-mode #cw,#app.mobile-mode #sv{will-change:transform;transform:translateZ(0);backface-visibility:hidden;}
 #app.mobile-mode #sv,
 #app.mobile-mode svg{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;display:block !important;}
 #app.mobile-mode #mobile-backdrop{position:fixed !important;inset:0 !important;background:rgba(3,5,8,.55) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
-#app.mobile-mode #mobile-actionbar{position:fixed !important;left:8px !important;right:8px !important;bottom:calc(14px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset, 0px)) !important;transform:none !important;max-width:none !important;}
+#app.mobile-mode #mobile-actionbar{position:fixed !important;left:8px !important;right:8px !important;bottom:calc(14px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset, 0px)) !important;transform:none !important;max-width:none !important;will-change:transform,opacity;}
 #app.mobile-mode.keyboard-open #mobile-actionbar.rename-mode{bottom:calc(8px + env(safe-area-inset-bottom,0px) + var(--keyboard-offset, 0px)) !important;}
-#app.mobile-mode #mobile-menu-sheet{position:fixed !important;left:10px !important;right:10px !important;bottom:calc(var(--mobile-overlay-bottom-space,86px) + 8px) !important;max-height:min(52vh,420px) !important;overflow:auto !important;transform:none !important;}
-#app.mobile-mode #io-wrap{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:0 !important;display:none !important;align-items:flex-end !important;justify-content:stretch !important;padding:10px 10px calc(var(--mobile-overlay-bottom-space,86px) + 8px) 10px !important;transform:none !important;background:transparent !important;}
+#app.mobile-mode #mobile-menu-sheet{position:fixed !important;left:10px !important;right:10px !important;bottom:calc(var(--mobile-overlay-bottom-space,86px) + 8px) !important;max-height:min(52vh,420px) !important;overflow:auto !important;transform:none !important;will-change:transform,opacity;}
+#app.mobile-mode #io-wrap{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:0 !important;display:none !important;align-items:flex-end !important;justify-content:stretch !important;padding:10px 10px calc(var(--mobile-overlay-bottom-space,86px) + 8px) 10px !important;transform:none !important;background:transparent !important;will-change:opacity;}
 #app.mobile-mode[data-mobile-mode="data"] #io-wrap,
 #app.mobile-mode.mobile-io-open #io-wrap,
 #app.mobile-mode.io-open #io-wrap{display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;}
@@ -8807,6 +8913,9 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
     document.body.appendChild(overlayRoot);
   }
   const overlayIds=['mobile-backdrop','mobile-actionbar','mobile-menu-sheet','io-wrap'];
+  let applyRaf=0;
+  let lastApplyReason='boot';
+  let lastHardCenterAt=0;
   function isMobileActive(){ return app.classList.contains('mobile-mode') || (app.dataset.mobileMode && app.dataset.mobileMode!=='desktop'); }
   function attachOverlayChildren(){
     overlayIds.forEach(id=>{
@@ -8844,6 +8953,10 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
   }
   function hardCenterOnce(reason){
     if(!isMobileActive()) return;
+    if(window.__mobileUserMovedViewport) return;
+    const now=performance.now();
+    if(now-lastHardCenterAt<260) return;
+    lastHardCenterAt=now;
     syncBodyLock();
     attachOverlayChildren();
     syncBottomSpace();
@@ -8878,35 +8991,42 @@ body.mobile-layout-lock{position:fixed !important;inset:0 !important;margin:0 !i
       backdrop.style.backdropFilter='none';
       backdrop.style.webkitBackdropFilter='none';
     }
-    hardCenterOnce(reason||'apply');
+    if(reason && /boot|enter|resize|pageshow|orientation|updateMobileMode|renderMobileUiFromState|updateMobileUi/.test(reason)){
+      hardCenterOnce(reason);
+    }
   }
-  const wrap=(name, after)=>{
+  function scheduleApplyStableMobileLayout(reason){
+    lastApplyReason=reason||lastApplyReason||'scheduled';
+    if(applyRaf) return;
+    applyRaf=requestAnimationFrame(()=>{
+      applyRaf=0;
+      applyStableMobileLayout(lastApplyReason);
+    });
+  }
+  const wrap=(name)=>{
     const orig=window[name];
     if(typeof orig!=='function') return;
     window[name]=function(...args){
       const res=orig.apply(this,args);
-      try{ after(name,args); }catch(_e){}
+      scheduleApplyStableMobileLayout(name);
       return res;
     };
   };
-  wrap('updateMobileMode', ()=>applyStableMobileLayout('updateMobileMode'));
-  wrap('renderMobileUiFromState', ()=>applyStableMobileLayout('renderMobileUiFromState'));
-  wrap('updateMobileUi', ()=>applyStableMobileLayout('updateMobileUi'));
-  wrap('updateViewportMetrics', ()=>applyStableMobileLayout('updateViewportMetrics'));
-  const guarded=[
-    'touchstart','touchmove','touchend'
-  ];
-  // Additional safety: no-op here; touch handlers in app already mostly guarded.
-  requestAnimationFrame(()=>applyStableMobileLayout('boot-raf-1'));
-  setTimeout(()=>applyStableMobileLayout('boot-timeout-120'),120);
-  setTimeout(()=>applyStableMobileLayout('boot-timeout-420'),420);
-  setTimeout(()=>applyStableMobileLayout('boot-timeout-900'),900);
-  window.addEventListener('pageshow',()=>applyStableMobileLayout('pageshow'),{passive:true});
-  window.addEventListener('resize',()=>applyStableMobileLayout('resize'),{passive:true});
-  window.addEventListener('orientationchange',()=>setTimeout(()=>applyStableMobileLayout('orientationchange'),120),{passive:true});
+  wrap('updateMobileMode');
+  wrap('renderMobileUiFromState');
+  wrap('updateMobileUi');
+  wrap('updateViewportMetrics');
+  wrap('forceVisibleForMobileChrome');
+  requestAnimationFrame(()=>scheduleApplyStableMobileLayout('boot-raf-1'));
+  setTimeout(()=>scheduleApplyStableMobileLayout('boot-timeout-120'),120);
+  setTimeout(()=>scheduleApplyStableMobileLayout('boot-timeout-420'),420);
+  setTimeout(()=>scheduleApplyStableMobileLayout('boot-timeout-900'),900);
+  window.addEventListener('pageshow',()=>scheduleApplyStableMobileLayout('pageshow'),{passive:true});
+  window.addEventListener('resize',()=>scheduleApplyStableMobileLayout('resize'),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(()=>scheduleApplyStableMobileLayout('orientationchange'),120),{passive:true});
   if(window.visualViewport){
-    visualViewport.addEventListener('resize',()=>applyStableMobileLayout('vv-resize'),{passive:true});
-    visualViewport.addEventListener('scroll',()=>applyStableMobileLayout('vv-scroll'),{passive:true});
+    visualViewport.addEventListener('resize',()=>scheduleApplyStableMobileLayout('vv-resize'),{passive:true});
+    visualViewport.addEventListener('scroll',()=>scheduleApplyStableMobileLayout('vv-scroll'),{passive:true});
   }
 })();
 </script>
