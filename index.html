@@ -1176,6 +1176,36 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
 }
 
 </style>
+
+<style id="mobile-rename-sheet-v1619">
+#mobile-rename-sheet{display:none;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px) + var(--mobile-browser-offset,0px));z-index:2670;opacity:0;transform:translateY(18px) scale(.985);transition:opacity .16s ease, transform .16s cubic-bezier(.2,.9,.25,1);pointer-events:none;}
+#mobile-rename-sheet.visible{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+#mobile-rename-sheet .mobile-rename-sheet-shell{position:relative;overflow:hidden;padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px));border-radius:22px;background:linear-gradient(180deg, rgba(18,23,32,.98), rgba(9,13,18,.99));border:1px solid rgba(132,145,164,.2);box-shadow:0 26px 48px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05);}
+#mobile-rename-sheet .mobile-rename-sheet-shell::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,0) 26%), radial-gradient(circle at 18% 0%, rgba(255,111,44,.16), transparent 28%), radial-gradient(circle at 100% 10%, rgba(18,198,255,.12), transparent 24%);opacity:.9;}
+#mobile-rename-sheet .mobile-rename-grab{width:46px;height:5px;border-radius:999px;background:rgba(255,255,255,.18);margin:0 auto 10px;}
+#mobile-rename-sheet .mobile-rename-kicker{position:relative;z-index:1;font-family:var(--font-display-en);font-size:11px;letter-spacing:.14em;color:var(--sf-text-2);margin-bottom:6px;}
+#mobile-rename-sheet .mobile-rename-head{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;}
+#mobile-rename-sheet .mobile-rename-title{font-size:20px;line-height:1.2;font-weight:800;color:var(--sf-text-0);}
+#mobile-rename-sheet .mobile-rename-sub{margin-top:4px;font-size:12px;line-height:1.45;color:var(--sf-text-2);word-break:break-word;}
+#mobile-rename-sheet .mobile-rename-input-wrap{position:relative;z-index:1;display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:18px;border:1px solid rgba(132,145,164,.22);background:rgba(255,255,255,.04);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+#mobile-rename-sheet .mobile-rename-input-label{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--sf-text-2);text-transform:uppercase;}
+#mobile-rename-sheet #mobile-rename-input{width:100%;height:60px;border:none;background:transparent;color:var(--sf-text-0);font-size:20px;font-weight:800;line-height:1.15;outline:none;font-family:'Noto Sans JP', Rajdhani, sans-serif;-webkit-appearance:none;appearance:none;padding:0;}
+#mobile-rename-sheet #mobile-rename-input::placeholder{color:rgba(214,222,232,.34);}
+#mobile-rename-sheet .mobile-rename-helper{position:relative;z-index:1;margin-top:10px;font-size:12px;line-height:1.5;color:var(--sf-text-2);}
+#mobile-rename-sheet .mobile-rename-actions{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px;}
+#mobile-rename-sheet .mobile-rename-actions button{min-height:56px;border-radius:16px;font-size:16px;font-weight:800;}
+#mobile-rename-sheet .mobile-rename-actions button.primary{background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64);color:#fff7f1;}
+#app.mobile-mode.keyboard-open #mobile-rename-sheet{bottom:calc(8px + env(safe-area-inset-bottom,0px) + var(--keyboard-offset,0px));}
+#app.mobile-mode #mobile-rename-sheet{left:8px;right:8px;}
+#app.mobile-mode.mobile-rename-open #mobile-backdrop[data-mode="rename"]{background:rgba(3,5,8,.42) !important;}
+@media (max-width:420px){
+  #mobile-rename-sheet .mobile-rename-sheet-shell{padding:11px 11px calc(11px + env(safe-area-inset-bottom,0px));border-radius:20px;}
+  #mobile-rename-sheet .mobile-rename-title{font-size:18px;}
+  #mobile-rename-sheet #mobile-rename-input{height:58px;font-size:19px;}
+  #mobile-rename-sheet .mobile-rename-actions button{min-height:54px;font-size:15px;}
+}
+</style>
+
 </head>
 <body>
 <div id="app">
@@ -2204,6 +2234,7 @@ const APP_UPDATED_AT='2026-04-21 00:08 JST';
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.6.19',date:'2026-04-21 00:33 JST',summary:'スマホの名前編集を専用シートへ刷新し、即時表示・大型入力・保存導線を最優先で再設計。',items:['名前編集を下部バー差し替え方式から専用の mobile-rename-sheet へ変更し、表示遅延やもっさり感の原因だった毎回の innerHTML 差し替えをやめた','入力欄を大型化し、見出し・補助文・保存/キャンセルの2ボタンを持つ本物の編集シートへ変更。初回表示時は即シート表示→フォーカス再試行で見失いにくくした','通常のアクションバーは rename モードでは隠し、名前編集は 1タップ選択→「名前」→専用シート という主導線に整理した','rename 中は専用シートの状態だけを更新し、編集中の文字列が renderNow で巻き戻りにくい構成へ変更した','rename 時にも backdrop を軽く出し、今は編集モードだとひと目で分かる見た目にした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.17',date:'2026-04-21 00:08 JST',summary:'JSON読込エラーの見える化と、モバイル下部バーの最終CSSをさらに固定。',items:['JSON.parse 失敗時に位置から行番号・列番号を逆算し、データ欄へ該当箇所の抜粋と矢印を出す詳細エラー表示を追加','インポートボタン失敗時の alert は短くし、詳しい原因はデータ欄の赤いステータスに残るよう変更','モバイル下部バーの最終スタイルを mobile-authority-v1617 として末尾に集約し、通常時 grid / rename時3列 / 右上の「完了を非表示」固定をさらに強めた','モバイルのデータ欄 textarea と名称変更入力欄のサイズ指定を最終ブロック側でも上書きし、再上書きで崩れにくい構成へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.16',date:'2026-04-20 23:58 JST',summary:'モバイル起動とタッチ処理を整理し、下部バーと再読み込み保護の実装を安定化。',items:['起動処理を Boot source / phase ベースへ整理し、共有URL起動は全体表示、通常起動は先頭ノード選択→名称変更という流れを一本化','モバイル下部バーの最終CSSを共通ブロックへ寄せ、通常時は常に grid、rename 時だけ専用レイアウトへ切り替わるよう整理','ノードのタップ・ダブルタップ・ドラッグ・ピンチの処理を共通関数へ寄せ、スマホでの選択と移動の競合を抑えた','JSON読み込み前のプレビュー結果を強制しつつ、置き換え前のスナップショットを保存して復旧しやすくした','未保存警告はモバイルで出にくいよう beforeunload 条件を見直し、オートセーブ中心の挙動へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.14',date:'2026-04-20 23:30 JST',summary:'スマホの選択・ドラッグ・起動・再表示を見直し、下部バーと名称変更を安定化。',items:['スマホ下部バーは最終上書きCSSで常時 grid 固定にし、「完了を非表示」を1行目右端の絶対配置へ統一して左端へ混ざらないよう補強','スマホのノード操作は 1本指タップ選択 / 8px超でドラッグ / 2本指ピンチを明確に分離し、ピンチ中はノードドラッグを止めるジェスチャーロックを追加','touchend の changedTouches 利用は維持しつつ、タッチ端末での click / pointerup / dblclick フォールバックを抑止して、シングルタップ選択がダブルタップ扱いされる誤作動を解消','起動時は共有URLパラメータ付きだけ全体表示から開始し、通常起動では先頭ノードを選択してスマホは下部バーの名称変更、PCは編集パネルを自動で開くよう統一','モバイル名称変更トレイとデータ欄 textarea を拡大し、オートセーブと pageshow 復元を補強して思わぬ再読み込みでも内容が戻りやすいよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -8245,6 +8276,31 @@ if(document.readyState==='complete'){
     <button data-mobile-action="more" type="button"><span class="mobile-btn-main">その他</span><span class="mobile-btn-sub">メニュー</span></button>`;
   app.appendChild(mobileActionbar);
 
+  const mobileRenameSheet=document.createElement('div');
+  mobileRenameSheet.id='mobile-rename-sheet';
+  mobileRenameSheet.hidden=true;
+  mobileRenameSheet.innerHTML=`
+    <div class="mobile-rename-sheet-shell">
+      <div class="mobile-rename-grab" aria-hidden="true"></div>
+      <div class="mobile-rename-kicker">NODE NAME</div>
+      <div class="mobile-rename-head">
+        <div>
+          <div class="mobile-rename-title">ノード名を編集</div>
+          <div class="mobile-rename-sub">選択中のノード名をすぐ変更できます</div>
+        </div>
+      </div>
+      <label class="mobile-rename-input-wrap" for="mobile-rename-input">
+        <span class="mobile-rename-input-label">名前</span>
+        <input id="mobile-rename-input" type="text" inputmode="text" enterkeyhint="done" aria-label="ノード名を編集" placeholder="ノード名を入力">
+      </label>
+      <div class="mobile-rename-helper">1回タップで選択、ここで大きく編集。保存で即反映。</div>
+      <div class="mobile-rename-actions">
+        <button data-mobile-rename-action="cancel" type="button">キャンセル</button>
+        <button data-mobile-rename-action="save" class="primary" type="button">保存</button>
+      </div>
+    </div>`;
+  app.appendChild(mobileRenameSheet);
+
   const mobileFallbackBar=document.createElement('div');
   mobileFallbackBar.id='mobile-fallback-bar';
   mobileFallbackBar.hidden=true;
@@ -8290,6 +8346,10 @@ if(document.readyState==='complete'){
   const mobileMenuPanel=document.getElementById('mobile-menu-panel');
   const mobileNodeSheetTitle=document.getElementById('mobile-node-sheet-title');
   const mobileInlineInput=document.getElementById('mobile-inline-input');
+  const mobileRenameInput=mobileRenameSheet.querySelector('#mobile-rename-input');
+  const mobileRenameSub=mobileRenameSheet.querySelector('.mobile-rename-sub');
+  const mobileRenameInputWrap=mobileRenameSheet.querySelector('.mobile-rename-input-wrap');
+  const mobileRenameHelper=mobileRenameSheet.querySelector('.mobile-rename-helper');
   const ioWrapEl=document.getElementById('io-wrap');
   const ioEl=document.getElementById('io');
   const ioPanelEl=document.querySelector('#io .io-panel');
@@ -8459,8 +8519,8 @@ if(document.readyState==='complete'){
 
   function isMobileMode(){ return app.classList.contains('mobile-mode'); }
   function isMobileInlineEditing(){ return mobileUiState.mode==='rename' && !!mobileRenameId; }
-  function getMobileRenameInput(){ return mobileActionbar.querySelector('#mobile-rename-input'); }
-  function getMobileRenameMeta(){ return mobileActionbar.querySelector('.mobile-rename-meta'); }
+  function getMobileRenameInput(){ return mobileRenameInput; }
+  function getMobileRenameMeta(){ return mobileRenameSub; }
   function focusMobileRenameInput(input, blank=false, reason='rename-focus'){
     if(!input) return;
     const doFocus=()=>{
@@ -8770,48 +8830,52 @@ if(document.readyState==='complete'){
     return node;
   }
   function applyMobileInlineEditorSkin(nodeId){
-    if(!mobileActionbar || !nodeId || !nb(nodeId)) return;
+    if(!mobileRenameSheet || !nodeId || !nb(nodeId)) return;
     const node=nb(nodeId);
     const isDoneNode=node.status==='done';
-    const shell=mobileActionbar.querySelector('.mobile-rename-field');
+    const shell=mobileRenameInputWrap;
     if(!shell) return;
     const palette=isDoneNode
       ? {fill:'rgba(79,88,100,.24)',stroke:'rgba(151,160,171,.44)',text:'rgba(231,236,241,.82)'}
       : {fill:node.color?.fill || '#161b23',stroke:node.color?.stroke || '#ff8a4c',text:node.color?.text || '#f7f2eb'};
-    shell.style.borderColor='color-mix(in srgb, '+palette.stroke+' 46%, rgba(132,145,164,.18))';
-    shell.style.background='color-mix(in srgb, '+palette.fill+' 62%, rgba(255,255,255,.03))';
-    const input=getMobileRenameInput();
-    if(input) input.style.color=palette.text;
+    shell.style.borderColor='color-mix(in srgb, '+palette.stroke+' 54%, rgba(132,145,164,.22))';
+    shell.style.background='color-mix(in srgb, '+palette.fill+' 70%, rgba(255,255,255,.05))';
+    if(mobileRenameInput){
+      mobileRenameInput.style.color=palette.text;
+      mobileRenameInput.style.caretColor=palette.text;
+    }
   }
   function renderMobileActionbar(){
     if(!mobileActionbar) return;
-    const hasRename=!!(mobileRenameId && nb(mobileRenameId));
-    if(hasRename){
-      const node=nb(mobileRenameId);
-      mobileActionbar.classList.add('rename-mode');
-      mobileActionbar.innerHTML=`
-        <div class="mobile-rename-meta"><strong>名前変更</strong>${escapeHtml((node?.label || '').trim() || '新しいノード')}</div>
-        <button data-mobile-rename-action="cancel" type="button">キャンセル</button>
-        <label class="mobile-rename-field" for="mobile-rename-input">
-          <input id="mobile-rename-input" type="text" inputmode="text" enterkeyhint="done" aria-label="ノード名を編集" placeholder="ノード名">
-        </label>
-        <button data-mobile-rename-action="save" class="primary" type="button">決定</button>`;
-      const input=getMobileRenameInput();
-      if(input){
-        input.value=mobileRenameBlankStart ? '' : (mobileRenameOriginal || '');
-        applyMobileInlineEditorSkin(mobileRenameId);
-        focusMobileRenameInput(input, mobileRenameBlankStart, 'render-rename-tray');
-      }
-      return;
-    }
     mobileActionbar.classList.remove('rename-mode');
     mobileActionbar.innerHTML=`
       <div class="mobile-actionbar-extra"><label class="mobile-hide-done-chip"><input data-mobile-hide-done-toggle type="checkbox"><span>完了を非表示</span></label></div>
-      <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前</span><span class="mobile-btn-sub">変更</span></button>
+      <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前</span><span class="mobile-btn-sub">編集</span></button>
       <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子</span><span class="mobile-btn-sub">追加</span></button>
       <button data-mobile-action="sibling" type="button"><span class="mobile-btn-main">同階</span><span class="mobile-btn-sub">追加</span></button>
       <button data-mobile-action="done" type="button"><span class="mobile-btn-main">完了</span><span class="mobile-btn-sub">切替</span></button>
       <button data-mobile-action="more" type="button"><span class="mobile-btn-main">その他</span><span class="mobile-btn-sub">メニュー</span></button>`;
+  }
+  function syncMobileRenameSheet({forceValue=false}={}){
+    if(!mobileRenameSheet || !mobileRenameInput) return;
+    const node=(mobileRenameId && nb(mobileRenameId)) ? nb(mobileRenameId) : null;
+    if(!node){
+      mobileRenameSheet.dataset.nodeId='';
+      return;
+    }
+    const displayLabel=String(node.label||'').trim() || '新しいノード';
+    if(mobileRenameSub) mobileRenameSub.textContent='選択中: ' + displayLabel;
+    if(mobileRenameHelper){
+      mobileRenameHelper.textContent=mobileRenameBlankStart
+        ? 'まず名前を決める。大きく入力して、そのまま保存。'
+        : '入力欄を大きく表示。押しやすく、すぐ保存できる。';
+    }
+    const prevNodeId=mobileRenameSheet.dataset.nodeId || '';
+    if(forceValue || prevNodeId!==String(node.id)){
+      mobileRenameInput.value=mobileRenameBlankStart ? '' : (mobileRenameOriginal || String(node.label||''));
+      mobileRenameSheet.dataset.nodeId=String(node.id);
+    }
+    applyMobileInlineEditorSkin(node.id);
   }
   function closeMobileInlineEdit({restoreFocus=true}={}){
     const input=getMobileRenameInput();
@@ -8852,6 +8916,9 @@ if(document.readyState==='complete'){
     if(!isMobileMode() || !nodeId || !nb(nodeId)) return false;
     setMobilePressNode(null,{redraw:false});
     setMobileMode('rename',{nodeId,reason:opts.reason || 'open-rename', blank:!!opts.blank, initialValue:opts.initialValue});
+    syncMobileRenameSheet({forceValue:true});
+    requestAnimationFrame(()=>focusMobileRenameInput(getMobileRenameInput(), mobileRenameBlankStart, 'open-rename-sheet'));
+    setTimeout(()=>focusMobileRenameInput(getMobileRenameInput(), mobileRenameBlankStart, 'open-rename-sheet-late'), 120);
     return true;
   }
   function setMobileMenuOpen(open){
@@ -9130,13 +9197,14 @@ if(document.readyState==='complete'){
     const renameOpen=isMobile && mobileMode==='rename' && !!mobileRenameId && !meta?.presentationMode;
     const menuOpen=isMobile && mobileMode==='menu' && !meta?.presentationMode;
     const dataOpen=isMobile && mobileMode==='data' && !meta?.presentationMode;
-    const showActionbar=isMobile && !meta?.presentationMode && (mobileMode==='normal' || renameOpen);
+    const showActionbar=isMobile && !meta?.presentationMode && mobileMode==='normal';
 
     app.dataset.mobileMode=isMobile ? (renameOpen ? 'rename' : menuOpen ? 'menu' : dataOpen ? 'data' : 'normal') : 'desktop';
 
     syncMobileOverlayHost();
     renderMobileActionbar();
     updateMobileActionbarState(hasNode);
+    syncMobileRenameSheet();
     renderMobileMenuSheet();
 
     if(mobileTopbar){
@@ -9150,7 +9218,7 @@ if(document.readyState==='complete'){
 
     mobileActionbar.hidden=!showActionbar;
     if(showActionbar){
-      mobileActionbar.classList.toggle('rename-mode', !!renameOpen);
+      mobileActionbar.classList.remove('rename-mode');
       mobileActionbar.classList.add('visible');
       mobileActionbar.setAttribute('aria-hidden','false');
       mobileActionbar.style.display='grid';
@@ -9164,6 +9232,17 @@ if(document.readyState==='complete'){
       mobileActionbar.style.visibility='hidden';
       mobileActionbar.style.opacity='0';
       mobileActionbar.style.pointerEvents='none';
+    }
+
+    if(mobileRenameSheet){
+      mobileRenameSheet.hidden=!renameOpen;
+      mobileRenameSheet.classList.toggle('visible', !!renameOpen);
+      mobileRenameSheet.setAttribute('aria-hidden', renameOpen ? 'false' : 'true');
+      mobileRenameSheet.style.display=renameOpen ? 'block' : 'none';
+      mobileRenameSheet.style.visibility=renameOpen ? 'visible' : 'hidden';
+      mobileRenameSheet.style.opacity=renameOpen ? '1' : '0';
+      mobileRenameSheet.style.pointerEvents=renameOpen ? 'auto' : 'none';
+      if(renameOpen) syncMobileRenameSheet();
     }
 
     if(mobileMenuSheet){
@@ -9204,13 +9283,14 @@ if(document.readyState==='complete'){
       }
     }
     if(mobileBackdrop){
-      const showBackdrop=isMobile && (menuOpen || dataOpen) && !meta?.presentationMode;
+      const showBackdrop=isMobile && (menuOpen || dataOpen || renameOpen) && !meta?.presentationMode;
       mobileBackdrop.style.display=showBackdrop ? 'block' : 'none';
       mobileBackdrop.style.visibility=showBackdrop ? 'visible' : 'hidden';
       mobileBackdrop.style.opacity=showBackdrop ? '1' : '0';
       mobileBackdrop.style.pointerEvents=showBackdrop ? 'auto' : 'none';
       mobileBackdrop.style.webkitBackdropFilter='none';
       mobileBackdrop.style.backdropFilter='none';
+      mobileBackdrop.dataset.mode=renameOpen ? 'rename' : (menuOpen ? 'menu' : (dataOpen ? 'data' : 'normal'));
     }
 
     if(cw){
@@ -9223,9 +9303,10 @@ if(document.readyState==='complete'){
     app.classList.toggle('mobile-menu-open', !!menuOpen);
     app.classList.toggle('mobile-node-sheet-open', false);
     app.classList.toggle('mobile-io-open', !!dataOpen);
-    app.classList.toggle('mobile-editor-open', false);
+    app.classList.toggle('mobile-editor-open', !!renameOpen);
     app.classList.toggle('mobile-inline-edit-open', !!renameOpen);
-    app.classList.toggle('mobile-sheet-open', !!(menuOpen || dataOpen));
+    app.classList.toggle('mobile-rename-open', !!renameOpen);
+    app.classList.toggle('mobile-sheet-open', !!(menuOpen || dataOpen || renameOpen));
     if(mobileMenuBtn) mobileMenuBtn.setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
     if(mobileFabMenuBtn) mobileFabMenuBtn.setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
     ensureMobileCanvasVisible();
@@ -9376,8 +9457,9 @@ if(document.readyState==='complete'){
 
   ['click','pointerdown','touchstart'].forEach(type=>{
     mobileInlineEditor.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
+    mobileRenameSheet.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
   });
-  mobileActionbar.addEventListener('keydown',e=>{
+  mobileRenameSheet.addEventListener('keydown',e=>{
     if(!e.target.closest('#mobile-rename-input')) return;
     if(e.key==='Enter'){
       e.preventDefault();
@@ -9391,12 +9473,12 @@ if(document.readyState==='complete'){
       cancelMobileInlineEdit();
     }
   });
-  mobileActionbar.addEventListener('focusout',e=>{
+  mobileRenameSheet.addEventListener('focusout',e=>{
     if(!isMobileInlineEditing() || suppressMobileRenameBlur) return;
     if(!e.target.closest('#mobile-rename-input')) return;
   });
   ['touchstart','pointerdown','click','focusin'].forEach(type=>{
-    mobileActionbar.addEventListener(type,e=>{
+    mobileRenameSheet.addEventListener(type,e=>{
       if(!e.target.closest('#mobile-rename-input')) return;
       stabilizeMobileRenameViewport('rename-input-'+type);
       if(type==='focusin'){
@@ -9460,17 +9542,17 @@ if(document.readyState==='complete'){
     runAfterClosingMobileTransientUi(()=>{ runMobileNodeAction(act, activeNodeId || mobileSheetNodeId); });
   });
   mobileActionbar.addEventListener('click',e=>{
-    const renameBtn=e.target.closest('button[data-mobile-rename-action]');
-    if(renameBtn){
-      const act=renameBtn.dataset.mobileRenameAction;
-      if(act==='cancel') cancelMobileInlineEdit();
-      if(act==='save') commitMobileInlineEdit();
-      return;
-    }
     const btn=e.target.closest('button[data-mobile-action]');
     if(!btn) return;
     const act=btn.dataset.mobileAction;
     runMobileNodeAction(act, activeNodeId);
+  });
+  mobileRenameSheet.addEventListener('click',e=>{
+    const renameBtn=e.target.closest('button[data-mobile-rename-action]');
+    if(!renameBtn) return;
+    const act=renameBtn.dataset.mobileRenameAction;
+    if(act==='cancel') cancelMobileInlineEdit();
+    if(act==='save') commitMobileInlineEdit();
   });
 
   mobileActionbar.addEventListener('change',e=>{
