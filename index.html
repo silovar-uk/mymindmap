@@ -1460,7 +1460,8 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
         <div class="io-actions">
           <button id="b-out-refresh" type="button">更新</button>
           <button id="b-cpy" type="button">コピー</button>
-          <button id="b-share-url" type="button">共有URLをコピー</button>
+          <button id="b-share-url-hi" type="button">高忠実度URLをコピー</button>
+          <button id="b-share-url-lite" type="button">軽量URLをコピー</button>
           <button id="b-findreplace" type="button">検索・置換</button>
           <button id="b-in-clear" type="button">空にする</button>
           <button id="b-imp" class="primary-btn" type="button">今のマップを置き換える</button>
@@ -6755,9 +6756,18 @@ function detectPresetIndex(color){
   const textColor=String(color.text||'').toLowerCase();
   return PRESETS.findIndex(p=>String(p.fill).toLowerCase()===fill && String(p.stroke).toLowerCase()===stroke && String(p.text).toLowerCase()===textColor);
 }
-function buildShareObject(){
+function roundToStep(value, step=1){
+  const num=Number(value);
+  if(!Number.isFinite(num)) return 0;
+  const s=Math.max(1, Number(step)||1);
+  return Math.round(num / s) * s;
+}
+function buildShareObject(options={}){
+  const includeColors = options.includeColors !== false;
+  const coordStep = Math.max(1, Number(options.coordStep)||1);
   const compact={
     v:2,
+    q: coordStep>1 ? coordStep : undefined,
     m:stripUndefinedDeep({
       t:meta.title && meta.title!=='案件マインドマップ' ? meta.title : undefined,
       l:meta.layoutMode && meta.layoutMode!=='radial' ? meta.layoutMode : undefined,
@@ -6770,14 +6780,14 @@ function buildShareObject(){
         i:n.id,
         l:n.label,
         s:n.subtext||undefined,
-        x:Math.round(n.x),
-        y:Math.round(n.y),
+        x:roundToStep(n.x, coordStep),
+        y:roundToStep(n.y, coordStep),
         o:n.order!==1 ? n.order : undefined,
         k:n.collapsed ? 1 : undefined,
         w:n.fitMode==='wrap' ? 1 : undefined,
         f:n.favorite ? 1 : undefined,
-        p:presetIndex>=0 ? presetIndex : undefined,
-        c:presetIndex<0 ? n.color : undefined
+        p:includeColors && presetIndex>=0 ? presetIndex : undefined,
+        c:includeColors && presetIndex<0 ? n.color : undefined
       });
     }),
     e:edges.map(e=>e.label ? [e.from,e.to,e.label] : [e.from,e.to])
@@ -6834,18 +6844,24 @@ function base64UrlToBytes(value){
   for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
   return bytes;
 }
-function buildShareUrl(){
-  const payload=JSON.stringify(buildShareObject());
+function buildShareUrl(options={}){
+  const payload=JSON.stringify(buildShareObject(options));
   const encoded=bytesToBase64Url(new TextEncoder().encode(payload));
   const url=new URL(window.location.href);
   url.searchParams.set(SHARE_URL_PARAM,encoded);
   return {url:url.toString(), encodedLength:encoded.length};
 }
-function copyShareUrl(){
-  const result=buildShareUrl();
+function copyShareUrlHighFidelity(){
+  const result=buildShareUrl({includeColors:true, coordStep:1});
   const extra=result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? ' URLがかなり長いため、大きいマップでは開けない環境があります。' : '';
-  setIoStatus('共有URLを生成しました。'+(result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? '長めのURLです。':'') ,'ok');
-  return copyTextToClipboard(result.url,{successMessage:'共有URLをコピーしました。'+extra,buttonId:'b-share-url'});
+  setIoStatus('高忠実度URLを生成しました。'+(result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? '長めのURLです。':'') ,'ok');
+  return copyTextToClipboard(result.url,{successMessage:'高忠実度URLをコピーしました。'+extra,buttonId:'b-share-url-hi'});
+}
+function copyShareUrlLite(){
+  const result=buildShareUrl({includeColors:false, coordStep:24});
+  const extra=result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? ' URLが長めです。さらに短くしたい場合は補足やノード数も減らすと有効です。' : '';
+  setIoStatus('軽量URLを生成しました。色を省略し、座標を24px単位で丸めています。'+(result.encodedLength>SHARE_URL_MAX_RECOMMENDED ? 'まだ長めです。':'') ,'ok');
+  return copyTextToClipboard(result.url,{successMessage:'軽量URLをコピーしました。色は共有せず、座標を丸めています。'+extra,buttonId:'b-share-url-lite'});
 }
 let sharedMapLoadedFromUrl=false;
 let sharedUrlBannerShown=false;
@@ -7149,7 +7165,8 @@ document.getElementById('b-cpy').addEventListener('click',()=>{
   const out=document.getElementById('j-io').value;
   copyTextToClipboard(out,{successMessage:'内容をコピーしました'});
 });
-document.getElementById('b-share-url')?.addEventListener('click',copyShareUrl);
+document.getElementById('b-share-url-hi')?.addEventListener('click',copyShareUrlHighFidelity);
+document.getElementById('b-share-url-lite')?.addEventListener('click',copyShareUrlLite);
 document.getElementById('b-shared-save')?.addEventListener('click',saveSharedUrlAsCurrentMap);
 document.getElementById('b-shared-dismiss')?.addEventListener('click',dismissSharedUrlBanner);
 document.getElementById('b-cpy-export')?.addEventListener('click',()=>copyExportKind(currentExportKind));
