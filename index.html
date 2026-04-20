@@ -3487,15 +3487,22 @@ function layoutOutlineVisible(){
   const maxNodeH=Math.max(...visibleNodes.map(n=>n.h));
   const depthGap=Math.max(168,maxNodeW+22);
   const rowGap=Math.max(78,maxNodeH+12);
-  let row=0;
-  function walk(id,depth){
+  let nextRow=0;
+  function walk(id,depth,fixedRow=null){
     const node=nb(id); if(!node) return;
+    const rowIndex = fixedRow==null ? nextRow++ : fixedRow;
     node.x=depth*depthGap+72;
-    node.y=row*rowGap+72;
-    row+=1;
-    (childMap[id]||[]).forEach(ch=>walk(ch,depth+1));
+    node.y=rowIndex*rowGap+72;
+    const kids=(childMap[id]||[]);
+    if(!kids.length) return;
+    if(fixedRow!=null) nextRow=Math.max(nextRow,rowIndex+1);
+    if(kids.length===1){
+      walk(kids[0],depth+1,rowIndex);
+      return;
+    }
+    kids.forEach(ch=>walk(ch,depth+1,null));
   }
-  (roots.length?roots:[visibleNodes[0]]).forEach(r=>walk(r.id||r,0));
+  (roots.length?roots:[visibleNodes[0]]).forEach(r=>walk(r.id||r,0,null));
 }
 function buildVisibleTreeForest(){
   const visibleNodes=getVisibleNodes();
@@ -3562,6 +3569,10 @@ function layoutRadialVisible(options={}){
   const yScale=options.yScale ?? (isFullCircle ? 0.84 : 0.94);
   const anglePadding=options.anglePadding ?? (isFullCircle ? 0.06 : 0.03);
   const outerBoost=options.outerBoost ?? (isFullCircle ? 0.16 : 0.11);
+  const firstRingBoost=options.firstRingBoost ?? (isFullCircle ? 1.62 : 1.42);
+  const depthCompression=options.depthCompression ?? (isFullCircle ? 0.18 : 0.12);
+  const minRingFactor=options.minRingFactor ?? (isFullCircle ? 0.72 : 0.8);
+  const branchTaperBoost=options.branchTaperBoost ?? (isFullCircle ? 0.16 : 0.1);
   const angleById={};
   const rootRadius=options.rootRadius ?? (roots.length>1 ? 18 : 0);
   const totalRootWeight=roots.reduce((sum,id)=>sum+(weights[id]||1),0) || roots.length || 1;
@@ -3654,6 +3665,22 @@ function layoutRadialVisible(options={}){
   const levelKeys=Object.keys(levels).map(Number).sort((a,b)=>a-b);
   levelKeys.forEach(level=>levels[level].sort((a,b)=>(angleById[a.id]||0)-(angleById[b.id]||0)));
 
+  function getLevelSeed(level,list){
+    if(level<=0) return 0;
+    const levelFactor = level===1
+      ? firstRingBoost
+      : Math.max(minRingFactor, 1 - Math.max(0, level-2)*depthCompression);
+    const listSpread=Math.min(0.22, Math.max(0, list.length-1)*0.018);
+    return radiusSeed * (levelFactor + listSpread);
+  }
+
+  function getNodeBranchBoost(nodeId, level){
+    if(level<=1) return 0;
+    const descendants=visibleDescendants[nodeId]||0;
+    const kids=(treeChildren[nodeId]||[]).length;
+    return Math.min(radiusSeed*0.28, (kids*0.9 + descendants*0.22) * branchTaperBoost);
+  }
+
   function candidateForLevel(list,radius,offset){
     const pad=baseGap/2;
     const rects=[];
@@ -3690,9 +3717,10 @@ function layoutRadialVisible(options={}){
       const avgNodeSpan=list.reduce((sum,node)=>sum+Math.max(node.w,node.h),0)/Math.max(1,list.length);
       const crowdBoost=Math.min(64, avgNodeSpan*0.24 + list.length*3.2);
       const prevRadius=level===0 ? 0 : (levelRadius[level-1]||0);
-      const levelSeed=radiusSeed * (1 + Math.max(0,level-1)*outerBoost);
+      const levelSeed=getLevelSeed(level,list);
+      const branchBoost=Math.min(radiusSeed*0.42, list.reduce((sum,node)=>sum+getNodeBranchBoost(node.id, level),0)/Math.max(1,list.length));
       let lo=(level===0 ? 0 : Math.max(0, prevRadius + Math.max(baseGap*0.4, 6)));
-      let hi=Math.max(rootRadius, lo+1, levelSeed, prevRadius + levelSeed*0.74 + crowdBoost);
+      let hi=Math.max(rootRadius, lo+1, levelSeed, prevRadius + levelSeed*0.88 + crowdBoost + branchBoost);
       let probe=candidateForLevel(list,hi,offset);
       let guard=0;
       while(guard<48){
@@ -3887,9 +3915,9 @@ function applyAutoLayout(mode){
   document.getElementById('layout-mode').value=meta.layoutMode;
   if(meta.layoutMode==='vertical') layoutTreeVisible('vertical');
   else if(meta.layoutMode==='outline') layoutOutlineVisible();
-  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:132,targetY:176,radiusStep:58,nodeGap:12,optimizeRotation:false,xScale:1.04,yScale:0.96,anglePadding:0.04,outerBoost:0.1});
-  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI*0.42,angleEnd:Math.PI*0.42,targetX:126,targetY:182,radiusStep:58,nodeGap:12,optimizeRotation:false,xScale:1.06,yScale:0.92,anglePadding:0.045,outerBoost:0.1});
-  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:188,targetY:172,radiusStep:62,nodeGap:12,optimizeRotation:true,xScale:1.12,yScale:0.84,anglePadding:0.06,outerBoost:0.16});
+  else if(meta.layoutMode==='radial_half') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI/2,targetX:132,targetY:176,radiusStep:58,nodeGap:12,optimizeRotation:false,xScale:1.04,yScale:0.98,anglePadding:0.04,outerBoost:0.06,firstRingBoost:1.35,depthCompression:0.1,minRingFactor:0.82,branchTaperBoost:0.08});
+  else if(meta.layoutMode==='radial_fan') layoutRadialVisible({angleStart:-Math.PI*0.42,angleEnd:Math.PI*0.42,targetX:126,targetY:182,radiusStep:58,nodeGap:12,optimizeRotation:false,xScale:1.06,yScale:0.95,anglePadding:0.045,outerBoost:0.06,firstRingBoost:1.32,depthCompression:0.1,minRingFactor:0.84,branchTaperBoost:0.08});
+  else if(meta.layoutMode==='radial') layoutRadialVisible({angleStart:-Math.PI/2,angleEnd:Math.PI*1.5,targetX:188,targetY:172,radiusStep:62,nodeGap:12,optimizeRotation:true,xScale:1.08,yScale:0.98,anglePadding:0.06,outerBoost:0.06,firstRingBoost:1.62,depthCompression:0.18,minRingFactor:0.72,branchTaperBoost:0.16});
   else layoutTreeVisible('horizontal');
 }
 function getNodeNumberLabel(node, numberMap=null){
