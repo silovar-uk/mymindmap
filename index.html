@@ -2229,12 +2229,14 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.6.20';
-const APP_UPDATED_AT='2026-04-21 00:35 JST';
+const APP_VERSION='1.7.1';
+const APP_UPDATED_AT='2026-04-21 01:14 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.7.1',date:'2026-04-21 01:14 JST',summary:'Tabの子追加を右側優先でさらに固定し、起動時は前回を引き継ぐか0から始めるかを選べるようにした。',items:['通常モードの Tab で追加する子ノードは右側専用の方向候補を使うようにし、右下や右上へ逃がしながらも親より左へ出にくい配置へ調整','createChildNode に挿入方向と方向バイアスのオプションを追加し、ショートカットごとに配置ルールを分けられるよう整理','オートセーブが残っている場合は起動時に「前回の内容を引き継ぐ / 0から始める」を選べる起動モーダルを追加し、過去分が自動復元される挙動を止めた','0から始める」を選んだ場合は前回のオートセーブを消し、名前入力から始めやすい空の1ノード状態へ切り替えるようにした','起動モーダルには最終保存時刻の表示を加え、今引き継ごうとしている内容がいつのものか分かるようにした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.7.0',date:'2026-04-21 00:58 JST',summary:'特定ノードを深掘りできる集中モードを追加し、専用アウトライナーと自由メモを大型モーダルで扱えるようにした。',items:['ノードごとに focusDoc を持てるよう拡張し、アウトライナー項目と自由メモを JSON / 共有URL / Undo 対応のまま保持できるようにした','クイックバー・右クリックメニュー・ノード編集パネルの3か所から開ける集中モードを追加し、8〜9割サイズの大型モーダルで1件に集中できるUIを実装','集中モード内では Enter で次行、Tab / Shift+Tab で階層調整、Backspace 空行削除、折りたたみ、複製、上下移動、削除ができる最小アウトライナーを実装','補足とは別管理の自由メモ欄を追加し、URLや長文の逃がし先として使えるようにした','集中ログがあるノードには件数と最終更新の小バッジを描画し、マップ側から存在がひと目で分かるようにした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.20',date:'2026-04-21 00:35 JST',summary:'補足テキストがノード端で見切れにくいよう、内側余白と安全幅を広げて描画を安定化。',items:['ノード本文の左右内側余白を 16px から 18px へ増やし、補足が端に寄りすぎないよう調整','本文の右側セーフパディングとレイアウト安全幅を拡大し、表示幅推定の誤差が出ても末尾文字が切れにくいよう改善','補足テキスト専用の安全余白を追加し、折り返し判定を少し手前で行うことでノード端での見切れを防ぎやすくした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.19',date:'2026-04-21 00:33 JST',summary:'スマホの名前編集を専用シートへ刷新し、即時表示・大型入力・保存導線を最優先で再設計。',items:['名前編集を下部バー差し替え方式から専用の mobile-rename-sheet へ変更し、表示遅延やもっさり感の原因だった毎回の innerHTML 差し替えをやめた','入力欄を大型化し、見出し・補助文・保存/キャンセルの2ボタンを持つ本物の編集シートへ変更。初回表示時は即シート表示→フォーカス再試行で見失いにくくした','通常のアクションバーは rename モードでは隠し、名前編集は 1タップ選択→「名前」→専用シート という主導線に整理した','rename 中は専用シートの状態だけを更新し、編集中の文字列が renderNow で巻き戻りにくい構成へ変更した','rename 時にも backdrop を軽く出し、今は編集モードだとひと目で分かる見た目にした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.17',date:'2026-04-21 00:08 JST',summary:'JSON読込エラーの見える化と、モバイル下部バーの最終CSSをさらに固定。',items:['JSON.parse 失敗時に位置から行番号・列番号を逆算し、データ欄へ該当箇所の抜粋と矢印を出す詳細エラー表示を追加','インポートボタン失敗時の alert は短くし、詳しい原因はデータ欄の赤いステータスに残るよう変更','モバイル下部バーの最終スタイルを mobile-authority-v1617 として末尾に集約し、通常時 grid / rename時3列 / 右上の「完了を非表示」固定をさらに強めた','モバイルのデータ欄 textarea と名称変更入力欄のサイズ指定を最終ブロック側でも上書きし、再上書きで崩れにくい構成へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2782,7 +2784,12 @@ function addChildFromCanvasSelection(sourceId){
   if(!sourceId || !nb(sourceId)) return null;
   if(!ensureMapTitle()) return null;
   snapshot();
-  const child=createChildNode(sourceId,{status:'none',fitMode:'shrink'});
+  const child=createChildNode(sourceId,{
+    status:'none',
+    fitMode:'shrink',
+    insertDirections:getStrictRightChildInsertDirections(),
+    directionBiasWeight:420
+  });
   renderNow();
   if(child){
     setSingleSelection(child.id);
@@ -2996,6 +3003,20 @@ function getClockwiseChildInsertDirections(){
     {x:1,y:-1}
   ];
 }
+function getStrictRightChildInsertDirections(){
+  return [
+    {x:1,y:0},
+    {x:1,y:0.55},
+    {x:1,y:-0.55},
+    {x:1,y:1},
+    {x:1,y:-1},
+    {x:2,y:0},
+    {x:2,y:0.7},
+    {x:2,y:-0.7},
+    {x:2,y:1.2},
+    {x:2,y:-1.2}
+  ];
+}
 function scoreInsertCandidate(cx,cy,templateNode,{parentId=null,directionRank=0,anchor=null,ignoreNodeIds=null}={}){
   const ignored=ignoreNodeIds instanceof Set ? ignoreNodeIds : null;
   const rect=makeRect(cx,cy,templateNode.w,templateNode.h,16);
@@ -3126,9 +3147,10 @@ function createChildNode(parentId, options={}){
   });
   const pos=findBestInsertPosition({
     parentId,
+    anchor:options.anchor||null,
     templateNode:draft,
-    directions:getClockwiseChildInsertDirections(),
-    directionBiasWeight:220
+    directions:Array.isArray(options.insertDirections) && options.insertDirections.length ? options.insertDirections : getClockwiseChildInsertDirections(),
+    directionBiasWeight:Number.isFinite(options.directionBiasWeight) ? options.directionBiasWeight : 220
   });
   const newId='n'+(nid++);
   const child=normalizeNode({
@@ -4718,7 +4740,12 @@ function runQuickbarAction(action){
     case 'add-child':
       if(activeNodeId && nb(activeNodeId)){
         snapshot();
-        const child=createChildNode(activeNodeId,{status:'none',fitMode:'shrink'});
+        const child=createChildNode(activeNodeId,{
+      status:'none',
+      fitMode:'shrink',
+      insertDirections:getStrictRightChildInsertDirections(),
+      directionBiasWeight:420
+    });
         draw();
         if(child) openEp(child.id);
       }
@@ -10498,9 +10525,9 @@ html,body{
       return null;
     }
   }
-  function restoreAutosaveAfterBoot(){
+  function restoreAutosaveAfterBoot(payloadArg=null){
     if(autosaveRestoring || hasShareParam()) return false;
-    const payload=readAutosave();
+    const payload=payloadArg || readAutosave();
     if(!payload) return false;
     try{
       autosaveRestoring=true;
@@ -10521,10 +10548,125 @@ html,body{
       autosaveRestoring=false;
     }
   }
+  function clearAutosave(){
+    if(!canUseStorage()) return;
+    try{
+      localStorage.removeItem(AUTOSAVE_KEY);
+      lastAutosaveRaw='';
+    }catch(err){
+      console.warn('autosave clear failed', err);
+    }
+  }
+  function formatAutosaveTime(ts){
+    try{
+      if(!Number.isFinite(ts)) return '時刻不明';
+      const d=new Date(ts);
+      const yyyy=d.getFullYear();
+      const mm=String(d.getMonth()+1).padStart(2,'0');
+      const dd=String(d.getDate()).padStart(2,'0');
+      const hh=String(d.getHours()).padStart(2,'0');
+      const mi=String(d.getMinutes()).padStart(2,'0');
+      return `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
+    }catch(_err){
+      return '時刻不明';
+    }
+  }
+  function buildFreshStartState(){
+    const now=Date.now();
+    return {
+      nodes:[{
+        id:'n1',
+        label:'',
+        subtext:'',
+        status:'none',
+        collapsed:false,
+        fitMode:'shrink',
+        favorite:false,
+        x:0,
+        y:0,
+        order:1,
+        createdAt:now,
+        color:{fill:'#161b23',stroke:'#ff8a4c',text:'#f7f2eb'}
+      }],
+      edges:[],
+      meta:{title:'',layoutMode:'horizontal',hideDone:false,presentationMode:false}
+    };
+  }
+  function startFreshFromZero(){
+    clearAutosave();
+    try{
+      autosaveRestoring=true;
+      if(typeof replaceMapData==='function') replaceMapData(buildFreshStartState(),{toastMessage:'0から始める状態にしました',skipHistory:true});
+      if(typeof placeGraphAtViewportCenter==='function') placeGraphAtViewportCenter({resetViewport:true});
+      const starterId=nodes[0]?.id||null;
+      if(starterId && typeof setSingleSelection==='function') setSingleSelection(starterId);
+      if(typeof sm==='function') sm('select');
+      if(typeof draw==='function') draw();
+      if(typeof updateHUD==='function') updateHUD();
+      if(typeof updateQuickbar==='function') updateQuickbar();
+      if(typeof markSaved==='function') markSaved();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        try{
+          if(starterId && typeof openEp==='function') openEp(starterId);
+        }catch(_err){}
+      }));
+      return true;
+    }catch(err){
+      console.warn('fresh start failed', err);
+      return false;
+    }finally{
+      autosaveRestoring=false;
+    }
+  }
+  let startupChoiceWrap=null;
+  function closeStartupChoice(){
+    startupChoiceWrap?.remove();
+    startupChoiceWrap=null;
+  }
+  function showStartupChoice(payload){
+    if(startupChoiceWrap || !payload) return true;
+    const wrap=document.createElement('div');
+    wrap.id='startup-choice-backdrop';
+    wrap.innerHTML=`
+      <div id="startup-choice-modal" role="dialog" aria-modal="true" aria-labelledby="startup-choice-title">
+        <div class="startup-choice-kicker">START</div>
+        <h2 id="startup-choice-title">前回の内容をどうしますか？</h2>
+        <p class="startup-choice-copy">このブラウザには前回の作業内容が残っています。続きから入るか、0から始めるかを選べます。</p>
+        <div class="startup-choice-meta">最終保存: <strong>${formatAutosaveTime(payload.savedAt)}</strong></div>
+        <div class="startup-choice-actions">
+          <button type="button" class="primary" data-startup-choice="restore">前回の内容を引き継ぐ</button>
+          <button type="button" data-startup-choice="reset">0から始める</button>
+        </div>
+        <div class="startup-choice-note">0から始めるを選ぶと、このブラウザに残っている前回のオートセーブは消えます。</div>
+      </div>`;
+    wrap.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-startup-choice]');
+      if(!btn) return;
+      const choice=btn.dataset.startupChoice;
+      closeStartupChoice();
+      if(choice==='restore'){
+        const restored=restoreAutosaveAfterBoot(payload);
+        if(!restored) flushAutosave('restore-fallback');
+        return;
+      }
+      startFreshFromZero();
+      flushAutosave('fresh-start');
+    });
+    document.body.appendChild(wrap);
+    startupChoiceWrap=wrap;
+    requestAnimationFrame(()=>{
+      wrap.querySelector('[data-startup-choice="restore"]')?.focus();
+    });
+    return true;
+  }
   function afterBootInit(){
     autosaveBooted=true;
-    const restored=restoreAutosaveAfterBoot();
-    if(!restored) flushAutosave('boot');
+    const payload=readAutosave();
+    if(payload){
+      showStartupChoice(payload);
+      return;
+    }
+    flushAutosave('boot');
   }
   function queueAfterBootInit(){
     requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(afterBootInit)));
@@ -10600,6 +10742,21 @@ html,body{
 </script>
 
 
+
+<style id="startup-choice-style">
+#startup-choice-backdrop{position:fixed;inset:0;z-index:140;background:rgba(3,6,10,.68);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:24px}
+#startup-choice-modal{width:min(560px,calc(100% - 24px));background:linear-gradient(180deg, rgba(18,23,32,.96), rgba(9,13,18,.98));border:1px solid rgba(132,145,164,.24);border-radius:24px;box-shadow:0 28px 70px rgba(0,0,0,.42);padding:24px 24px 20px;color:var(--sf-text-0);display:flex;flex-direction:column;gap:14px}
+#startup-choice-modal h2{font-size:28px;line-height:1.2;color:var(--sf-text-0);font-family:var(--font-display-en),var(--font-ui-ja);letter-spacing:.04em}
+#startup-choice-modal .startup-choice-kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:#ffc6ad}
+#startup-choice-modal .startup-choice-copy{font-size:14px;line-height:1.75;color:var(--sf-text-1)}
+#startup-choice-modal .startup-choice-meta{font-size:13px;line-height:1.6;color:var(--sf-text-2);padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(132,145,164,.18)}
+#startup-choice-modal .startup-choice-meta strong{color:var(--sf-text-0);font-weight:800}
+#startup-choice-modal .startup-choice-actions{display:flex;gap:10px;flex-wrap:wrap}
+#startup-choice-modal .startup-choice-actions button{flex:1 1 220px;min-height:54px;border:1px solid rgba(132,145,164,.22);border-radius:16px;background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));color:var(--sf-text-0);font-size:14px;font-weight:800;cursor:pointer;padding:12px 14px}
+#startup-choice-modal .startup-choice-actions button.primary{background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64);color:#fff7f1}
+#startup-choice-modal .startup-choice-note{font-size:12px;line-height:1.7;color:var(--sf-text-2)}
+@media (max-width:720px){#startup-choice-backdrop{padding:16px}#startup-choice-modal{padding:20px 18px 18px;border-radius:20px}#startup-choice-modal h2{font-size:24px}#startup-choice-modal .startup-choice-actions{flex-direction:column}}
+</style>
 <style id="mobile-refactor-style">
 #app.mobile-mode #mobile-actionbar{
   display:grid !important;
@@ -10977,6 +11134,823 @@ html,body{
   }
 })();
 
+</script>
+
+
+<style id="focusdoc-style">
+#focusdoc-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(3,6,10,.58);backdrop-filter:blur(10px);z-index:120}
+#focusdoc-backdrop.open{display:flex}
+#focusdoc-modal{width:min(1180px,calc(100vw - 64px));height:min(860px,calc(100vh - 56px));display:grid;grid-template-rows:auto auto 1fr auto;background:linear-gradient(180deg, rgba(18,23,32,.98), rgba(9,13,18,.99));border:1px solid rgba(132,145,164,.22);border-radius:24px;box-shadow:0 28px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden;color:var(--sf-text-0)}
+#focusdoc-modal *{box-sizing:border-box}
+#focusdoc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 22px 14px;border-bottom:1px solid rgba(132,145,164,.16);background:linear-gradient(180deg, rgba(20,25,34,.96), rgba(13,17,24,.9))}
+.focusdoc-head-copy{min-width:0;display:flex;flex-direction:column;gap:8px}
+.focusdoc-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#ffcfb9}
+#focusdoc-title{font-size:30px;line-height:1.1;font-family:var(--font-display-en), var(--font-ui-ja);letter-spacing:.04em;color:var(--sf-text-0)}
+#focusdoc-path{font-size:12px;line-height:1.55;color:var(--sf-text-2);word-break:break-word}
+#focusdoc-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.focusdoc-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:8px 14px;border-radius:12px;border:1px solid rgba(132,145,164,.24);background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));color:var(--sf-text-0);font-size:12px;font-weight:800;cursor:pointer;transition:transform .16s var(--sf-ease-standard),border-color .16s var(--sf-ease-standard),background .16s var(--sf-ease-standard),box-shadow .16s var(--sf-ease-standard)}
+.focusdoc-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);background:linear-gradient(180deg, rgba(35,43,57,.96), rgba(17,23,31,.98));box-shadow:0 10px 18px rgba(0,0,0,.2)}
+.focusdoc-btn.primary{background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64);color:#fff7f1}
+.focusdoc-btn.subtle{background:rgba(255,255,255,.03)}
+#focusdoc-status{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(18,198,255,.18);background:rgba(18,198,255,.08);font-size:12px;font-weight:700;color:#dff9ff;white-space:nowrap}
+#focusdoc-status .dot{width:8px;height:8px;border-radius:999px;background:var(--sf-cyan);box-shadow:0 0 10px rgba(18,198,255,.36)}
+#focusdoc-meta{display:flex;gap:10px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid rgba(132,145,164,.12);background:rgba(255,255,255,.018)}
+.focusdoc-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid rgba(132,145,164,.16);background:rgba(255,255,255,.03);font-size:12px;line-height:1.4;color:var(--sf-text-1)}
+.focusdoc-chip strong{color:var(--sf-text-0);font-weight:800}
+#focusdoc-layout{display:grid;grid-template-rows:minmax(0,1fr) 196px;min-height:0}
+#focusdoc-outline{min-height:0;display:flex;flex-direction:column;padding:16px 18px 0}
+#focusdoc-outline-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+#focusdoc-outline-title{font-size:14px;font-weight:800;letter-spacing:.04em;color:var(--sf-text-0)}
+#focusdoc-outline-sub{font-size:12px;line-height:1.45;color:var(--sf-text-2)}
+#focusdoc-outline-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#focusdoc-list{flex:1;min-height:0;overflow:auto;padding:4px 2px 18px 0}
+.focusdoc-empty{display:flex;align-items:center;justify-content:center;height:100%;border:1px dashed rgba(132,145,164,.22);border-radius:18px;background:rgba(255,255,255,.02);color:var(--sf-text-2);font-size:13px;text-align:center;padding:22px}
+.focusdoc-row{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:14px;transition:background .16s ease,border-color .16s ease;min-height:44px;border:1px solid transparent}
+.focusdoc-row + .focusdoc-row{margin-top:4px}
+.focusdoc-row:hover{background:rgba(255,255,255,.03);border-color:rgba(132,145,164,.12)}
+.focusdoc-row.is-active{background:rgba(18,198,255,.06);border-color:rgba(18,198,255,.22)}
+.focusdoc-row.is-collapsed{background:rgba(255,111,44,.03)}
+.focusdoc-fold{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--sf-text-2);border-radius:8px;cursor:pointer;font-size:11px;margin-top:10px}
+.focusdoc-fold:hover{background:rgba(255,255,255,.05);color:var(--sf-text-0)}
+.focusdoc-fold.leaf{opacity:.45}
+.focusdoc-input-wrap{min-width:0}
+.focusdoc-input{width:100%;min-height:40px;max-height:180px;resize:none;border:none;outline:none;background:transparent;color:var(--sf-text-0);font-size:15px;line-height:1.55;font-family:var(--font-ui-ja);padding:8px 0;margin:0;overflow:hidden}
+.focusdoc-input::placeholder{color:rgba(214,222,232,.36)}
+.focusdoc-row-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.focusdoc-depth-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(132,145,164,.14);font-size:10px;color:var(--sf-text-3)}
+.focusdoc-actions{display:flex;align-items:center;gap:4px;opacity:0;pointer-events:none;transition:opacity .12s ease;margin-top:8px}
+.focusdoc-row:hover .focusdoc-actions,.focusdoc-row.is-active .focusdoc-actions{opacity:1;pointer-events:auto}
+.focusdoc-icon{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:9px;border:1px solid rgba(132,145,164,.14);background:rgba(255,255,255,.03);color:var(--sf-text-1);font-size:11px;font-weight:800;cursor:pointer}
+.focusdoc-icon:hover{background:rgba(255,255,255,.07);color:var(--sf-text-0)}
+.focusdoc-icon.danger:hover{background:rgba(255,107,120,.10);border-color:rgba(255,107,120,.28);color:#ffe6ea}
+#focusdoc-memo{padding:14px 18px 18px;border-top:1px solid rgba(132,145,164,.12);background:linear-gradient(180deg, rgba(16,21,29,.76), rgba(9,13,18,.92));display:flex;flex-direction:column;gap:8px}
+#focusdoc-memo-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#focusdoc-memo-title{font-size:13px;font-weight:800;color:var(--sf-text-0)}
+#focusdoc-memo-sub{font-size:12px;line-height:1.5;color:var(--sf-text-2)}
+#focusdoc-memo-box{flex:1;min-height:96px;max-height:168px;resize:none;border:1px solid rgba(132,145,164,.22);border-radius:16px;background:rgba(5,8,12,.55);color:var(--sf-text-0);outline:none;padding:14px 16px;font-size:14px;line-height:1.65;font-family:var(--font-ui-ja)}
+#focusdoc-memo-box:focus,.focusdoc-input:focus{border-color:rgba(18,198,255,.42);box-shadow:0 0 0 3px rgba(18,198,255,.10)}
+#focusdoc-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-top:1px solid rgba(132,145,164,.12);background:rgba(255,255,255,.02)}
+#focusdoc-footer-copy{font-size:12px;line-height:1.5;color:var(--sf-text-2)}
+#focusdoc-footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.focusdoc-node-meta{pointer-events:none}
+.focusdoc-node-pill rect{fill:rgba(8,12,17,.95);stroke:rgba(255,122,57,.22);stroke-width:1}
+.focusdoc-node-pill.secondary rect{stroke:rgba(18,198,255,.18)}
+.focusdoc-node-pill text{fill:#fff2e7;font-size:9.2px;font-weight:800;letter-spacing:.02em;font-family:Rajdhani, Noto Sans JP, sans-serif}
+.focusdoc-node-pill.secondary text{fill:#dff8ff;font-size:8.8px;font-weight:700}
+body.focusdoc-modal-open #quickbar{display:none !important}
+@media (max-width:960px){
+  #focusdoc-modal{width:min(1180px,calc(100vw - 28px));height:min(860px,calc(100vh - 24px));border-radius:20px}
+}
+</style>
+<script>
+(function(){
+  const APP_FOCUSDOC_VERSION='1.7.0';
+  const FOCUSDOC_ROW_LINE_HEIGHT=24;
+  let focusDocState={nodeId:null,activeItemId:null,pendingFocusId:null,renderTick:0};
+  let focusDocRenderTimer=null;
+  let focusDocBackdrop=null, focusDocModal=null, focusDocListEl=null, focusDocMemoBox=null, focusDocStatusEl=null;
+
+  function fdEscape(value){
+    const s=String(value==null?'':value);
+    return s.replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function fdUid(prefix='fd'){ return `${prefix}-${Math.random().toString(36).slice(2,8)}${Date.now().toString(36).slice(-4)}`; }
+  function fdNow(){ return Date.now(); }
+  function fdFormatShort(value){
+    if(!Number.isFinite(value)) return '未更新';
+    const d=new Date(value);
+    if(Number.isNaN(d.getTime())) return '未更新';
+    return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  function fdClone(value){
+    try{ return JSON.parse(JSON.stringify(value)); }catch(_e){ return value; }
+  }
+  function fdNormalizeItem(raw, index=0){
+    const text=String(raw?.text||'').replace(/\r/g,'');
+    const depth=Math.max(0, Number.isFinite(raw?.depth)?raw.depth:0);
+    return {
+      id:String(raw?.id||fdUid('fdi')),
+      text,
+      depth,
+      collapsed:!!raw?.collapsed,
+      createdAt:Number.isFinite(raw?.createdAt)?raw.createdAt:fdNow(),
+      updatedAt:Number.isFinite(raw?.updatedAt)?raw.updatedAt:fdNow()
+    };
+  }
+  function normalizeFocusDoc(raw){
+    if(!raw) return null;
+    const items=Array.isArray(raw.items) ? raw.items.map(fdNormalizeItem).filter(Boolean) : [];
+    return {
+      items,
+      memo:String(raw.memo||'').replace(/\r/g,''),
+      createdAt:Number.isFinite(raw.createdAt)?raw.createdAt:fdNow(),
+      updatedAt:Number.isFinite(raw.updatedAt)?raw.updatedAt:fdNow()
+    };
+  }
+  function makeFocusDocItem(text='', depth=0){
+    return fdNormalizeItem({id:fdUid('fdi'), text, depth, collapsed:false, createdAt:fdNow(), updatedAt:fdNow()});
+  }
+  function getNodeById(id){ try{ return typeof nb==='function' ? nb(id) : (Array.isArray(nodes)?nodes.find(n=>n.id===id):null); }catch(_e){ return null; } }
+  function ensureFocusDoc(node,{seedBlank=false}={}){
+    if(!node) return null;
+    let doc=normalizeFocusDoc(node.focusDoc);
+    if(!doc) doc={items:[],memo:'',createdAt:fdNow(),updatedAt:fdNow()};
+    if(seedBlank && !doc.items.length) doc.items=[makeFocusDocItem('')];
+    node.focusDoc=doc;
+    return doc;
+  }
+  function getFocusDocCount(node){
+    const doc=normalizeFocusDoc(node?.focusDoc);
+    if(!doc?.items?.length) return 0;
+    return doc.items.filter(item=>String(item.text||'').trim()).length;
+  }
+  function getFocusDocStats(node){
+    const doc=normalizeFocusDoc(node?.focusDoc);
+    return {count:getFocusDocCount(node), updatedAt:doc?.updatedAt||null, memoLength:String(doc?.memo||'').trim().length};
+  }
+  function markFocusDocUpdated(node,{renderBadge=true}={}){
+    if(!node) return;
+    const doc=ensureFocusDoc(node,{seedBlank:false});
+    if(!doc) return;
+    doc.updatedAt=fdNow();
+    node.focusDoc=doc;
+    if(typeof markDirty==='function') markDirty();
+    if(renderBadge) scheduleFocusDocRender();
+    updateFocusDocHeader();
+  }
+  function scheduleFocusDocRender(){
+    clearTimeout(focusDocRenderTimer);
+    focusDocRenderTimer=setTimeout(()=>{
+      try{ if(typeof renderNow==='function') renderNow(); }catch(_e){}
+    },120);
+  }
+  function ensureQuickbarFocusButton(){
+    const qb=document.getElementById('quickbar');
+    if(!qb || document.getElementById('qb-focusdoc')) return;
+    const btn=document.createElement('button');
+    btn.id='qb-focusdoc';
+    btn.type='button';
+    btn.textContent='集中';
+    btn.addEventListener('click',()=>runQuickbarAction('focus-doc'));
+    const danger=document.getElementById('qb-delete');
+    if(danger && danger.parentNode===qb) qb.insertBefore(btn,danger); else qb.appendChild(btn);
+  }
+  function ensureContextMenuFocusEntry(){
+    const cm=document.getElementById('cm');
+    if(!cm || document.getElementById('c-work')) return;
+    const hr=cm.querySelector('hr');
+    const div=document.createElement('div');
+    div.id='c-work';
+    div.textContent='集中モードを開く';
+    div.addEventListener('mousedown',e=>{
+      e.stopPropagation();
+      const nodeId=(typeof cid!=='undefined' && cid) ? cid : activeNodeId;
+      cm.style.display='none';
+      try{ if(nodeId) openFocusDocModal(nodeId,{source:'contextmenu'}); }catch(err){ console.error(err); }
+    });
+    if(hr) cm.insertBefore(div, hr); else cm.appendChild(div);
+  }
+  function ensureEditPanelFocusEntry(){
+    const epft=document.querySelector('#ep .epft');
+    if(!epft || document.getElementById('ep-focusdoc')) return;
+    const btn=document.createElement('button');
+    btn.id='ep-focusdoc';
+    btn.type='button';
+    btn.textContent='集中モード';
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const nodeId=(typeof epid!=='undefined' && epid) ? epid : activeNodeId;
+      if(!nodeId) return;
+      let resolvedNodeId=nodeId;
+      if(typeof tryCommitNodeEdit==='function' && document.getElementById('ep')?.style.display==='block'){
+        const ok=tryCommitNodeEdit();
+        if(!ok) return;
+        resolvedNodeId=nodeId;
+      }
+      openFocusDocModal(resolvedNodeId,{source:'edit'});
+    });
+    epft.insertBefore(btn, document.getElementById('ep-ok'));
+  }
+  function ensureFocusDocModal(){
+    if(document.getElementById('focusdoc-backdrop')){
+      focusDocBackdrop=document.getElementById('focusdoc-backdrop');
+      focusDocModal=document.getElementById('focusdoc-modal');
+      focusDocListEl=document.getElementById('focusdoc-list');
+      focusDocMemoBox=document.getElementById('focusdoc-memo-box');
+      focusDocStatusEl=document.getElementById('focusdoc-status');
+      return;
+    }
+    const wrap=document.createElement('div');
+    wrap.id='focusdoc-backdrop';
+    wrap.setAttribute('aria-hidden','true');
+    wrap.innerHTML=`
+      <div id="focusdoc-modal" role="dialog" aria-modal="true" aria-labelledby="focusdoc-title">
+        <div id="focusdoc-head">
+          <div class="focusdoc-head-copy">
+            <div class="focusdoc-kicker">Focus Mode</div>
+            <div id="focusdoc-title">集中モード</div>
+            <div id="focusdoc-path"></div>
+          </div>
+          <div id="focusdoc-head-actions">
+            <div id="focusdoc-status"><span class="dot"></span><span>保存済み</span></div>
+            <button id="focusdoc-edit-node" class="focusdoc-btn subtle" type="button">ノード編集</button>
+            <button id="focusdoc-jump-node" class="focusdoc-btn subtle" type="button">マップで位置を見る</button>
+            <button id="focusdoc-close-top" class="focusdoc-btn" type="button">閉じる</button>
+          </div>
+        </div>
+        <div id="focusdoc-meta"></div>
+        <div id="focusdoc-layout">
+          <div id="focusdoc-outline">
+            <div id="focusdoc-outline-top">
+              <div>
+                <div id="focusdoc-outline-title">集中ログ</div>
+                <div id="focusdoc-outline-sub">1行1項目で掘り下げます。Enterで次行、Tabで子、Shift+Tabで親に戻せます。</div>
+              </div>
+              <div id="focusdoc-outline-actions">
+                <button id="focusdoc-add-row" class="focusdoc-btn primary" type="button">行を追加</button>
+                <button id="focusdoc-copy-md" class="focusdoc-btn" type="button">Markdownコピー</button>
+              </div>
+            </div>
+            <div id="focusdoc-list"></div>
+          </div>
+          <div id="focusdoc-memo">
+            <div id="focusdoc-memo-head">
+              <div>
+                <div id="focusdoc-memo-title">自由メモ</div>
+                <div id="focusdoc-memo-sub">補足とは別管理です。URLや長文の逃がし先として使えます。</div>
+              </div>
+            </div>
+            <textarea id="focusdoc-memo-box" spellcheck="false" placeholder="ここにはラフなメモ、URL、会話ログ断片などを自由に残せます。"></textarea>
+          </div>
+        </div>
+        <div id="focusdoc-footer">
+          <div id="focusdoc-footer-copy">マップは俯瞰、ここは作業机。ノード単位で深掘りしたいときに使います。</div>
+          <div id="focusdoc-footer-actions">
+            <button id="focusdoc-add-child" class="focusdoc-btn subtle" type="button">子の行を追加</button>
+            <button id="focusdoc-close-bottom" class="focusdoc-btn primary" type="button">閉じる</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    focusDocBackdrop=wrap;
+    focusDocModal=document.getElementById('focusdoc-modal');
+    focusDocListEl=document.getElementById('focusdoc-list');
+    focusDocMemoBox=document.getElementById('focusdoc-memo-box');
+    focusDocStatusEl=document.getElementById('focusdoc-status');
+
+    focusDocBackdrop.addEventListener('mousedown',e=>{ if(e.target===focusDocBackdrop) closeFocusDocModal(); });
+    document.getElementById('focusdoc-close-top').addEventListener('click',()=>closeFocusDocModal());
+    document.getElementById('focusdoc-close-bottom').addEventListener('click',()=>closeFocusDocModal());
+    document.getElementById('focusdoc-edit-node').addEventListener('click',()=>{
+      const node=getNodeById(focusDocState.nodeId);
+      if(!node) return;
+      closeFocusDocModal({render:false});
+      if(typeof openEp==='function') openEp(node.id);
+    });
+    document.getElementById('focusdoc-jump-node').addEventListener('click',()=>{
+      const node=getNodeById(focusDocState.nodeId);
+      if(!node) return;
+      if(typeof setSingleSelection==='function') setSingleSelection(node.id);
+      if(typeof moveV==='function') moveV(node.x,node.y,1.18);
+      if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts();
+      closeFocusDocModal();
+    });
+    document.getElementById('focusdoc-add-row').addEventListener('click',()=>focusDocInsertRow());
+    document.getElementById('focusdoc-add-child').addEventListener('click',()=>focusDocInsertRow({asChild:true}));
+    document.getElementById('focusdoc-copy-md').addEventListener('click',()=>copyFocusDocMarkdown());
+    focusDocMemoBox.addEventListener('input',()=>{
+      const node=getNodeById(focusDocState.nodeId);
+      const doc=ensureFocusDoc(node,{seedBlank:true});
+      doc.memo=focusDocMemoBox.value;
+      markFocusDocUpdated(node,{renderBadge:false});
+      setFocusDocStatus('編集中');
+    });
+    focusDocMemoBox.addEventListener('blur',()=>{
+      const node=getNodeById(focusDocState.nodeId);
+      if(node) markFocusDocUpdated(node,{renderBadge:true});
+      setFocusDocStatus('保存済み');
+    });
+    focusDocListEl.addEventListener('input',handleFocusDocInput);
+    focusDocListEl.addEventListener('focusin',handleFocusDocFocus);
+    focusDocListEl.addEventListener('keydown',handleFocusDocKeydown);
+    focusDocListEl.addEventListener('click',handleFocusDocClick);
+  }
+  function setFocusDocStatus(text){
+    if(!focusDocStatusEl) return;
+    focusDocStatusEl.innerHTML=`<span class="dot"></span><span>${fdEscape(text||'保存済み')}</span>`;
+  }
+  function focusDocVisibleRows(doc){
+    const rows=[];
+    let skipDepth=-1;
+    (doc?.items||[]).forEach((item,index)=>{
+      if(skipDepth!==-1){
+        if(item.depth>skipDepth) return;
+        skipDepth=-1;
+      }
+      rows.push({item,index});
+      if(item.collapsed) skipDepth=item.depth;
+    });
+    return rows;
+  }
+  function focusDocHasChildren(doc,index){
+    const items=doc?.items||[];
+    const base=items[index];
+    if(!base) return false;
+    return !!items[index+1] && items[index+1].depth>base.depth;
+  }
+  function getFocusDocPath(node){
+    try{
+      const hierarchy=typeof getHierarchyMaps==='function' ? getHierarchyMaps(nodes,edges) : null;
+      if(!hierarchy?.parentMap) return node?.label||'集中モード';
+      const parts=[];
+      let current=node?.id;
+      while(current){
+        const found=getNodeById(current);
+        if(found) parts.unshift(found.label||'新規案件');
+        current=hierarchy.parentMap[current]||null;
+      }
+      return parts.join(' > ');
+    }catch(_e){
+      return node?.label||'集中モード';
+    }
+  }
+  function updateFocusDocHeader(){
+    const node=getNodeById(focusDocState.nodeId);
+    if(!node || !focusDocBackdrop?.classList.contains('open')) return;
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const stats=getFocusDocStats(node);
+    const titleEl=document.getElementById('focusdoc-title');
+    const pathEl=document.getElementById('focusdoc-path');
+    const metaEl=document.getElementById('focusdoc-meta');
+    if(titleEl) titleEl.textContent=node.label||'集中モード';
+    if(pathEl) pathEl.textContent=getFocusDocPath(node);
+    if(metaEl){
+      const lastLine=(doc.items||[]).map(item=>String(item.text||'').trim()).filter(Boolean).slice(-1)[0] || 'まだ項目はありません';
+      metaEl.innerHTML=`
+        <div class="focusdoc-chip"><strong>補足</strong><span>${fdEscape(node.subtext||'未設定')}</span></div>
+        <div class="focusdoc-chip"><strong>行数</strong><span>${stats.count}件</span></div>
+        <div class="focusdoc-chip"><strong>最終更新</strong><span>${fdEscape(fdFormatShort(stats.updatedAt))}</span></div>
+        <div class="focusdoc-chip"><strong>最新項目</strong><span>${fdEscape(lastLine.slice(0,42))}</span></div>`;
+    }
+  }
+  function focusDocRowMarkup(doc,item,index){
+    const hasChildren=focusDocHasChildren(doc,index);
+    const depth=Math.max(0, item.depth||0);
+    const indent=Math.min(12 + depth*24, 260);
+    const active=focusDocState.activeItemId===item.id ? ' is-active' : '';
+    const collapsed=item.collapsed ? ' is-collapsed' : '';
+    return `
+      <div class="focusdoc-row${active}${collapsed}" data-index="${index}" data-item-id="${fdEscape(item.id)}" style="padding-left:${indent}px">
+        <button class="focusdoc-fold ${hasChildren ? '' : 'leaf'}" type="button" data-focusdoc-action="toggle" title="折りたたみ">${hasChildren ? (item.collapsed ? '▶' : '▼') : '•'}</button>
+        <div class="focusdoc-input-wrap">
+          <textarea class="focusdoc-input" data-item-id="${fdEscape(item.id)}" rows="1" spellcheck="false" placeholder="このノードで掘りたいことを書く">${fdEscape(item.text||'')}</textarea>
+          <div class="focusdoc-row-meta"><span class="focusdoc-depth-tag">深さ ${depth}</span></div>
+        </div>
+        <div class="focusdoc-actions">
+          <button class="focusdoc-icon" type="button" data-focusdoc-action="child" title="子を追加">＋子</button>
+          <button class="focusdoc-icon" type="button" data-focusdoc-action="up" title="上へ">↑</button>
+          <button class="focusdoc-icon" type="button" data-focusdoc-action="down" title="下へ">↓</button>
+          <button class="focusdoc-icon" type="button" data-focusdoc-action="duplicate" title="複製">⧉</button>
+          <button class="focusdoc-icon danger" type="button" data-focusdoc-action="delete" title="削除">削除</button>
+        </div>
+      </div>`;
+  }
+  function autoResizeFocusTextarea(el){
+    if(!el) return;
+    el.style.height='auto';
+    el.style.height=Math.min(Math.max(el.scrollHeight,40),180)+'px';
+  }
+  function renderFocusDocModal(){
+    ensureFocusDocModal();
+    const node=getNodeById(focusDocState.nodeId);
+    if(!node){ closeFocusDocModal(); return; }
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    updateFocusDocHeader();
+    const rows=focusDocVisibleRows(doc);
+    if(!rows.length){
+      focusDocListEl.innerHTML=`<div class="focusdoc-empty"><div><div style="font-weight:800;color:var(--sf-text-0);margin-bottom:6px">まだ集中ログがありません</div><div>まずは1行だけ置いて、そこから枝を伸ばしていけます。</div></div></div>`;
+    }else{
+      focusDocListEl.innerHTML=rows.map(({item,index})=>focusDocRowMarkup(doc,item,index)).join('');
+      focusDocListEl.querySelectorAll('.focusdoc-input').forEach(el=>autoResizeFocusTextarea(el));
+    }
+    focusDocMemoBox.value=doc.memo||'';
+    setFocusDocStatus('保存済み');
+    requestAnimationFrame(()=>focusPendingFocusRow());
+  }
+  function focusPendingFocusRow(){
+    const id=focusDocState.pendingFocusId || focusDocState.activeItemId;
+    if(!id) return;
+    const target=focusDocListEl?.querySelector(`.focusdoc-input[data-item-id="${id.replace(/"/g,'\\"')}"]`);
+    if(!target) return;
+    focusDocState.pendingFocusId=null;
+    try{ target.focus({preventScroll:false}); }catch(_e){ target.focus(); }
+    target.setSelectionRange(target.value.length,target.value.length);
+    autoResizeFocusTextarea(target);
+    const row=target.closest('.focusdoc-row');
+    if(row) row.scrollIntoView({block:'nearest'});
+  }
+  function openFocusDocModal(nodeId,{source='quickbar'}={}){
+    const node=getNodeById(nodeId);
+    if(!node) return;
+    if(typeof closePanels==='function') closePanels();
+    if(typeof closeEep==='function') closeEep();
+    if(typeof closeEp==='function') closeEp();
+    focusDocState.nodeId=node.id;
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const firstTextItem=(doc.items||[]).find(item=>String(item.text||'').trim()) || doc.items[0] || null;
+    focusDocState.activeItemId=firstTextItem?.id||null;
+    focusDocState.pendingFocusId=focusDocState.activeItemId;
+    ensureFocusDocModal();
+    focusDocBackdrop.classList.add('open');
+    focusDocBackdrop.setAttribute('aria-hidden','false');
+    document.body.classList.add('focusdoc-modal-open');
+    renderFocusDocModal();
+    if(typeof setSingleSelection==='function') setSingleSelection(node.id);
+    scheduleFocusDocRender();
+  }
+  function closeFocusDocModal({render=true}={}){
+    if(!focusDocBackdrop) return;
+    focusDocBackdrop.classList.remove('open');
+    focusDocBackdrop.setAttribute('aria-hidden','true');
+    document.body.classList.remove('focusdoc-modal-open');
+    if(render) scheduleFocusDocRender();
+    if(typeof focusCanvasForShortcuts==='function') setTimeout(()=>focusCanvasForShortcuts(),20);
+  }
+  function getFocusDocRowContext(target){
+    const row=target.closest('.focusdoc-row');
+    if(!row) return null;
+    const index=Number(row.dataset.index);
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    if(!Number.isFinite(index) || !doc?.items?.[index]) return null;
+    return {row,index,node,doc,item:doc.items[index]};
+  }
+  function updateFocusDocTextareaValue(itemId, value){
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const item=doc.items.find(entry=>entry.id===itemId);
+    if(!item) return;
+    item.text=value;
+    item.updatedAt=fdNow();
+    focusDocState.activeItemId=item.id;
+    markFocusDocUpdated(node,{renderBadge:false});
+    setFocusDocStatus('編集中');
+    updateFocusDocHeader();
+  }
+  function focusDocInsertRow({asChild=false,index=null}={}){
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const targetIndex=Number.isInteger(index) ? index : Math.max(0, doc.items.findIndex(item=>item.id===focusDocState.activeItemId));
+    const base=doc.items[targetIndex] || makeFocusDocItem('',0);
+    const newItem=makeFocusDocItem('', asChild ? base.depth+1 : base.depth);
+    if(typeof snapshot==='function') snapshot();
+    doc.items.splice(Math.max(0,targetIndex)+1,0,newItem);
+    focusDocState.activeItemId=newItem.id;
+    focusDocState.pendingFocusId=newItem.id;
+    markFocusDocUpdated(node,{renderBadge:true});
+    renderFocusDocModal();
+  }
+  function focusDocRemoveRow(index){
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    if(!doc.items[index]) return;
+    if(doc.items.length===1){
+      doc.items[0].text='';
+      focusDocState.activeItemId=doc.items[0].id;
+      focusDocState.pendingFocusId=doc.items[0].id;
+    }else{
+      if(typeof snapshot==='function') snapshot();
+      const fallback=doc.items[Math.max(0,index-1)] || doc.items[Math.min(doc.items.length-1,index+1)] || null;
+      doc.items.splice(index,1);
+      focusDocState.activeItemId=fallback?.id||null;
+      focusDocState.pendingFocusId=fallback?.id||null;
+    }
+    markFocusDocUpdated(node,{renderBadge:true});
+    renderFocusDocModal();
+  }
+  function focusDocIndent(index,delta){
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const item=doc.items[index];
+    if(!item) return;
+    if(typeof snapshot==='function') snapshot();
+    if(delta>0){
+      if(index===0) return;
+      const prev=doc.items[index-1];
+      item.depth=Math.min(item.depth+1, (prev?.depth||0)+1);
+    }else item.depth=Math.max(0,item.depth-1);
+    markFocusDocUpdated(node,{renderBadge:true});
+    focusDocState.pendingFocusId=item.id;
+    renderFocusDocModal();
+  }
+  function focusDocMove(index,delta){
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const next=index+delta;
+    if(!doc.items[index] || next<0 || next>=doc.items.length) return;
+    if(typeof snapshot==='function') snapshot();
+    const [item]=doc.items.splice(index,1);
+    doc.items.splice(next,0,item);
+    focusDocState.pendingFocusId=item.id;
+    markFocusDocUpdated(node,{renderBadge:true});
+    renderFocusDocModal();
+  }
+  function focusDocDuplicate(index){
+    const node=getNodeById(focusDocState.nodeId);
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const item=doc.items[index];
+    if(!item) return;
+    if(typeof snapshot==='function') snapshot();
+    const copy=makeFocusDocItem(item.text, item.depth);
+    copy.collapsed=false;
+    doc.items.splice(index+1,0,copy);
+    focusDocState.pendingFocusId=copy.id;
+    focusDocState.activeItemId=copy.id;
+    markFocusDocUpdated(node,{renderBadge:true});
+    renderFocusDocModal();
+  }
+  function handleFocusDocInput(e){
+    const target=e.target;
+    if(!target.classList.contains('focusdoc-input')) return;
+    autoResizeFocusTextarea(target);
+    updateFocusDocTextareaValue(target.dataset.itemId, target.value);
+  }
+  function handleFocusDocFocus(e){
+    const target=e.target;
+    if(!target.classList.contains('focusdoc-input')) return;
+    focusDocState.activeItemId=target.dataset.itemId;
+    focusDocListEl.querySelectorAll('.focusdoc-row.is-active').forEach(row=>row.classList.remove('is-active'));
+    target.closest('.focusdoc-row')?.classList.add('is-active');
+  }
+  function handleFocusDocKeydown(e){
+    const target=e.target;
+    if(!target.classList.contains('focusdoc-input')) return;
+    const ctx=getFocusDocRowContext(target);
+    if(!ctx) return;
+    if(e.key==='Enter' && !e.shiftKey){
+      e.preventDefault();
+      focusDocInsertRow({index:ctx.index,asChild:false});
+      return;
+    }
+    if(e.key==='Tab'){
+      e.preventDefault();
+      focusDocIndent(ctx.index, e.shiftKey ? -1 : 1);
+      return;
+    }
+    if(e.key==='Backspace' && !target.value){
+      e.preventDefault();
+      focusDocRemoveRow(ctx.index);
+      return;
+    }
+    if(e.key==='Escape'){
+      e.preventDefault();
+      closeFocusDocModal();
+      return;
+    }
+    if(e.key==='ArrowUp' && target.selectionStart===0 && target.selectionEnd===0){
+      const prev=ctx.row.previousElementSibling?.querySelector('.focusdoc-input');
+      if(prev){ e.preventDefault(); prev.focus(); prev.setSelectionRange(prev.value.length, prev.value.length); }
+      return;
+    }
+    if(e.key==='ArrowDown' && target.selectionStart===target.value.length && target.selectionEnd===target.value.length){
+      const next=ctx.row.nextElementSibling?.querySelector('.focusdoc-input');
+      if(next){ e.preventDefault(); next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+      return;
+    }
+  }
+  function handleFocusDocClick(e){
+    const actionEl=e.target.closest('[data-focusdoc-action]');
+    if(!actionEl) return;
+    const ctx=getFocusDocRowContext(actionEl);
+    if(!ctx) return;
+    const action=actionEl.dataset.focusdocAction;
+    if(action==='toggle'){
+      if(!focusDocHasChildren(ctx.doc,ctx.index)) return;
+      ctx.item.collapsed=!ctx.item.collapsed;
+      markFocusDocUpdated(ctx.node,{renderBadge:true});
+      focusDocState.pendingFocusId=ctx.item.id;
+      renderFocusDocModal();
+      return;
+    }
+    if(action==='child'){ focusDocInsertRow({index:ctx.index,asChild:true}); return; }
+    if(action==='up'){ focusDocMove(ctx.index,-1); return; }
+    if(action==='down'){ focusDocMove(ctx.index,1); return; }
+    if(action==='duplicate'){ focusDocDuplicate(ctx.index); return; }
+    if(action==='delete'){ focusDocRemoveRow(ctx.index); return; }
+  }
+  function copyFocusDocMarkdown(){
+    const node=getNodeById(focusDocState.nodeId);
+    if(!node) return;
+    const doc=ensureFocusDoc(node,{seedBlank:true});
+    const lines=[];
+    lines.push(`# ${node.label||'集中モード'}`);
+    if(node.subtext) lines.push('', node.subtext);
+    lines.push('', '## 集中ログ');
+    (doc.items||[]).forEach(item=>{
+      if(!String(item.text||'').trim()) return;
+      lines.push(`${'  '.repeat(Math.max(0,item.depth||0))}- ${item.text}`);
+    });
+    if(String(doc.memo||'').trim()) lines.push('', '## 自由メモ', doc.memo.trim());
+    const markdown=lines.join('\n');
+    if(typeof copyTextToClipboard==='function') copyTextToClipboard(markdown,{successMessage:'集中ログをMarkdownでコピーしました'});
+    else if(navigator.clipboard?.writeText) navigator.clipboard.writeText(markdown).then(()=>{ try{ showToast('集中ログをコピーしました'); }catch(_e){} });
+  }
+  function decorateFocusDocNodeBadges(){
+    if(!window.NL || !Array.isArray(window.nodes)) return;
+    NL.querySelectorAll('.focusdoc-node-meta').forEach(el=>el.remove());
+    (nodes||[]).forEach(node=>{
+      const stats=getFocusDocStats(node);
+      if(!stats.count && !stats.memoLength) return;
+      const group=NL.querySelector(`[data-id="${node.id}"]`);
+      if(!group) return;
+      const badgeGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
+      badgeGroup.setAttribute('class','focusdoc-node-meta');
+      const countLabel=`集中 ${stats.count}`;
+      const timeLabel=fdFormatShort(stats.updatedAt);
+      const labels=[{text:countLabel, cls:'focusdoc-node-pill', y:node.h/2+10},{text:timeLabel, cls:'focusdoc-node-pill secondary', y:node.h/2+28}];
+      labels.forEach(meta=>{
+        const pill=document.createElementNS('http://www.w3.org/2000/svg','g');
+        pill.setAttribute('class',meta.cls);
+        const w=Math.max(58, Math.min(node.w-20, Math.ceil(meta.text.length*6.3 + 16)));
+        const x=node.w/2-w;
+        const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        rect.setAttribute('x',String(x));
+        rect.setAttribute('y',String(meta.y));
+        rect.setAttribute('width',String(w));
+        rect.setAttribute('height','16');
+        rect.setAttribute('rx','8');
+        const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+        text.setAttribute('x',String(x+w/2));
+        text.setAttribute('y',String(meta.y+11.2));
+        text.setAttribute('text-anchor','middle');
+        text.textContent=meta.text;
+        pill.appendChild(rect);
+        pill.appendChild(text);
+        badgeGroup.appendChild(pill);
+      });
+      group.appendChild(badgeGroup);
+    });
+  }
+  function patchCoreFunctions(){
+    if(typeof normalizeNode==='function' && !normalizeNode.__focusDocPatched){
+      const original=normalizeNode;
+      window.normalizeNode=function(n){
+        const base=original(n||{});
+        base.focusDoc=normalizeFocusDoc(n&&n.focusDoc);
+        return base;
+      };
+      window.normalizeNode.__focusDocPatched=true;
+    }
+    if(typeof buildExportObject==='function' && !buildExportObject.__focusDocPatched){
+      const original=buildExportObject;
+      window.buildExportObject=function(options={}){
+        const payload=original(options);
+        if(payload && Array.isArray(payload.nodes)){
+          payload.nodes=payload.nodes.map(outNode=>{
+            const source=getNodeById(outNode.id);
+            if(source?.focusDoc) outNode.focusDoc=fdClone(source.focusDoc);
+            return outNode;
+          });
+        }
+        return payload;
+      };
+      window.buildExportObject.__focusDocPatched=true;
+    }
+    if(typeof parseImportData==='function' && !parseImportData.__focusDocPatched){
+      const original=parseImportData;
+      window.parseImportData=function(raw, options={}){
+        const result=original(raw, options);
+        try{
+          const resolvedKind=(options&&options.kind) || window.currentExportKind || 'json';
+          if(resolvedKind==='json'){
+            let parsed=JSON.parse(String(raw||'').trim().replace(/^﻿/,''));
+            if(Array.isArray(parsed)) parsed={nodes:parsed,edges:[]};
+            if(parsed.data && (parsed.data.nodes||parsed.data.edges)) parsed=parsed.data;
+            const nodesSrc=Array.isArray(parsed.nodes) ? parsed.nodes : [];
+            if(Array.isArray(result?.nodes)){
+              result.nodes.forEach((node,index)=>{ node.focusDoc=normalizeFocusDoc(nodesSrc[index]?.focusDoc); });
+            }
+          }
+        }catch(_e){}
+        return result;
+      };
+      window.parseImportData.__focusDocPatched=true;
+    }
+    if(typeof updateQuickbar==='function' && !updateQuickbar.__focusDocPatched){
+      const original=updateQuickbar;
+      window.getQuickbarConfig=function(){
+        if(selectedEdgeId && typeof eb==='function' && eb(selectedEdgeId)){
+          return [
+            {id:'qb-edit',label:'線を編集',action:'edit',tone:'primary'},
+            {id:'qb-child',label:'向きを反転',action:'reverse-edge'},
+            {id:'qb-connect',label:'消す',action:'delete',tone:'danger'}
+          ];
+        }
+        if(selectedNodeIds.size>1){
+          return [
+            {id:'qb-align-left',label:'左揃え',action:'align-left',tone:'primary'},
+            {id:'qb-align-center-h',label:'中央(横)',action:'align-center-h'},
+            {id:'qb-align-right',label:'右揃え',action:'align-right'},
+            {id:'qb-align-top',label:'上揃え',action:'align-top'},
+            {id:'qb-align-middle-v',label:'中央(縦)',action:'align-middle-v'},
+            {id:'qb-align-bottom',label:'下揃え',action:'align-bottom'},
+            {id:'qb-space-h',label:'横均等',action:'distribute-h'},
+            {id:'qb-space-v',label:'縦均等',action:'distribute-v'},
+            {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+          ];
+        }
+        if(activeNodeId && typeof nb==='function' && nb(activeNodeId)){
+          return [
+            {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
+            {id:'qb-focusdoc',label:'集中',action:'focus-doc'},
+            {id:'qb-child',label:'子を追加',action:'add-child'},
+            {id:'qb-connect',label:'つなぐ',action:'connect'},
+            {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+          ];
+        }
+        return [];
+      };
+      window.updateQuickbar=function(){
+        ensureQuickbarFocusButton();
+        if(document.body.classList.contains('focusdoc-modal-open')){
+          if(quickbar){ quickbar.style.display='none'; quickbar.setAttribute('aria-hidden','true'); }
+          return;
+        }
+        const hasModal=ep.style.display==='block' || eep.style.display==='block' || helpBackdrop?.classList.contains('open') || historyBackdrop?.classList.contains('open');
+        if(hasModal || !nodes.length){
+          quickbar.style.display='none';
+          quickbar.setAttribute('aria-hidden','true');
+          return;
+        }
+        const config=getQuickbarConfig().filter(item=>!item.hidden);
+        if(!config.length){ quickbar.style.display='none'; quickbar.setAttribute('aria-hidden','true'); return; }
+        const anchor=(selectedNodeIds.size || selectedEdgeId || (activeNodeId && nb(activeNodeId))) ? getSelectionScreenAnchor() : {x:(cw.clientWidth||0)/2,y:(cw.clientHeight||0)-66};
+        if(!anchor){ quickbar.style.display='none'; quickbar.setAttribute('aria-hidden','true'); return; }
+        const map={
+          'qb-edit':document.getElementById('qb-edit'),
+          'qb-focusdoc':document.getElementById('qb-focusdoc'),
+          'qb-child':document.getElementById('qb-child'),
+          'qb-connect':document.getElementById('qb-connect'),
+          'qb-fit':document.getElementById('qb-fit'),
+          'qb-align-left':document.getElementById('qb-align-left'),
+          'qb-align-center-h':document.getElementById('qb-align-center-h'),
+          'qb-align-right':document.getElementById('qb-align-right'),
+          'qb-align-top':document.getElementById('qb-align-top'),
+          'qb-align-middle-v':document.getElementById('qb-align-middle-v'),
+          'qb-align-bottom':document.getElementById('qb-align-bottom'),
+          'qb-space-h':document.getElementById('qb-space-h'),
+          'qb-space-v':document.getElementById('qb-space-v'),
+          'qb-delete':document.getElementById('qb-delete')
+        };
+        Object.values(map).forEach(btn=>{ if(!btn) return; btn.style.display='none'; btn.classList.remove('primary','danger'); btn.dataset.action=''; });
+        config.forEach(item=>{ const btn=map[item.id]; if(!btn) return; btn.style.display=''; btn.textContent=item.label; btn.dataset.action=item.action; if(item.tone==='primary') btn.classList.add('primary'); if(item.tone==='danger') btn.classList.add('danger'); });
+        const wasHidden=quickbar.style.display==='none' || quickbar.getAttribute('aria-hidden')!=='false';
+        quickbar.style.display='flex';
+        quickbar.setAttribute('aria-hidden','false');
+        if(wasHidden){ quickbar.classList.remove('showing'); void quickbar.offsetWidth; quickbar.classList.add('showing'); setTimeout(()=>quickbar.classList.remove('showing'),220); }
+        const cwRect=cw.getBoundingClientRect();
+        const qbRect={w:quickbar.offsetWidth||300,h:quickbar.offsetHeight||42};
+        let left=anchor.x-qbRect.w/2;
+        let top=anchor.y-54;
+        left=Math.max(10,Math.min(cwRect.width-qbRect.w-10,left));
+        if(top<10) top=Math.min(cwRect.height-qbRect.h-10, anchor.y+18);
+        quickbar.style.left=left+'px';
+        quickbar.style.top=top+'px';
+      };
+      window.updateQuickbar.__focusDocPatched=true;
+    }
+    if(typeof runQuickbarAction==='function' && !runQuickbarAction.__focusDocPatched){
+      const original=runQuickbarAction;
+      window.runQuickbarAction=function(action){
+        if(action==='focus-doc'){
+          if(activeNodeId && typeof nb==='function' && nb(activeNodeId)) openFocusDocModal(activeNodeId,{source:'quickbar'});
+          return;
+        }
+        return original(action);
+      };
+      window.runQuickbarAction.__focusDocPatched=true;
+    }
+    if(typeof draw==='function' && !draw.__focusDocPatched){
+      const original=draw;
+      window.draw=function(){
+        const result=original.apply(this, arguments);
+        decorateFocusDocNodeBadges();
+        return result;
+      };
+      window.draw.__focusDocPatched=true;
+    }
+  }
+  ensureQuickbarFocusButton();
+  ensureContextMenuFocusEntry();
+  ensureEditPanelFocusEntry();
+  ensureFocusDocModal();
+  patchCoreFunctions();
+  if(Array.isArray(window.nodes)) window.nodes.forEach(node=>{ if(node && 'focusDoc' in node) node.focusDoc=normalizeFocusDoc(node.focusDoc); });
+  if(document.getElementById('qb-focusdoc')) document.getElementById('qb-focusdoc').addEventListener('click',()=>runQuickbarAction('focus-doc'));
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape' && document.body.classList.contains('focusdoc-modal-open')){ e.preventDefault(); closeFocusDocModal(); } });
+  if(typeof renderNow==='function') scheduleFocusDocRender();
+})();
 </script>
 
 </body>
