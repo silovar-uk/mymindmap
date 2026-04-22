@@ -2231,12 +2231,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.7.1';
-const APP_UPDATED_AT='2026-04-21 01:14 JST';
+const APP_VERSION='1.7.4';
+const APP_UPDATED_AT='2026-04-22 13:36 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.7.4',date:'2026-04-22 13:36 JST',summary:'アウトライナー周辺の背景トーンをダークUIへ寄せ、モバイルのデータ上部に出ていたドラッグ余白を撤去。',items:['右サイドのアウトライナー領域 #outline-wrap の背景を明るいグレーからダークグラデーションへ変更し、キャンバスや他パネルとトーンがなじむよう調整','アウトライナー本体 #outline と内側パネルにも濃い背景と控えめな光沢を追加し、白っぽい帯や継ぎ目が見えにくいよう補強','モバイルのデータパネルでは上部の擬似ドラッグハンドルを非表示にし、意味のない余白が生まれないよう修正','データパネルへ付けていたシートドラッグハンドル自体の取り付けをやめ、上部を触ったときにドラッグできてしまう挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.7.1',date:'2026-04-21 01:14 JST',summary:'Tabの子追加を右側優先でさらに固定し、起動時は前回を引き継ぐか0から始めるかを選べるようにした。',items:['通常モードの Tab で追加する子ノードは右側専用の方向候補を使うようにし、右下や右上へ逃がしながらも親より左へ出にくい配置へ調整','createChildNode に挿入方向と方向バイアスのオプションを追加し、ショートカットごとに配置ルールを分けられるよう整理','オートセーブが残っている場合は起動時に「前回の内容を引き継ぐ / 0から始める」を選べる起動モーダルを追加し、過去分が自動復元される挙動を止めた','0から始める」を選んだ場合は前回のオートセーブを消し、名前入力から始めやすい空の1ノード状態へ切り替えるようにした','起動モーダルには最終保存時刻の表示を加え、今引き継ごうとしている内容がいつのものか分かるようにした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.7.0',date:'2026-04-21 00:58 JST',summary:'特定ノードを深掘りできる集中モードを追加し、専用アウトライナーと自由メモを大型モーダルで扱えるようにした。',items:['ノードごとに focusDoc を持てるよう拡張し、アウトライナー項目と自由メモを JSON / 共有URL / Undo 対応のまま保持できるようにした','クイックバー・右クリックメニュー・ノード編集パネルの3か所から開ける集中モードを追加し、8〜9割サイズの大型モーダルで1件に集中できるUIを実装','集中モード内では Enter で次行、Tab / Shift+Tab で階層調整、Backspace 空行削除、折りたたみ、複製、上下移動、削除ができる最小アウトライナーを実装','補足とは別管理の自由メモ欄を追加し、URLや長文の逃がし先として使えるようにした','集中ログがあるノードには件数と最終更新の小バッジを描画し、マップ側から存在がひと目で分かるようにした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.20',date:'2026-04-21 00:35 JST',summary:'補足テキストがノード端で見切れにくいよう、内側余白と安全幅を広げて描画を安定化。',items:['ノード本文の左右内側余白を 16px から 18px へ増やし、補足が端に寄りすぎないよう調整','本文の右側セーフパディングとレイアウト安全幅を拡大し、表示幅推定の誤差が出ても末尾文字が切れにくいよう改善','補足テキスト専用の安全余白を追加し、折り返し判定を少し手前で行うことでノード端での見切れを防ぎやすくした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -9733,7 +9734,6 @@ if(document.readyState==='complete'){
     });
   }
 
-  attachSheetDragHandle(ioPanelEl,'io');
   attachSheetDragHandle(mobileNodeSheetPanel,'node');
 
   const MOBILE_INTERACTION=Object.freeze({
@@ -12330,5 +12330,34 @@ body.focusdoc-modal-open #quickbar{display:none !important}
 })();
 </script>
 
+
+<style id="v174-outline-io-fix">
+#outline-wrap{
+  background:linear-gradient(180deg, rgba(13,17,24,.96), rgba(9,13,18,.985)) !important;
+  border-left-color:rgba(132,145,164,.16) !important;
+}
+#outline{
+  background:transparent !important;
+}
+#outline-wrap .io-panel{
+  background:linear-gradient(180deg, rgba(18,23,32,.94), rgba(9,13,18,.97)) !important;
+  border-color:rgba(132,145,164,.20) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 18px 36px rgba(0,0,0,.18) !important;
+}
+#outline-wrap .outline-row{
+  background:rgba(255,255,255,.025) !important;
+}
+#outline-wrap .outline-row:hover{
+  background:rgba(255,255,255,.04) !important;
+}
+#app.mobile-mode #io .io-panel::before,
+#app.mobile-mode #io .sheet-drag-handle,
+#app.mobile-mode #io .sheet-drag-handle::before{
+  display:none !important;
+}
+#app.mobile-mode #io .io-panel{
+  padding-top:12px !important;
+}
+</style>
 </body>
 </html>
