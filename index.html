@@ -13984,5 +13984,247 @@ body.focusmap-modal-open #focus-chip{display:none !important}
 })();
 </script>
 
+
+<style id="patch-v1-8-9-dedication-log-style">
+#dedication-log-panel{
+  margin-top:10px;
+  border:1px solid rgba(255,107,120,.26);
+  border-radius:12px;
+  background:linear-gradient(180deg, rgba(48,17,24,.42), rgba(20,10,15,.48));
+  padding:10px 12px;
+}
+#dedication-log-panel[hidden]{display:none !important;}
+#dedication-log-panel .dl-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+#dedication-log-panel .dl-title{font-size:12px;font-weight:800;color:#ffe5e7;letter-spacing:.02em;}
+#dedication-log-panel .dl-sub{font-size:11px;line-height:1.5;color:#f5c7cf;}
+#dedication-log-panel .dl-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+#dedication-log-panel .dl-actions button{font-size:11px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,107,120,.24);background:rgba(255,255,255,.05);color:#ffe8ea;cursor:pointer;}
+#dedication-log-panel .dl-actions button:hover{background:rgba(255,255,255,.09);}
+#dedication-log-status{font-size:11px;line-height:1.5;color:#ffd7dd;margin-bottom:8px;}
+#dedication-log-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;padding-right:2px;}
+#dedication-log-list .dl-empty{font-size:11px;line-height:1.5;color:#f2b8c1;padding:2px 0;}
+#dedication-log-list .dl-item{border:1px solid rgba(255,107,120,.18);border-radius:10px;padding:8px 9px;background:rgba(0,0,0,.16);}
+#dedication-log-list .dl-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+#dedication-log-list .dl-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;line-height:1.2;border:1px solid rgba(255,107,120,.22);background:rgba(255,255,255,.06);color:#ffe8ea;}
+#dedication-log-list .dl-badge[data-level="info"]{border-color:rgba(18,198,255,.26);color:#dff8ff;}
+#dedication-log-list .dl-badge[data-level="warn"]{border-color:rgba(255,227,109,.28);color:#fff8cf;}
+#dedication-log-list .dl-badge[data-level="error"]{border-color:rgba(255,107,120,.34);color:#ffe5e7;}
+#dedication-log-list .dl-time{font-size:10px;color:#f0b8c3;}
+#dedication-log-list .dl-msg{font-size:12px;line-height:1.55;color:#fff0f2;margin-top:6px;white-space:pre-wrap;word-break:break-word;}
+#dedication-log-list .dl-meta{font-size:10px;line-height:1.45;color:#f3bcc7;margin-top:6px;white-space:pre-wrap;word-break:break-word;}
+</style>
+<script id="patch-v1-8-9-dedication-log">
+(function(){
+  'use strict';
+  const LOG_KEY='mindmap_dedication_error_log_v1';
+  const MAX_LOGS=80;
+  let panelReady=false;
+  function nowIso(){
+    const d=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  }
+  function safeJson(value){
+    try{return JSON.stringify(value,null,2);}catch(_e){return String(value);}
+  }
+  function readLogs(){
+    try{
+      const raw=localStorage.getItem(LOG_KEY);
+      if(!raw) return [];
+      const list=JSON.parse(raw);
+      return Array.isArray(list)?list:[];
+    }catch(_e){return [];}
+  }
+  function writeLogs(list){
+    try{ localStorage.setItem(LOG_KEY, JSON.stringify(list.slice(0,MAX_LOGS))); }catch(_e){}
+  }
+  function currentNodeId(){
+    try{
+      if(typeof window.epid!=='undefined' && window.epid) return window.epid;
+      if(typeof window.cid!=='undefined' && window.cid) return window.cid;
+      if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
+      if(window.selectedNodeIds && typeof window.selectedNodeIds.size==='number' && window.selectedNodeIds.size){
+        const first=window.selectedNodeIds.values().next();
+        if(first && !first.done) return first.value;
+      }
+    }catch(_e){}
+    return null;
+  }
+  function pushLog(entry){
+    const list=readLogs();
+    list.unshift(entry);
+    writeLogs(list);
+    renderLogPanel();
+  }
+  function logDedication(level,message,meta){
+    pushLog({
+      level: level||'error',
+      message: String(message||'専心関連の不明なエラー'),
+      time: nowIso(),
+      nodeId: (meta && meta.nodeId) || currentNodeId() || null,
+      source: (meta && meta.source) || null,
+      detail: meta && meta.detail!=null ? meta.detail : null,
+      stack: meta && meta.stack ? String(meta.stack) : null,
+      href: location.href.split('#')[0]
+    });
+  }
+  window.logDedicationError = logDedication;
+  window.getDedicationErrorLog = function(){ return readLogs(); };
+  function ensureLogPanel(){
+    const ioStatus=document.getElementById('io-status');
+    if(!ioStatus) return null;
+    let panel=document.getElementById('dedication-log-panel');
+    if(panel) return panel;
+    panel=document.createElement('div');
+    panel.id='dedication-log-panel';
+    panel.hidden=false;
+    panel.innerHTML=''
+      +'<div class="dl-head">'
+      +  '<div>'
+      +    '<div class="dl-title">専心エラーログ</div>'
+      +    '<div class="dl-sub">専心を開く・描画する・閉じるときの失敗を残します。新しいものが上です。</div>'
+      +  '</div>'
+      +  '<div class="dl-actions">'
+      +    '<button id="dedication-log-copy" type="button">ログをコピー</button>'
+      +    '<button id="dedication-log-clear" type="button">ログを消す</button>'
+      +  '</div>'
+      +'</div>'
+      +'<div id="dedication-log-status"></div>'
+      +'<div id="dedication-log-list"></div>';
+    ioStatus.insertAdjacentElement('afterend', panel);
+    panel.querySelector('#dedication-log-copy').addEventListener('click', async function(){
+      const logs=readLogs();
+      const text=logs.length ? safeJson(logs) : '[]';
+      try{
+        await navigator.clipboard.writeText(text);
+        if(typeof window.toast==='function') window.toast('専心エラーログをコピーしました');
+      }catch(err){
+        logDedication('warn','専心エラーログのコピーに失敗',{source:'dedication-log-copy',detail:String(err&&err.message||err)});
+        if(typeof window.toast==='function') window.toast('ログのコピーに失敗しました', 'warn');
+      }
+    });
+    panel.querySelector('#dedication-log-clear').addEventListener('click', function(){
+      try{ localStorage.removeItem(LOG_KEY); }catch(_e){}
+      renderLogPanel();
+      if(typeof window.toast==='function') window.toast('専心エラーログを消しました');
+    });
+    return panel;
+  }
+  function renderLogPanel(){
+    const panel=ensureLogPanel();
+    if(!panel) return;
+    const status=panel.querySelector('#dedication-log-status');
+    const listEl=panel.querySelector('#dedication-log-list');
+    const logs=readLogs();
+    status.textContent=logs.length ? ('保存件数: '+logs.length+'件') : 'まだ専心エラーは記録されていません。';
+    if(!logs.length){
+      listEl.innerHTML='<div class="dl-empty">専心を開く時の失敗や例外が起きたら、ここに残ります。</div>';
+      return;
+    }
+    listEl.innerHTML=logs.slice(0,20).map(function(entry){
+      const meta=[];
+      if(entry.source) meta.push('source: '+entry.source);
+      if(entry.nodeId) meta.push('nodeId: '+entry.nodeId);
+      if(entry.detail) meta.push('detail: '+(typeof entry.detail==='string'?entry.detail:safeJson(entry.detail)));
+      if(entry.stack) meta.push('stack: '+entry.stack);
+      return ''
+        +'<div class="dl-item">'
+        +  '<div class="dl-row">'
+        +    '<span class="dl-badge" data-level="'+escapeHtml(entry.level||'error')+'">'+escapeHtml((entry.level||'error').toUpperCase())+'</span>'
+        +    '<span class="dl-time">'+escapeHtml(entry.time||'')+'</span>'
+        +  '</div>'
+        +  '<div class="dl-msg">'+escapeHtml(entry.message||'')+'</div>'
+        +  (meta.length?'<div class="dl-meta">'+escapeHtml(meta.join('\n'))+'</div>':'')
+        +'</div>';
+    }).join('');
+  }
+  function wrapOpenDedication(){
+    if(typeof window.openDedication!=='function' || window.openDedication.__logged) return;
+    const original=window.openDedication;
+    const wrapped=function(nodeId,options){
+      const source=options&&options.source || 'unknown';
+      try{
+        const result=original.apply(this,arguments);
+        setTimeout(function(){
+          const backdrop=document.getElementById('focusmap-backdrop');
+          const open=!!(backdrop && backdrop.classList.contains('open') && window.getComputedStyle(backdrop).display!=='none');
+          if(!open){
+            logDedication('error','専心を開こうとしたがモーダルが開きませんでした',{source:source,nodeId:nodeId||currentNodeId(),detail:{reason:'modal_not_open_after_attempt'}});
+          }
+        }, 220);
+        return result;
+      }catch(err){
+        logDedication('error','専心を開く処理で例外が発生しました',{source:source,nodeId:nodeId||currentNodeId(),detail:String(err&&err.message||err),stack:err&&err.stack||null});
+        throw err;
+      }
+    };
+    wrapped.__logged=true;
+    window.openDedication=wrapped;
+  }
+  function wrapDispatch(){
+    if(typeof window.dispatchMindmapCommand!=='function' || window.dispatchMindmapCommand.__logged) return;
+    const original=window.dispatchMindmapCommand;
+    const wrapped=function(type,payload){
+      try{
+        return original.apply(this,arguments);
+      }catch(err){
+        const isDedication = type==='open-dedication' || type==='open-dedication-from-editor';
+        if(isDedication){
+          logDedication('error','専心コマンドの実行で例外が発生しました',{source:type,nodeId:payload&&payload.nodeId||currentNodeId(),detail:String(err&&err.message||err),stack:err&&err.stack||null});
+        }
+        throw err;
+      }
+    };
+    wrapped.__logged=true;
+    window.dispatchMindmapCommand=wrapped;
+  }
+  function patchAliases(){
+    ['openFocusDocModal','openFocusMapModal'].forEach(function(name){
+      const fn=window[name];
+      if(typeof fn!=='function' || fn.__loggedAlias) return;
+      const wrapped=function(){
+        try{ return fn.apply(this,arguments); }
+        catch(err){
+          logDedication('error','旧専心エイリアス経由で例外が発生しました',{source:name,nodeId:arguments[0]||currentNodeId(),detail:String(err&&err.message||err),stack:err&&err.stack||null});
+          throw err;
+        }
+      };
+      wrapped.__loggedAlias=true;
+      window[name]=wrapped;
+    });
+  }
+  window.addEventListener('error', function(e){
+    try{
+      const msg=String(e && (e.message || (e.error && e.error.message) || '') || '');
+      const stack=String(e && e.error && e.error.stack || '');
+      const hay=(msg+'\n'+stack).toLowerCase();
+      if(!/(dedication|focusmap|focusdoc|opendedication|dedicationmap)/.test(hay)) return;
+      logDedication('error','専心関連の未処理エラーを検知しました',{source:'window.error',detail:msg||String(e.filename||''),stack:stack||null});
+    }catch(_e){}
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    try{
+      const reason=e && e.reason;
+      const msg=String(reason && (reason.message || reason) || '');
+      const stack=String(reason && reason.stack || '');
+      const hay=(msg+'\n'+stack).toLowerCase();
+      if(!/(dedication|focusmap|focusdoc|opendedication|dedicationmap)/.test(hay)) return;
+      logDedication('error','専心関連の未処理Promiseエラーを検知しました',{source:'unhandledrejection',detail:msg,stack:stack||null});
+    }catch(_e){}
+  });
+  function init(){
+    ensureLogPanel();
+    renderLogPanel();
+    wrapOpenDedication();
+    wrapDispatch();
+    patchAliases();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+  setTimeout(init, 120);
+  setTimeout(init, 500);
+})();
+</script>
+
 </body>
 </html>
