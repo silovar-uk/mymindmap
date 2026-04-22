@@ -1398,6 +1398,8 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <button id="qb-child" type="button">子を追加</button>
       <button id="qb-connect" type="button">つなぐ</button>
       <button id="qb-fit" type="button" style="display:none" aria-hidden="true" tabindex="-1">全体に戻す</button>
+      <button id="qb-stack-right" type="button">選択だけ整える</button>
+      <button id="qb-grid-right" type="button">2列で整える</button>
       <button id="qb-align-left" type="button">左揃え</button>
       <button id="qb-align-center-h" type="button">中央(横)</button>
       <button id="qb-align-right" type="button">右揃え</button>
@@ -4718,6 +4720,101 @@ function arrangeSelectedNodes(mode){
   focusCanvasForShortcuts();
   showToast(toastMessage);
 }
+function getSelectionPartialLayoutContext(){
+  const ids=[...selectedNodeIds].filter(id=>nb(id));
+  if(ids.length<2) return {ok:false,message:'2つ以上選ぶと部分整列できます'};
+  const hierarchy=getHierarchyMaps();
+  const compareIds=hierarchy.compareIds;
+  const selectedSet=new Set(ids);
+  const directParentId=ids.find(candidate=>ids.filter(other=>other!==candidate && hierarchy.parentMap[other]===candidate).length===ids.length-1) || null;
+  if(directParentId){
+    const parent=nb(directParentId);
+    if(!parent) return {ok:false,message:'基準になる親ノードが見つかりません'};
+    const targetIds=ids.filter(id=>id!==directParentId && hierarchy.parentMap[id]===directParentId).sort(compareIds);
+    if(targetIds.length<2) return {ok:false,message:'親の子ノードを2つ以上選ぶと整えられます'};
+    return {
+      ok:true,
+      parentId:directParentId,
+      parent,
+      targetIds,
+      targets:targetIds.map(id=>nb(id)).filter(Boolean),
+      compareIds,
+      selectedIncludesParent:true
+    };
+  }
+  const parentIds=[...new Set(ids.map(id=>hierarchy.parentMap[id]??null))];
+  if(parentIds.length!==1) return {ok:false,message:'今は同じ親のノードだけ整えられます'};
+  const parentId=parentIds[0];
+  if(!parentId || !nb(parentId)) return {ok:false,message:'ルート直下の部分整列はまだ未対応です'};
+  const targetIds=[...ids].sort(compareIds);
+  return {
+    ok:true,
+    parentId,
+    parent:nb(parentId),
+    targetIds,
+    targets:targetIds.map(id=>nb(id)).filter(Boolean),
+    compareIds,
+    selectedIncludesParent:false
+  };
+}
+function applySelectionLayout(mode='stack-right'){
+  const ctx=getSelectionPartialLayoutContext();
+  if(!ctx.ok){
+    showToast(ctx.message,'warn');
+    return;
+  }
+  const {parent,targets}=ctx;
+  if(!parent || targets.length<2){
+    showToast('整列対象が足りません','warn');
+    return;
+  }
+  const numberMap=getOutlineNumberMap();
+  [parent,...targets].forEach(node=>updateNodeMetrics(node,numberMap));
+  const parentRect=getNodeWorldRect(parent);
+  const rightGap=74;
+  const rowGap=18;
+  const colGap=28;
+  const baseLeft=parentRect.right + rightGap;
+  snapshot();
+  if(mode==='stack-right'){
+    const totalHeight=targets.reduce((sum,node)=>sum+node.h,0) + Math.max(0,targets.length-1)*rowGap;
+    let cursorTop=parent.y - totalHeight/2;
+    targets.forEach(node=>{
+      node.x=baseLeft + node.w/2;
+      node.y=cursorTop + node.h/2;
+      cursorTop += node.h + rowGap;
+    });
+    renderNow();
+    focusCanvasForShortcuts();
+    showToast('選択ノードだけ縦に整えました');
+    return;
+  }
+  if(mode==='grid-right'){
+    const rows=[];
+    for(let i=0;i<targets.length;i+=2) rows.push(targets.slice(i,i+2));
+    const colWidths=[0,0];
+    const rowHeights=rows.map(row=>{
+      row.forEach((node,colIndex)=>{ colWidths[colIndex]=Math.max(colWidths[colIndex]||0,node.w||0); });
+      return Math.max(...row.map(node=>node.h||0));
+    });
+    const totalHeight=rowHeights.reduce((sum,h)=>sum+h,0) + Math.max(0,rowHeights.length-1)*rowGap;
+    const colLefts=[baseLeft, baseLeft + (colWidths[0]||0) + colGap];
+    let cursorTop=parent.y - totalHeight/2;
+    rows.forEach((row,rowIndex)=>{
+      const rowHeight=rowHeights[rowIndex]||0;
+      row.forEach((node,colIndex)=>{
+        node.x=(colLefts[colIndex]||baseLeft) + node.w/2;
+        node.y=cursorTop + rowHeight/2;
+      });
+      cursorTop += rowHeight + rowGap;
+    });
+    renderNow();
+    focusCanvasForShortcuts();
+    showToast('選択ノードだけ2列で整えました');
+    return;
+  }
+}
+
 function runQuickbarAction(action){
   switch(action){
     case 'add':
@@ -4764,6 +4861,12 @@ function runQuickbarAction(action){
       break;
     case 'duplicate':
       duplicateActiveNode();
+      break;
+    case 'selection-stack-right':
+      applySelectionLayout('stack-right');
+      break;
+    case 'selection-grid-right':
+      applySelectionLayout('grid-right');
       break;
     case 'align-left':
       arrangeSelectedNodes('align-left');
@@ -4837,7 +4940,9 @@ function getQuickbarConfig(){
   }
   if(selectedNodeIds.size>1){
     return [
-      {id:'qb-align-left',label:'左揃え',action:'align-left',tone:'primary'},
+      {id:'qb-stack-right',label:'選択だけ整える',action:'selection-stack-right',tone:'primary'},
+      {id:'qb-grid-right',label:'2列で整える',action:'selection-grid-right'},
+      {id:'qb-align-left',label:'左揃え',action:'align-left'},
       {id:'qb-align-center-h',label:'中央(横)',action:'align-center-h'},
       {id:'qb-align-right',label:'右揃え',action:'align-right'},
       {id:'qb-align-top',label:'上揃え',action:'align-top'},
@@ -4913,8 +5018,8 @@ function updateHint(){
     payload={
       title:'複数選択中',
       subtitle:`${selectedNodeIds.size}件をまとめて操作`,
-      body:'まとめて触るときは <b>左右上下をそろえる / 横縦の間隔をそろえる / 消す</b> の3択で十分です。',
-      items:[{key:'左/右/上/下',label:'位置をそろえる'},{key:'横均等 / 縦均等',label:'間隔をそろえる'},{key:'Delete',label:'消す'}],
+      body:'列挙を見やすくしたいときは <b>選択だけ整える</b> か <b>2列で整える</b> を使うと速いです。同じ親のノードだけ選ぶと安定します。',
+      items:[{key:'選択だけ整える',label:'縦に束ねる'},{key:'2列で整える',label:'列挙を詰める'},{key:'Delete',label:'消す'}],
       visible:true
     };
   }else if(activeNodeId && nb(activeNodeId)){
@@ -5016,6 +5121,8 @@ function updateQuickbar(){
     'qb-child':document.getElementById('qb-child'),
     'qb-connect':document.getElementById('qb-connect'),
     'qb-fit':document.getElementById('qb-fit'),
+    'qb-stack-right':document.getElementById('qb-stack-right'),
+    'qb-grid-right':document.getElementById('qb-grid-right'),
     'qb-align-left':document.getElementById('qb-align-left'),
     'qb-align-center-h':document.getElementById('qb-align-center-h'),
     'qb-align-right':document.getElementById('qb-align-right'),
@@ -7262,7 +7369,7 @@ function setIoOpen(open){
 function toggleIo(){
   setIoOpen(!appEl.classList.contains('io-open'));
 }
-['qb-edit','qb-child','qb-connect','qb-fit','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
+['qb-edit','qb-child','qb-connect','qb-fit','qb-stack-right','qb-grid-right','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
   const btn=document.getElementById(id);
   if(!btn) return;
   btn.addEventListener('click',()=>{
