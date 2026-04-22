@@ -13033,5 +13033,163 @@ body.focusmap-modal-open #focus-chip{display:none !important}
 })();
 </script>
 
+
+<style id="patch-v1-8-2-style">
+#ep .ep-readonly-wrap{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
+#ep .ep-readonly-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid rgba(132,145,164,.16);border-radius:10px;background:rgba(255,255,255,.03)}
+#ep .ep-readonly-label{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sf-text-3);text-transform:uppercase}
+#ep .ep-readonly-value{font-size:11px;font-weight:700;color:var(--sf-text-1);white-space:nowrap}
+#ep .ep-readonly-note{font-size:10px;line-height:1.45;color:var(--sf-text-3);margin-top:-4px;margin-bottom:8px}
+#ep input[readonly].ep-mode-state{pointer-events:none;user-select:none;opacity:.92}
+#ep .ep-mode-state-inline{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(132,145,164,.16);font-size:10px;font-weight:700;color:var(--sf-text-2)}
+</style>
+<script id="patch-v1-8-2-script">
+(function(){
+  const STATUS_LABELS={none:'未完了',done:'完了'};
+  const FITMODE_LABELS={shrink:'小さくして表示',wrap:'折り返して表示'};
+
+  function isNodeEditOpen(){
+    const ep=document.getElementById('ep');
+    return !!(ep && getComputedStyle(ep).display!=='none' && ep.style.display!=='none');
+  }
+  function currentEditNodeId(){
+    if(typeof window.epid!=='undefined' && window.epid) return window.epid;
+    if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
+    return null;
+  }
+  function getDedicatedOpenFn(){
+    if(typeof window.openFocusDocModal==='function') return window.openFocusDocModal;
+    if(typeof window.openFocusMapModal==='function') return window.openFocusMapModal;
+    return null;
+  }
+  function openDedicationFromEditor(source){
+    const nodeId=currentEditNodeId();
+    const openFn=getDedicatedOpenFn();
+    if(!nodeId || !openFn) return false;
+    if(typeof window.tryCommitNodeEdit==='function'){
+      const ok=window.tryCommitNodeEdit();
+      if(ok===false) return false;
+    }
+    openFn(nodeId,{source:source||'edit'});
+    return true;
+  }
+  function ensureEditReadonlyUi(){
+    const ep=document.getElementById('ep');
+    const epst=document.getElementById('ep-status');
+    const epfm=document.getElementById('ep-fitmode');
+    if(!ep || !epst || !epfm) return;
+
+    const statusLabel=epst.previousElementSibling;
+    const fitLabel=epfm.previousElementSibling;
+    if(statusLabel && statusLabel.tagName==='LABEL') statusLabel.style.display='none';
+    if(fitLabel && fitLabel.tagName==='LABEL') fitLabel.style.display='none';
+    epst.style.display='none';
+    epfm.style.display='none';
+
+    let wrap=document.getElementById('ep-readonly-wrap');
+    if(!wrap){
+      wrap=document.createElement('div');
+      wrap.id='ep-readonly-wrap';
+      wrap.className='ep-readonly-wrap';
+      wrap.innerHTML=''
+        + '<div class="ep-readonly-item"><span class="ep-readonly-label">状態</span><span id="ep-status-view" class="ep-readonly-value">未完了</span></div>'
+        + '<div class="ep-readonly-item"><span class="ep-readonly-label">文字の表示</span><span id="ep-fitmode-view" class="ep-readonly-value">小さくして表示</span></div>'
+        + '<div class="ep-readonly-note">状態は機能として保持しつつ、編集画面では変更しません。文字の表示も現在の状態のみ表示します。</div>';
+      epfm.insertAdjacentElement('afterend', wrap);
+    }
+
+    const note=ep.querySelector('.mini-note');
+    if(note) note.textContent='複数選択中は色だけまとめて変えます。';
+    syncReadonlyValues();
+  }
+  function syncReadonlyValues(){
+    const epst=document.getElementById('ep-status');
+    const epfm=document.getElementById('ep-fitmode');
+    const statusView=document.getElementById('ep-status-view');
+    const fitView=document.getElementById('ep-fitmode-view');
+    if(statusView && epst) statusView.textContent=STATUS_LABELS[epst.value] || epst.value || '未完了';
+    if(fitView && epfm) fitView.textContent=FITMODE_LABELS[epfm.value] || epfm.value || '小さくして表示';
+  }
+  function patchOpenEpSync(){
+    if(typeof window.openEp==='function' && !window.openEp.__v182ReadonlyPatched){
+      const original=window.openEp;
+      window.openEp=function(){
+        const result=original.apply(this, arguments);
+        setTimeout(syncReadonlyValues,0);
+        return result;
+      };
+      window.openEp.__v182ReadonlyPatched=true;
+    }
+  }
+  function bindDedicatedTriggers(){
+    if(document.body.dataset.v182DedicatedBound==='1') return;
+    document.body.dataset.v182DedicatedBound='1';
+
+    document.addEventListener('keydown',function(e){
+      if(e.key!=='F2') return;
+      if(!isNodeEditOpen()) return;
+      const ep=document.getElementById('ep');
+      const target=e.target;
+      if(ep && target && !ep.contains(target) && target!==document.body && target!==document.documentElement) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openDedicationFromEditor('edit-f2');
+    },true);
+
+    document.addEventListener('click',function(e){
+      const epBtn=e.target.closest('#ep-focusdoc');
+      if(epBtn){
+        e.preventDefault();
+        e.stopPropagation();
+        openDedicationFromEditor('edit-button');
+        return;
+      }
+      const qbBtn=e.target.closest('#qb-focusdoc');
+      if(qbBtn){
+        const nodeId=(typeof window.activeNodeId!=='undefined' && window.activeNodeId) ? window.activeNodeId : currentEditNodeId();
+        const openFn=getDedicatedOpenFn();
+        if(nodeId && openFn){
+          e.preventDefault();
+          e.stopPropagation();
+          openFn(nodeId,{source:'quickbar'});
+        }
+      }
+    },true);
+
+    document.addEventListener('mousedown',function(e){
+      const ctxBtn=e.target.closest('#c-work');
+      if(!ctxBtn) return;
+      const nodeId=(typeof window.cid!=='undefined' && window.cid) ? window.cid : ((typeof window.activeNodeId!=='undefined' && window.activeNodeId) ? window.activeNodeId : null);
+      const openFn=getDedicatedOpenFn();
+      if(!nodeId || !openFn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const cm=document.getElementById('cm');
+      if(cm) cm.style.display='none';
+      openFn(nodeId,{source:'contextmenu'});
+    },true);
+  }
+  function keepGlobalsInSync(){
+    const openFn=getDedicatedOpenFn();
+    if(openFn && typeof window.openFocusMapModal!=='function') window.openFocusMapModal=openFn;
+    if(openFn && typeof window.openFocusDocModal!=='function') window.openFocusDocModal=openFn;
+  }
+  function init(){
+    ensureEditReadonlyUi();
+    syncReadonlyValues();
+    patchOpenEpSync();
+    bindDedicatedTriggers();
+    keepGlobalsInSync();
+    setInterval(function(){
+      ensureEditReadonlyUi();
+      syncReadonlyValues();
+      keepGlobalsInSync();
+    },800);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
+</script>
+
 </body>
 </html>
