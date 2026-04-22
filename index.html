@@ -1248,7 +1248,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <div class="tb-row">
         <button id="b-undo">戻す</button>
         <button id="b-redo">やり直す</button>
-        <label class="tb-check" for="hide-done-toggle"><input id="hide-done-toggle" type="checkbox"><span>完了を非表示</span></label>
+        <label class="tb-check" for="hide-done-toggle"><input id="hide-done-toggle" type="checkbox"><span>完了を表示</span></label>
         <label class="tb-check" for="show-created-at-toggle"><input id="show-created-at-toggle" type="checkbox"><span>追加日時を表示</span></label>
         <button id="b-branch-focus" class="secondary-action" aria-pressed="false">集中</button>
         <label class="tb-check" for="presentation-toggle"><input id="presentation-toggle" type="checkbox"><span>共有表示</span></label>
@@ -1832,7 +1832,7 @@ function renderOutlineEditor(){
   const visibleIdsSet=new Set(sourceNodes.map(node=>node.id));
   const sourceEdges=edges.filter(edge=>visibleIdsSet.has(edge.from)&&visibleIdsSet.has(edge.to));
   if(!sourceNodes.length){
-    outlineListEl.innerHTML='<div class="outline-empty">表示できるノードがありません。完了を非表示にしている場合は解除してください。</div>';
+    outlineListEl.innerHTML='<div class="outline-empty">表示できるノードがありません。完了ノードも見たい場合は「完了を表示」をオンにしてください。</div>';
     return;
   }
   const hierarchy=getHierarchyMaps(sourceNodes,sourceEdges,{visibleIdsSet});
@@ -2125,7 +2125,7 @@ const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
-let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:false,showCreatedAt:false,focusMode:false,focusNodeId:null,presentationMode:false};
+let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:true,showCreatedAt:false,focusMode:false,focusNodeId:null,presentationMode:false};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -2232,12 +2232,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.8.1';
-const APP_UPDATED_AT='2026-04-22 14:21 JST';
+const APP_VERSION='1.8.4';
+const APP_UPDATED_AT='2026-04-22 14:34 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+  {version:'1.8.4',date:'2026-04-22 14:34 JST',summary:'編集モーダルの状態表示文を撤去し、完了表示トグルを正表示・未チェック既定へ変更。',items:['編集モーダル内の「状態」「文字の表示」と補足説明文を削除し、余計な説明が出ないよう整理','完了表示トグルの文言を「完了を表示」へ変更し、上部バーとモバイル下部バーの両方で表記を統一','チェック状態の意味を反転し、未チェックを既定値として完了ノードは初期状態で非表示になるよう変更','トグル変更時のトースト文言も「表示しました / 非表示にしました」に合わせて整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.8.1',date:'2026-04-22 14:21 JST',summary:'上部操作から折り畳みを一括展開できるようにし、専心マップ側にも同じ導線を追加。',items:['主な操作エリアに「全部開く」ボタンを追加し、メインマップ内で折り畳まれているノードをまとめて展開できるようにした','展開対象がないときはトーストで分かるようにし、対象があるときは Undo できる状態で一括展開するよう対応','専心モード内のツールバーにも「全部開く」を追加し、内包マップ内の折り畳みをまとめて展開できるようにした','専心モード側では展開件数をステータス表示に返し、今の操作結果が分かるよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.7.7',date:'2026-04-22 13:55 JST',summary:'データパネル上部の余白をさらに詰め、用語整理と編集モーダルからの専心ショートカットを追加。',items:['モバイルのデータパネル #io-wrap / #io / .io-panel の上余白と擬似ハンドル由来のスペースをさらに圧縮し、表示開始位置が上に詰まるよう調整','枝集中の表示名を「集中」に統一し、左上HUD・モバイル操作・ボタン文言・トーストなどの呼び方を整理','大型の深掘りモーダル側は「専心モード / 専心ログ」へ改名し、クイックバー・右クリック・編集パネルの文言も合わせて更新','ノード編集モーダル内で F2 を押すと、編集内容を確定したうえで専心モードを開けるようショートカットを追加','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.7.4',date:'2026-04-22 13:36 JST',summary:'アウトライナー周辺の背景トーンをダークUIへ寄せ、モバイルのデータ上部に出ていたドラッグ余白を撤去。',items:['右サイドのアウトライナー領域 #outline-wrap の背景を明るいグレーからダークグラデーションへ変更し、キャンバスや他パネルとトーンがなじむよう調整','アウトライナー本体 #outline と内側パネルにも濃い背景と控えめな光沢を追加し、白っぽい帯や継ぎ目が見えにくいよう補強','モバイルのデータパネルでは上部の擬似ドラッグハンドルを非表示にし、意味のない余白が生まれないよう修正','データパネルへ付けていたシートドラッグハンドル自体の取り付けをやめ、上部を触ったときにドラッグできてしまう挙動を解消','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2245,12 +2246,12 @@ const APP_CHANGELOG=[
 {version:'1.7.0',date:'2026-04-21 00:58 JST',summary:'特定ノードを深掘りできる集中モードを追加し、専用アウトライナーと自由メモを大型モーダルで扱えるようにした。',items:['ノードごとに focusDoc を持てるよう拡張し、アウトライナー項目と自由メモを JSON / 共有URL / Undo 対応のまま保持できるようにした','クイックバー・右クリックメニュー・ノード編集パネルの3か所から開ける集中モードを追加し、8〜9割サイズの大型モーダルで1件に集中できるUIを実装','集中モード内では Enter で次行、Tab / Shift+Tab で階層調整、Backspace 空行削除、折りたたみ、複製、上下移動、削除ができる最小アウトライナーを実装','補足とは別管理の自由メモ欄を追加し、URLや長文の逃がし先として使えるようにした','集中ログがあるノードには件数と最終更新の小バッジを描画し、マップ側から存在がひと目で分かるようにした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.20',date:'2026-04-21 00:35 JST',summary:'補足テキストがノード端で見切れにくいよう、内側余白と安全幅を広げて描画を安定化。',items:['ノード本文の左右内側余白を 16px から 18px へ増やし、補足が端に寄りすぎないよう調整','本文の右側セーフパディングとレイアウト安全幅を拡大し、表示幅推定の誤差が出ても末尾文字が切れにくいよう改善','補足テキスト専用の安全余白を追加し、折り返し判定を少し手前で行うことでノード端での見切れを防ぎやすくした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.19',date:'2026-04-21 00:33 JST',summary:'スマホの名前編集を専用シートへ刷新し、即時表示・大型入力・保存導線を最優先で再設計。',items:['名前編集を下部バー差し替え方式から専用の mobile-rename-sheet へ変更し、表示遅延やもっさり感の原因だった毎回の innerHTML 差し替えをやめた','入力欄を大型化し、見出し・補助文・保存/キャンセルの2ボタンを持つ本物の編集シートへ変更。初回表示時は即シート表示→フォーカス再試行で見失いにくくした','通常のアクションバーは rename モードでは隠し、名前編集は 1タップ選択→「名前」→専用シート という主導線に整理した','rename 中は専用シートの状態だけを更新し、編集中の文字列が renderNow で巻き戻りにくい構成へ変更した','rename 時にも backdrop を軽く出し、今は編集モードだとひと目で分かる見た目にした','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.6.17',date:'2026-04-21 00:08 JST',summary:'JSON読込エラーの見える化と、モバイル下部バーの最終CSSをさらに固定。',items:['JSON.parse 失敗時に位置から行番号・列番号を逆算し、データ欄へ該当箇所の抜粋と矢印を出す詳細エラー表示を追加','インポートボタン失敗時の alert は短くし、詳しい原因はデータ欄の赤いステータスに残るよう変更','モバイル下部バーの最終スタイルを mobile-authority-v1617 として末尾に集約し、通常時 grid / rename時3列 / 右上の「完了を非表示」固定をさらに強めた','モバイルのデータ欄 textarea と名称変更入力欄のサイズ指定を最終ブロック側でも上書きし、再上書きで崩れにくい構成へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.6.17',date:'2026-04-21 00:08 JST',summary:'JSON読込エラーの見える化と、モバイル下部バーの最終CSSをさらに固定。',items:['JSON.parse 失敗時に位置から行番号・列番号を逆算し、データ欄へ該当箇所の抜粋と矢印を出す詳細エラー表示を追加','インポートボタン失敗時の alert は短くし、詳しい原因はデータ欄の赤いステータスに残るよう変更','モバイル下部バーの最終スタイルを mobile-authority-v1617 として末尾に集約し、通常時 grid / rename時3列 / 右上の「完了を表示」固定をさらに強めた','モバイルのデータ欄 textarea と名称変更入力欄のサイズ指定を最終ブロック側でも上書きし、再上書きで崩れにくい構成へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.16',date:'2026-04-20 23:58 JST',summary:'モバイル起動とタッチ処理を整理し、下部バーと再読み込み保護の実装を安定化。',items:['起動処理を Boot source / phase ベースへ整理し、共有URL起動は全体表示、通常起動は先頭ノード選択→名称変更という流れを一本化','モバイル下部バーの最終CSSを共通ブロックへ寄せ、通常時は常に grid、rename 時だけ専用レイアウトへ切り替わるよう整理','ノードのタップ・ダブルタップ・ドラッグ・ピンチの処理を共通関数へ寄せ、スマホでの選択と移動の競合を抑えた','JSON読み込み前のプレビュー結果を強制しつつ、置き換え前のスナップショットを保存して復旧しやすくした','未保存警告はモバイルで出にくいよう beforeunload 条件を見直し、オートセーブ中心の挙動へ寄せた','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.6.14',date:'2026-04-20 23:30 JST',summary:'スマホの選択・ドラッグ・起動・再表示を見直し、下部バーと名称変更を安定化。',items:['スマホ下部バーは最終上書きCSSで常時 grid 固定にし、「完了を非表示」を1行目右端の絶対配置へ統一して左端へ混ざらないよう補強','スマホのノード操作は 1本指タップ選択 / 8px超でドラッグ / 2本指ピンチを明確に分離し、ピンチ中はノードドラッグを止めるジェスチャーロックを追加','touchend の changedTouches 利用は維持しつつ、タッチ端末での click / pointerup / dblclick フォールバックを抑止して、シングルタップ選択がダブルタップ扱いされる誤作動を解消','起動時は共有URLパラメータ付きだけ全体表示から開始し、通常起動では先頭ノードを選択してスマホは下部バーの名称変更、PCは編集パネルを自動で開くよう統一','モバイル名称変更トレイとデータ欄 textarea を拡大し、オートセーブと pageshow 復元を補強して思わぬ再読み込みでも内容が戻りやすいよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.6.13',date:'2026-04-20 20:42 JST',summary:'スマホ下部バーの「完了を非表示」を通常レイアウトから切り離し、常に右上固定へ変更。',items:['「完了を非表示」ラッパーをモバイル下部バー内の通常レイアウトフローから外し、 position:absolute で右上固定に変更','通常モードの下部バーには上余白を明示的に確保し、ボタン列とチップが競合して左へ押し出される余地をなくした','rename モードではチップ自体を非表示にし、モード切替時の一瞬の再配置でも左端へ混ざらないよう整理','極小幅端末向けにも top/right と padding-top を別指定し、Safari の再レイアウトでも位置が安定するよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.6.12',date:'2026-04-20 20:33 JST',summary:'スマホ下部バーの「完了を非表示」が左へ崩れることがある不具合を修正。',items:['モバイル下部バーを再表示する処理で inline display を flex に戻していた箇所を grid に統一し、レイアウト崩れの原因を解消','「完了を非表示」のラッパーに grid-row / justify-self / width 指定を追加し、常に1行目右端へ固定されるよう補強','右寄せチップ側にも margin-left:auto と justify-self:end を強めに指定し、Safari系でも左へ落ちにくいよう調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
-{version:'1.6.11',date:'2026-04-20 20:10 JST',summary:'共有URL起動時の入り方とスマホ操作まわりを調整。',items:['共有URLパラメータ付きで開いた場合は名称編集を開かず、全体表示から始まるよう runInitialBoot を分岐','短縮URLボタンは外部サイト遷移と分かるよう「短縮URL ↗」表記へ変更し、モバイルメニュー側も同じ表示へ統一','スマホ下部バーは通常時を常に5列グリッドに固定し、「完了を非表示」を1行目右端の小さなチップとして安定表示','スマホの名前変更トレイを拡大し、入力欄と保存/キャンセルをより大きくしてタップしやすく調整','タップ時はその場で選択状態が見えるよう更新しつつ、ノードドラッグは window 捕捉の touchmove / touchend を追加して移動が途切れにくいよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.6.14',date:'2026-04-20 23:30 JST',summary:'スマホの選択・ドラッグ・起動・再表示を見直し、下部バーと名称変更を安定化。',items:['スマホ下部バーは最終上書きCSSで常時 grid 固定にし、「完了を表示」を1行目右端の絶対配置へ統一して左端へ混ざらないよう補強','スマホのノード操作は 1本指タップ選択 / 8px超でドラッグ / 2本指ピンチを明確に分離し、ピンチ中はノードドラッグを止めるジェスチャーロックを追加','touchend の changedTouches 利用は維持しつつ、タッチ端末での click / pointerup / dblclick フォールバックを抑止して、シングルタップ選択がダブルタップ扱いされる誤作動を解消','起動時は共有URLパラメータ付きだけ全体表示から開始し、通常起動では先頭ノードを選択してスマホは下部バーの名称変更、PCは編集パネルを自動で開くよう統一','モバイル名称変更トレイとデータ欄 textarea を拡大し、オートセーブと pageshow 復元を補強して思わぬ再読み込みでも内容が戻りやすいよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.6.13',date:'2026-04-20 20:42 JST',summary:'スマホ下部バーの「完了を表示」を通常レイアウトから切り離し、常に右上固定へ変更。',items:['「完了を表示」ラッパーをモバイル下部バー内の通常レイアウトフローから外し、 position:absolute で右上固定に変更','通常モードの下部バーには上余白を明示的に確保し、ボタン列とチップが競合して左へ押し出される余地をなくした','rename モードではチップ自体を非表示にし、モード切替時の一瞬の再配置でも左端へ混ざらないよう整理','極小幅端末向けにも top/right と padding-top を別指定し、Safari の再レイアウトでも位置が安定するよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.6.12',date:'2026-04-20 20:33 JST',summary:'スマホ下部バーの「完了を表示」が左へ崩れることがある不具合を修正。',items:['モバイル下部バーを再表示する処理で inline display を flex に戻していた箇所を grid に統一し、レイアウト崩れの原因を解消','「完了を表示」のラッパーに grid-row / justify-self / width 指定を追加し、常に1行目右端へ固定されるよう補強','右寄せチップ側にも margin-left:auto と justify-self:end を強めに指定し、Safari系でも左へ落ちにくいよう調整','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
+{version:'1.6.11',date:'2026-04-20 20:10 JST',summary:'共有URL起動時の入り方とスマホ操作まわりを調整。',items:['共有URLパラメータ付きで開いた場合は名称編集を開かず、全体表示から始まるよう runInitialBoot を分岐','短縮URLボタンは外部サイト遷移と分かるよう「短縮URL ↗」表記へ変更し、モバイルメニュー側も同じ表示へ統一','スマホ下部バーは通常時を常に5列グリッドに固定し、「完了を表示」を1行目右端の小さなチップとして安定表示','スマホの名前変更トレイを拡大し、入力欄と保存/キャンセルをより大きくしてタップしやすく調整','タップ時はその場で選択状態が見えるよう更新しつつ、ノードドラッグは window 捕捉の touchmove / touchend を追加して移動が途切れにくいよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.10',date:'2026-04-20 19:50 JST',summary:'起動直後に先頭ノードの名称変更へすぐ入れるよう初期表示を調整。',items:['runInitialBoot 内で先頭ノードを選択したあと、名称編集パネルを自動で開くよう変更','開始オーバーレイを閉じたあとに編集パネルを表示する順番へ見直し、初回表示で隠れにくいよう調整','サンプル開始時も共有URL読込時も、起動直後から最初のノード名をそのまま打ち替えやすい流れに改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.6.9',date:'2026-04-20 19:46 JST',summary:'共有URLのコピー導線を一本化し、表記を整理。',items:['軽量URLコピー機能を撤去し、高忠実度URLコピーのみ残す構成に変更','高忠実度URLのボタン名を「URLでコピー」に変更','コピー完了メッセージと生成完了メッセージも新しい名称に合わせて整理']},
 {version:'1.6.8',date:'2026-04-20 18:20 JST',summary:'データ画面のコピー導線を整理し、短縮URLサイトへのリンクを追加。',items:['データ欄の重複していた「コピー」ボタンを削除し、コピー導線を「JSONをコピー」に一本化','「今のマップを置き換える」を「JSONをコピー」の左側へ移し、読み込み導線を上段に整理','共有URLの近くに「短縮URL」ボタンを追加し、00m.in を新しいタブで開けるよう対応','スマホのメニューにも「短縮URL」を追加し、同じく 00m.in へ飛べるよう統一','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2286,7 +2287,7 @@ const APP_CHANGELOG=[
     summary:'ノード完了チェックと完了非表示を追加し、右側ボタンのまとまりを改善。',
     items:[
       '各ノード右下に完了チェックを追加し、クリックで完了/未完了を即時切替できるよう改善',
-      '完了ノードはグレーアウト表示にし、上部メニューに「完了を非表示」チェックを追加',
+      '完了ノードはグレーアウト表示にし、上部メニューに「完了を表示」チェックを追加',
       '完了非表示時はキャンバスとアウトライナーの両方から完了ノードと関連線を除外',
       '右側のデータ/アウトライナーボタンの位置を近づけ、まとまり感を改善'
     ]
@@ -2467,7 +2468,7 @@ function updateDocumentTitle(){
   updateMapTitleRequirementUi();
 }
 function updateHideDoneUi(){
-  if(hideDoneToggle) hideDoneToggle.checked=!!meta?.hideDone;
+  if(hideDoneToggle) hideDoneToggle.checked=!meta?.hideDone;
 }
 function updateCreatedAtUi(){
   if(showCreatedAtToggle) showCreatedAtToggle.checked=!!meta?.showCreatedAt;
@@ -2658,7 +2659,7 @@ function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:!!(payload.meta&&payload.meta.hideDone),showCreatedAt:!!(payload.meta&&payload.meta.showCreatedAt),focusMode:!!(payload.meta&&payload.meta.focusMode),focusNodeId:(payload.meta&&payload.meta.focusNodeId)||null,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:(payload.meta&&'hideDone' in payload.meta)?!!payload.meta.hideDone:true,showCreatedAt:!!(payload.meta&&payload.meta.showCreatedAt),focusMode:!!(payload.meta&&payload.meta.focusMode),focusNodeId:(payload.meta&&payload.meta.focusNodeId)||null,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
@@ -3600,7 +3601,7 @@ function parseImportData(raw,{kind}={}){
   const metaNorm={
     title:(parsed.meta&&parsed.meta.title)||parsed.title||'案件マインドマップ',
     layoutMode:(parsed.meta&&parsed.meta.layoutMode)||parsed.layoutMode||'radial',
-    hideDone:!!((parsed.meta&&parsed.meta.hideDone)??parsed.hideDone),
+    hideDone:((parsed.meta&&'hideDone' in parsed.meta)?!!parsed.meta.hideDone:(('hideDone' in parsed)?!!parsed.hideDone:true)),
     showCreatedAt:!!((parsed.meta&&parsed.meta.showCreatedAt)??parsed.showCreatedAt),
     focusMode:!!((parsed.meta&&parsed.meta.focusMode)??parsed.focusMode),
     focusNodeId:((parsed.meta&&parsed.meta.focusNodeId)??parsed.focusNodeId)||null,
@@ -4538,7 +4539,7 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   nodes=(d.nodes||[]).map(normalizeNode);
   edges=(d.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:!!(d.meta&&d.meta.hideDone),focusMode:!!(d.meta&&d.meta.focusMode),focusNodeId:(d.meta&&d.meta.focusNodeId)||null,presentationMode:!!(d.meta&&d.meta.presentationMode)};
+  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:(d.meta&&'hideDone' in d.meta)?!!d.meta.hideDone:true,focusMode:!!(d.meta&&d.meta.focusMode),focusNodeId:(d.meta&&d.meta.focusNodeId)||null,presentationMode:!!(d.meta&&d.meta.presentationMode)};
   document.getElementById('map-title').value=meta.title;
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
@@ -7418,10 +7419,10 @@ document.getElementById('b-history').addEventListener('click',()=>setHistoryOpen
 if(hideDoneToggle){
   hideDoneToggle.addEventListener('change',e=>{
     snapshot();
-    meta.hideDone=!!e.target.checked;
+    meta.hideDone=!e.target.checked;
     clearSelection();
     renderNow();
-    showToast(meta.hideDone?'完了ノードを非表示にしました':'完了ノードを再表示しました');
+    showToast(meta.hideDone?'完了ノードを非表示にしました':'完了ノードを表示しました');
   });
 }
 if(presentationToggle){
@@ -7633,7 +7634,7 @@ const initialPreset=STARTER_PRESETS.sample;
 meta={
   title:'',
   layoutMode:(initialPreset.meta&&initialPreset.meta.layoutMode)||'horizontal',
-  hideDone:false,
+  hideDone:true,
   showCreatedAt:false,
   presentationMode:false
 };
@@ -8429,7 +8430,7 @@ if(document.readyState==='complete'){
   mobileActionbar.id='mobile-actionbar';
   mobileActionbar.hidden=false;
   mobileActionbar.innerHTML=`
-    <div class="mobile-actionbar-extra"><label class="mobile-hide-done-chip"><input data-mobile-hide-done-toggle type="checkbox"><span>完了を非表示</span></label></div>
+    <div class="mobile-actionbar-extra"><label class="mobile-hide-done-chip"><input data-mobile-hide-done-toggle type="checkbox"><span>完了を表示</span></label></div>
     <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前</span><span class="mobile-btn-sub">変更</span></button>
     <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子</span><span class="mobile-btn-sub">追加</span></button>
     <button data-mobile-action="sibling" type="button"><span class="mobile-btn-main">同階</span><span class="mobile-btn-sub">追加</span></button>
@@ -9010,7 +9011,7 @@ if(document.readyState==='complete'){
     if(!mobileActionbar) return;
     mobileActionbar.classList.remove('rename-mode');
     mobileActionbar.innerHTML=`
-      <div class="mobile-actionbar-extra"><label class="mobile-hide-done-chip"><input data-mobile-hide-done-toggle type="checkbox"><span>完了を非表示</span></label></div>
+      <div class="mobile-actionbar-extra"><label class="mobile-hide-done-chip"><input data-mobile-hide-done-toggle type="checkbox"><span>完了を表示</span></label></div>
       <button data-mobile-action="edit" type="button"><span class="mobile-btn-main">名前</span><span class="mobile-btn-sub">編集</span></button>
       <button data-mobile-action="child" type="button"><span class="mobile-btn-main">子</span><span class="mobile-btn-sub">追加</span></button>
       <button data-mobile-action="sibling" type="button"><span class="mobile-btn-main">同階</span><span class="mobile-btn-sub">追加</span></button>
@@ -9347,7 +9348,7 @@ if(document.readyState==='complete'){
       if(main) main.textContent='その他';
       if(sub) sub.textContent='メニュー';
     }
-    if(hideDoneInput) hideDoneInput.checked=!!meta?.hideDone;
+    if(hideDoneInput) hideDoneInput.checked=!meta?.hideDone;
   }
   function renderMobileUiFromState(){
     app.classList.toggle('presentation-mode', !!(meta&&meta.presentationMode));
@@ -9719,11 +9720,11 @@ if(document.readyState==='complete'){
   mobileActionbar.addEventListener('change',e=>{
     const hideToggle=e.target.closest('[data-mobile-hide-done-toggle]');
     if(!hideToggle) return;
-    meta.hideDone=!!hideToggle.checked;
-    if(hideDoneToggle) hideDoneToggle.checked=meta.hideDone;
+    meta.hideDone=!hideToggle.checked;
+    if(hideDoneToggle) hideDoneToggle.checked=!meta.hideDone;
     draw();
     renderMobileUiFromState();
-    showToast(meta.hideDone?'完了ノードを非表示にしました':'完了ノードを再表示しました');
+    showToast(meta.hideDone?'完了ノードを非表示にしました':'完了ノードを表示しました');
   });
 
   mobileFallbackBar.addEventListener('click',e=>{
@@ -10720,7 +10721,7 @@ html,body{
         color:{fill:'#161b23',stroke:'#ff8a4c',text:'#f7f2eb'}
       }],
       edges:[],
-      meta:{title:'',layoutMode:'horizontal',hideDone:false,presentationMode:false}
+      meta:{title:'',layoutMode:'horizontal',hideDone:true,presentationMode:false}
     };
   }
   function startFreshFromZero(){
@@ -11447,7 +11448,7 @@ body.focusdoc-modal-open #quickbar{display:none !important}
     const btn=document.createElement('button');
     btn.id='ep-focusdoc';
     btn.type='button';
-    btn.textContent='専心モード';
+    btn.textContent='専心';
     btn.addEventListener('click',e=>{
       e.preventDefault();
       e.stopPropagation();
@@ -12437,7 +12438,7 @@ body.focusdoc-modal-open #quickbar{display:none !important}
       if(strong) strong.textContent='集中';
     }
     const workBtn=document.getElementById('ep-focusdoc');
-    if(workBtn) workBtn.textContent='専心モード';
+    if(workBtn) workBtn.textContent='専心';
     const workTitle=document.getElementById('focusdoc-title');
     if(workTitle && workTitle.textContent.trim()==='集中モード') workTitle.textContent='専心モード';
   }
@@ -13018,9 +13019,10 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     }
     const epBtn=document.getElementById('ep-focusdoc');
     if(epBtn && epBtn.dataset.focusMapBound!=='1'){
-      const cloneBtn=epBtn.cloneNode(true); epBtn.replaceWith(cloneBtn); cloneBtn.dataset.focusMapBound='1'; cloneBtn.textContent='専心モード'; cloneBtn.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); const nodeId=(typeof window.epid!=='undefined' && window.epid) ? window.epid : window.activeNodeId; if(!nodeId) return; if(typeof window.tryCommitNodeEdit==='function'){ const ok=window.tryCommitNodeEdit(); if(ok===false) return; } openFocusMapModal(nodeId,{source:'edit'}); });
+      const cloneBtn=epBtn.cloneNode(true); epBtn.replaceWith(cloneBtn); cloneBtn.dataset.focusMapBound='1'; cloneBtn.textContent='専心'; cloneBtn.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); const nodeId=(typeof window.epid!=='undefined' && window.epid) ? window.epid : window.activeNodeId; if(!nodeId) return; if(typeof window.tryCommitNodeEdit==='function'){ const ok=window.tryCommitNodeEdit(); if(ok===false) return; } openFocusMapModal(nodeId,{source:'edit'}); });
     }
     window.openFocusDocModal=openFocusMapModal;
+    window.openFocusMapModal=openFocusMapModal;
   }
   function init(){
     ensureFocusMapModal();
@@ -13058,8 +13060,8 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     return null;
   }
   function getDedicatedOpenFn(){
-    if(typeof window.openFocusDocModal==='function') return window.openFocusDocModal;
     if(typeof window.openFocusMapModal==='function') return window.openFocusMapModal;
+    if(typeof window.openFocusDocModal==='function') return window.openFocusDocModal;
     return null;
   }
   function openDedicationFromEditor(source){
@@ -13092,9 +13094,7 @@ body.focusmap-modal-open #focus-chip{display:none !important}
       wrap.id='ep-readonly-wrap';
       wrap.className='ep-readonly-wrap';
       wrap.innerHTML=''
-        + '<div class="ep-readonly-item"><span class="ep-readonly-label">状態</span><span id="ep-status-view" class="ep-readonly-value">未完了</span></div>'
-        + '<div class="ep-readonly-item"><span class="ep-readonly-label">文字の表示</span><span id="ep-fitmode-view" class="ep-readonly-value">小さくして表示</span></div>'
-        + '<div class="ep-readonly-note">状態は機能として保持しつつ、編集画面では変更しません。文字の表示も現在の状態のみ表示します。</div>';
+        + '';
       epfm.insertAdjacentElement('afterend', wrap);
     }
 
@@ -13170,9 +13170,15 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     },true);
   }
   function keepGlobalsInSync(){
+    if(typeof window.openFocusMapModal==='function'){
+      window.openFocusDocModal=window.openFocusMapModal;
+      return;
+    }
     const openFn=getDedicatedOpenFn();
-    if(openFn && typeof window.openFocusMapModal!=='function') window.openFocusMapModal=openFn;
-    if(openFn && typeof window.openFocusDocModal!=='function') window.openFocusDocModal=openFn;
+    if(openFn){
+      window.openFocusMapModal=openFn;
+      window.openFocusDocModal=openFn;
+    }
   }
   function init(){
     ensureEditReadonlyUi();
