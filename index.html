@@ -12060,5 +12060,275 @@ body.focusdoc-modal-open #quickbar{display:none !important}
 })();
 </script>
 
+
+<style id="patch-v1-7-3-style">
+/* v1.7.3 patch: focus log compact rows + branch focus chip + PNG bg mode */
+.focusdoc-row{
+  grid-template-columns:18px minmax(0,1fr) auto !important;
+  gap:8px !important;
+  padding:4px 8px !important;
+  min-height:32px !important;
+  border-radius:12px !important;
+}
+.focusdoc-row + .focusdoc-row{margin-top:2px !important}
+.focusdoc-fold{
+  width:18px !important;
+  height:18px !important;
+  margin-top:6px !important;
+  font-size:10px !important;
+  border-radius:6px !important;
+}
+.focusdoc-input{
+  min-height:28px !important;
+  max-height:160px !important;
+  font-size:14px !important;
+  line-height:1.42 !important;
+  padding:4px 0 !important;
+}
+.focusdoc-row-meta,
+.focusdoc-depth-tag{display:none !important}
+.focusdoc-actions{
+  margin-top:4px !important;
+  gap:3px !important;
+}
+.focusdoc-icon{
+  min-width:26px !important;
+  height:26px !important;
+  padding:0 7px !important;
+  border-radius:8px !important;
+  font-size:10px !important;
+}
+#focusdoc-list{padding:2px 0 14px 0 !important}
+#focusdoc-outline-sub{line-height:1.4 !important}
+
+#focus-chip{
+  pointer-events:auto;
+  gap:8px;
+  max-width:min(560px,calc(100% - 24px));
+}
+#focus-chip .focus-chip-text{
+  max-width:28ch;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#focus-chip strong{
+  letter-spacing:.02em;
+}
+#focus-chip-clear{
+  border:none;
+  background:rgba(255,255,255,.06);
+  color:var(--sf-text-0);
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  padding:5px 9px;
+  border-radius:999px;
+  cursor:pointer;
+}
+#focus-chip-clear:hover{
+  background:rgba(255,111,44,.16);
+}
+
+.png-export-inline{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-left:8px;
+  padding:4px 8px;
+  border:1px solid rgba(132,145,164,.18);
+  border-radius:10px;
+  background:rgba(255,255,255,.03);
+  color:var(--sf-text-2);
+  font-size:11px;
+}
+.png-export-inline span{
+  color:var(--sf-text-1);
+  font-weight:700;
+}
+#png-bg-mode{
+  min-width:78px;
+  height:28px;
+  border:1px solid rgba(132,145,164,.22);
+  border-radius:8px;
+  background:rgba(5,8,12,.55);
+  color:var(--sf-text-0);
+  font-size:12px;
+  padding:0 8px;
+  outline:none;
+}
+#png-bg-mode:focus{
+  border-color:rgba(18,198,255,.52);
+  box-shadow:0 0 0 3px rgba(18,198,255,.12);
+}
+
+@media (max-width:1100px){
+  .png-export-inline{margin-left:0;margin-top:6px}
+}
+</style>
+<script id="patch-v1-7-3">
+(function(){
+  const PNG_BG_STORAGE_KEY = 'mindmap_png_bg_mode';
+  const DEFAULT_PNG_BG_MODE = 'black';
+
+  function ensureBranchFocusChip(){
+    const hud = document.getElementById('hud');
+    if(!hud) return null;
+    let chip = document.getElementById('focus-chip');
+    if(!chip){
+      chip = document.createElement('div');
+      chip.id = 'focus-chip';
+      chip.className = 'hud-chip';
+      chip.style.display = 'none';
+      chip.innerHTML = '<span class="dot"></span><strong>枝集中モード</strong><span id="focus-chip-text" class="focus-chip-text">未設定</span><button id="focus-chip-clear" type="button">解除</button>';
+      hud.insertBefore(chip, hud.firstChild || null);
+    }
+    const clearBtn = document.getElementById('focus-chip-clear');
+    if(clearBtn && !clearBtn.dataset.bound){
+      clearBtn.dataset.bound = '1';
+      clearBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof toggleFocusMode === 'function'){
+          toggleFocusMode(false, { silent:false });
+        }else if(window.meta){
+          meta.focusMode = false;
+          meta.focusNodeId = null;
+          if(typeof renderNow === 'function') renderNow();
+        }
+      });
+    }
+    return chip;
+  }
+
+  function patchFocusModeUi(){
+    ensureBranchFocusChip();
+    if(typeof window.updateFocusModeUi !== 'function' || window.updateFocusModeUi.__patchedForBranchChip) return;
+    const original = window.updateFocusModeUi;
+    window.updateFocusModeUi = function(){
+      const result = original.apply(this, arguments);
+      const chip = ensureBranchFocusChip();
+      const textEl = document.getElementById('focus-chip-text');
+      const clearBtn = document.getElementById('focus-chip-clear');
+      try{
+        const active = typeof isFocusModeActive === 'function' ? !!isFocusModeActive() : !!(window.meta && meta.focusMode && meta.focusNodeId);
+        const seedId = typeof getFocusSeedNodeId === 'function' ? getFocusSeedNodeId() : (window.meta ? meta.focusNodeId : null);
+        if(chip) chip.style.display = active ? 'inline-flex' : 'none';
+        if(textEl){
+          let label = '未設定';
+          if(seedId && typeof nb === 'function' && nb(seedId)){
+            label = (typeof shortenText === 'function' ? shortenText(nb(seedId).label, 24) : String(nb(seedId).label || '未設定'));
+          }
+          textEl.textContent = active ? `対象: ${label}` : '未設定';
+        }
+        if(clearBtn) clearBtn.disabled = !active;
+      }catch(_e){}
+      return result;
+    };
+    window.updateFocusModeUi.__patchedForBranchChip = true;
+    try{ window.updateFocusModeUi(); }catch(_e){}
+  }
+
+  function buildPngSvgString(bgMode){
+    if(typeof getSvgExportString !== 'function') return '';
+    const svgString = getSvgExportString();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, 'image/svg+xml');
+    const svg = doc.documentElement;
+    const first = svg.firstElementChild;
+    if(bgMode === 'transparent'){
+      if(first && first.tagName && first.tagName.toLowerCase() === 'rect' && first.getAttribute('fill') === '#fafafa'){
+        first.remove();
+      }
+    }else{
+      if(first && first.tagName && first.tagName.toLowerCase() === 'rect'){
+        first.setAttribute('fill', '#05070b');
+      }
+      const title = svg.querySelector('text[x="18"][y="28"]');
+      if(title) title.setAttribute('fill', '#f6f3ed');
+    }
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
+  }
+
+  function getPngBgMode(){
+    const select = document.getElementById('png-bg-mode');
+    const value = (select && select.value) || localStorage.getItem(PNG_BG_STORAGE_KEY) || DEFAULT_PNG_BG_MODE;
+    return value === 'transparent' ? 'transparent' : 'black';
+  }
+
+  function bindPngExport(){
+    const oldBtn = document.getElementById('b-png');
+    if(!oldBtn || oldBtn.dataset.pngPatched === '1') return;
+    const btn = oldBtn.cloneNode(true);
+    btn.dataset.pngPatched = '1';
+    oldBtn.parentNode.replaceChild(btn, oldBtn);
+
+    btn.addEventListener('click', ()=>{
+      if(typeof ensureMapTitle === 'function' && !ensureMapTitle()) return;
+      const bgMode = getPngBgMode();
+      const svgString = buildPngSvgString(bgMode);
+      const img = new Image();
+      const svgBlob = new Blob([svgString], {type:'image/svg+xml;charset=utf-8'});
+      const url = URL.createObjectURL(svgBlob);
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        const width = (window.sv && sv.clientWidth) ? sv.clientWidth : img.width;
+        const height = (window.sv && sv.clientHeight) ? sv.clientHeight : img.height;
+        canvas.width = width * 2;
+        canvas.height = height * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(2,2);
+        if(bgMode === 'black'){
+          ctx.fillStyle = '#05070b';
+          ctx.fillRect(0,0,width,height);
+        }else{
+          ctx.clearRect(0,0,width,height);
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob=>{
+          if(blob){
+            if(typeof downloadBlob === 'function' && typeof getImageExportFilename === 'function'){
+              downloadBlob(blob, getImageExportFilename('png'));
+            }
+          }
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      };
+      img.onerror = ()=>{ URL.revokeObjectURL(url); };
+      img.src = url;
+    });
+  }
+
+  function injectPngBgSelect(){
+    const pngBtn = document.getElementById('b-png');
+    if(!pngBtn || document.getElementById('png-bg-mode')) return;
+    const wrap = document.createElement('label');
+    wrap.className = 'png-export-inline';
+    wrap.id = 'png-export-inline';
+    wrap.innerHTML = '<span>PNG背景</span><select id="png-bg-mode"><option value="black">黒</option><option value="transparent">透明</option></select>';
+    pngBtn.insertAdjacentElement('afterend', wrap);
+    const select = wrap.querySelector('#png-bg-mode');
+    select.value = localStorage.getItem(PNG_BG_STORAGE_KEY) || DEFAULT_PNG_BG_MODE;
+    select.addEventListener('change', ()=>{
+      localStorage.setItem(PNG_BG_STORAGE_KEY, select.value);
+    });
+  }
+
+  function init(){
+    ensureBranchFocusChip();
+    patchFocusModeUi();
+    injectPngBgSelect();
+    bindPngExport();
+    try{ if(typeof updateFocusModeUi === 'function') updateFocusModeUi(); }catch(_e){}
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init, { once:true });
+  }else{
+    init();
+  }
+})();
+</script>
+
 </body>
 </html>
