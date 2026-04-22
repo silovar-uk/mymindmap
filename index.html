@@ -2232,12 +2232,14 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.8.4';
-const APP_UPDATED_AT='2026-04-22 14:34 JST';
+const APP_VERSION='1.8.7';
+const APP_UPDATED_AT='2026-04-22 15:24 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+
+{version:'1.8.7',date:'2026-04-22 15:24 JST',summary:'専心まわりを dedication ベースへ整理し、起動導線をコマンド経由で一本化。旧 focusDoc は移行専用に隔離。',items:['専心の内部APIを dedication 系へ統一し、window.openDedication / dispatchMindmapCommand を新設。旧 openFocusDocModal / openFocusMapModal は互換エイリアスとして専心コマンドへ流すだけに整理','クイックバー・右クリック・編集モーダル・F2 の4導線はすべて dispatchMindmapCommand("open-dedication") へ集約し、入口ごとの差分を source 情報だけに限定','各ノードは dedicationMap を正本として保持し、focusMap は互換用エイリアスへ変更。既存 focusMap は自動移行し、旧 focusDoc は起動時/読込時に dedicationMap へ変換して実行時本体から隔離','エクスポート / インポートも dedicationMap を優先するよう補強し、旧 focusDoc / focusMap を読んでも dedicationMap に正規化してから扱うよう変更','起動時の前回復元モーダルにはマップ名を必ず表示し、何のマップを引き継ぐか判断しやすいよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.8.4',date:'2026-04-22 14:34 JST',summary:'編集モーダルの状態表示文を撤去し、完了表示トグルを正表示・未チェック既定へ変更。',items:['編集モーダル内の「状態」「文字の表示」と補足説明文を削除し、余計な説明が出ないよう整理','完了表示トグルの文言を「完了を表示」へ変更し、上部バーとモバイル下部バーの両方で表記を統一','チェック状態の意味を反転し、未チェックを既定値として完了ノードは初期状態で非表示になるよう変更','トグル変更時のトースト文言も「表示しました / 非表示にしました」に合わせて整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.8.1',date:'2026-04-22 14:21 JST',summary:'上部操作から折り畳みを一括展開できるようにし、専心マップ側にも同じ導線を追加。',items:['主な操作エリアに「全部開く」ボタンを追加し、メインマップ内で折り畳まれているノードをまとめて展開できるようにした','展開対象がないときはトーストで分かるようにし、対象があるときは Undo できる状態で一括展開するよう対応','専心モード内のツールバーにも「全部開く」を追加し、内包マップ内の折り畳みをまとめて展開できるようにした','専心モード側では展開件数をステータス表示に返し、今の操作結果が分かるよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.7.7',date:'2026-04-22 13:55 JST',summary:'データパネル上部の余白をさらに詰め、用語整理と編集モーダルからの専心ショートカットを追加。',items:['モバイルのデータパネル #io-wrap / #io / .io-panel の上余白と擬似ハンドル由来のスペースをさらに圧縮し、表示開始位置が上に詰まるよう調整','枝集中の表示名を「集中」に統一し、左上HUD・モバイル操作・ボタン文言・トーストなどの呼び方を整理','大型の深掘りモーダル側は「専心モード / 専心ログ」へ改名し、クイックバー・右クリック・編集パネルの文言も合わせて更新','ノード編集モーダル内で F2 を押すと、編集内容を確定したうえで専心モードを開けるようショートカットを追加','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -13574,6 +13576,408 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     patchStartupChoice();
     setTimeout(function(){ normalizeDedicatedLabels(); patchOpenAliases(); patchQuickbarAction(); patchStartupChoice(); },60);
     setTimeout(function(){ normalizeDedicatedLabels(); patchOpenAliases(); patchQuickbarAction(); patchStartupChoice(); },260);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
+</script>
+
+
+<style id="patch-v1-8-7-dedication-style">
+#focusdoc-backdrop{display:none !important;pointer-events:none !important;}
+</style>
+<script id="patch-v1-8-7-dedication">
+(function(){
+  'use strict';
+
+  const DEDICATION_KEY='dedicationMap';
+  const LEGACY_KEYS=['focusMap','focusDoc'];
+
+  function clone(v){
+    try{return JSON.parse(JSON.stringify(v));}
+    catch(_e){return v==null?v:JSON.parse(JSON.stringify({value:v})).value;}
+  }
+  function getNodeById(id){
+    try{
+      if(typeof window.nb==='function') return window.nb(id);
+      if(Array.isArray(window.nodes)) return window.nodes.find(n=>n&&n.id===id)||null;
+    }catch(_e){}
+    return null;
+  }
+  function nowTs(){ return Date.now(); }
+  function escapeHtml(str){
+    return String(str||'').replace(/[&<>"]/g,function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m]; });
+  }
+  function currentNodeId(explicitId){
+    if(explicitId && typeof explicitId==='string') return explicitId;
+    if(typeof window.epid!=='undefined' && window.epid) return window.epid;
+    if(typeof window.cid!=='undefined' && window.cid) return window.cid;
+    if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
+    try{
+      if(window.selectedNodeIds && typeof window.selectedNodeIds.size==='number' && window.selectedNodeIds.size){
+        const first=window.selectedNodeIds.values().next();
+        if(first && !first.done) return first.value;
+      }
+    }catch(_e){}
+    return null;
+  }
+  function getNativeDedicationOpener(){
+    const cand=window.__realOpenFocusMapModal;
+    if(typeof cand==='function' && cand!==window.openDedication && cand!==window.openFocusMapModal) return cand;
+    const cand2=window.__nativeDedicationOpen;
+    if(typeof cand2==='function' && cand2!==window.openDedication) return cand2;
+    return null;
+  }
+  function isNodeEditOpen(){
+    const ep=document.getElementById('ep');
+    if(!ep) return false;
+    const style=window.getComputedStyle(ep);
+    return ep.style.display!=='none' && style.display!=='none' && style.visibility!=='hidden';
+  }
+  function hideLegacyFocusDoc(){
+    const legacy=document.getElementById('focusdoc-backdrop');
+    if(!legacy) return;
+    legacy.classList.remove('open');
+    legacy.setAttribute('aria-hidden','true');
+    legacy.style.display='none';
+    legacy.style.pointerEvents='none';
+  }
+  function markDedicationLabels(){
+    const epBtn=document.getElementById('ep-focusdoc');
+    if(epBtn){ epBtn.textContent='専心'; epBtn.dataset.command='open-dedication-from-editor'; }
+    const qbBtn=document.getElementById('qb-focusdoc');
+    if(qbBtn){ qbBtn.textContent='専心'; qbBtn.dataset.command='open-dedication'; }
+    const ctxBtn=document.getElementById('c-work');
+    if(ctxBtn){ ctxBtn.textContent='専心を開く'; ctxBtn.dataset.command='open-dedication'; }
+  }
+  function convertLegacyFocusDocToDedicationMap(node){
+    const doc=node && node.focusDoc && Array.isArray(node.focusDoc.items) ? node.focusDoc : null;
+    if(typeof window.migrateLegacyFocusDocToMap==='function') return window.migrateLegacyFocusDocToMap(node);
+    if(typeof window.createBlankFocusMap==='function' && !doc) return window.createBlankFocusMap(node);
+    const map=typeof window.createBlankFocusMap==='function' ? window.createBlankFocusMap(node) : {kind:'mindmap',rootId:'dm-root-'+(node&&node.id||'x'),nodes:[],edges:[],memo:'',createdAt:nowTs(),updatedAt:nowTs(),collapsedInParent:true};
+    if(!doc) return map;
+    const rootId=map.rootId;
+    const stack=[rootId];
+    (doc.items||[]).forEach(function(item,idx){
+      const text=String(item&&item.text||'').trim();
+      if(!text) return;
+      const depth=Math.max(0, Number.isFinite(item&&item.depth)?item.depth:0);
+      const parentId=stack[Math.min(depth, stack.length-1)] || rootId;
+      const nodeId='dmn-'+Math.random().toString(36).slice(2,10);
+      map.nodes.push({id:nodeId,label:text,subtext:'',x:0,y:0,order:idx+1,collapsed:false,root:false,createdAt:nowTs(),updatedAt:nowTs()});
+      map.edges.push({id:parentId+'__'+nodeId,from:parentId,to:nodeId});
+      stack[depth+1]=nodeId;
+      stack.length=depth+2;
+    });
+    map.memo=String(doc.memo||'');
+    map.updatedAt=Number.isFinite(doc.updatedAt)?doc.updatedAt:nowTs();
+    if(typeof window.layoutFocusMap==='function') window.layoutFocusMap(map,{preserveManual:false});
+    return map;
+  }
+  function normalizeDedicationMap(raw,node,opts){
+    if(typeof window.normalizeFocusMap==='function') return window.normalizeFocusMap(raw,node,opts||{allowBlank:true});
+    return raw || convertLegacyFocusDocToDedicationMap(node);
+  }
+  function syncNodeDedication(node){
+    if(!node) return null;
+    let map=node[DEDICATION_KEY] || node.focusMap || null;
+    if(!map && node.focusDoc) map=convertLegacyFocusDocToDedicationMap(node);
+    map=normalizeDedicationMap(map,node,{allowBlank:true});
+    node[DEDICATION_KEY]=map;
+    node.focusMap=map;
+    if('focusDoc' in node){
+      try{ delete node.focusDoc; }catch(_e){ node.focusDoc=undefined; }
+    }
+    return map;
+  }
+  function syncAllNodesDedication(){
+    if(!Array.isArray(window.nodes)) return;
+    window.nodes.forEach(syncNodeDedication);
+  }
+  function patchNormalizeNode(){
+    if(typeof window.normalizeNode!=='function' || window.normalizeNode.__dedicationPatched) return;
+    const original=window.normalizeNode;
+    const wrapped=function(n){
+      const base=original.call(this,n);
+      syncNodeDedication(base);
+      return base;
+    };
+    wrapped.__dedicationPatched=true;
+    window.normalizeNode=wrapped;
+  }
+  function patchBuildExportObject(){
+    if(typeof window.buildExportObject!=='function' || window.buildExportObject.__dedicationPatched) return;
+    const original=window.buildExportObject;
+    const wrapped=function(kind){
+      syncAllNodesDedication();
+      const out=original.apply(this,arguments);
+      try{
+        if(Array.isArray(out&&out.nodes) && Array.isArray(window.nodes)){
+          out.nodes.forEach(function(outNode,index){
+            const src=window.nodes[index];
+            if(!src) return;
+            const map=syncNodeDedication(src);
+            if(map){
+              outNode.dedicationMap=clone(map);
+              outNode.focusMap=clone(map);
+            }
+            if('focusDoc' in outNode) delete outNode.focusDoc;
+          });
+        }
+      }catch(err){ console.warn('dedication export patch failed',err); }
+      return out;
+    };
+    wrapped.__dedicationPatched=true;
+    window.buildExportObject=wrapped;
+  }
+  function patchParseImportData(){
+    if(typeof window.parseImportData!=='function' || window.parseImportData.__dedicationPatched) return;
+    const original=window.parseImportData;
+    const wrapped=function(raw,options){
+      const result=original.apply(this,arguments);
+      try{
+        const kind=(options&&options.kind)||window.currentExportKind||'json';
+        if(kind!=='json') return result;
+        let parsed=JSON.parse(String(raw||'').trim().replace(/^﻿/,''));
+        if(Array.isArray(parsed)) parsed={nodes:parsed,edges:[]};
+        if(parsed.data && (parsed.data.nodes||parsed.data.edges)) parsed=parsed.data;
+        const srcNodes=Array.isArray(parsed.nodes)?parsed.nodes:[];
+        if(Array.isArray(result&&result.nodes)){
+          result.nodes.forEach(function(node,index){
+            const src=srcNodes[index] || {};
+            let map=src.dedicationMap || src.focusMap || null;
+            if(!map && src.focusDoc) map=convertLegacyFocusDocToDedicationMap(src);
+            map=normalizeDedicationMap(map,node,{allowBlank:false});
+            node[DEDICATION_KEY]=map;
+            node.focusMap=map;
+            if('focusDoc' in node) delete node.focusDoc;
+          });
+        }
+      }catch(err){ console.warn('dedication import patch failed',err); }
+      return result;
+    };
+    wrapped.__dedicationPatched=true;
+    window.parseImportData=wrapped;
+  }
+  function patchReplaceMapData(){
+    if(typeof window.replaceMapData!=='function' || window.replaceMapData.__dedicationPatched) return;
+    const original=window.replaceMapData;
+    const wrapped=function(data,opts){
+      const result=original.apply(this,arguments);
+      syncAllNodesDedication();
+      return result;
+    };
+    wrapped.__dedicationPatched=true;
+    window.replaceMapData=wrapped;
+  }
+  function ensureUiConsistency(){
+    markDedicationLabels();
+    hideLegacyFocusDoc();
+    const mapBackdrop=document.getElementById('focusmap-backdrop');
+    if(mapBackdrop && mapBackdrop.classList.contains('open')){
+      mapBackdrop.style.display='flex';
+      mapBackdrop.style.pointerEvents='auto';
+      document.body.classList.add('focusmap-modal-open');
+      document.body.classList.remove('focusdoc-modal-open');
+    }
+  }
+  let lastDedicationOpen={nodeId:null,at:0};
+  function openDedication(nodeId,options){
+    const id=currentNodeId(nodeId);
+    const node=getNodeById(id);
+    const nativeOpen=getNativeDedicationOpener();
+    ensureUiConsistency();
+    if(!node){
+      if(typeof window.showToast==='function') window.showToast('専心を開くノードが選択されていません','warn');
+      return false;
+    }
+    if(typeof nativeOpen!=='function'){
+      console.error('dedication native opener missing');
+      if(typeof window.showToast==='function') window.showToast('専心機能の初期化に失敗しています','warn');
+      return false;
+    }
+    const now=Date.now();
+    if(lastDedicationOpen.nodeId===node.id && (now-lastDedicationOpen.at)<220){
+      requestAnimationFrame(ensureUiConsistency);
+      return true;
+    }
+    lastDedicationOpen={nodeId:node.id,at:now};
+    syncNodeDedication(node);
+    try{
+      nativeOpen(node.id, options||{});
+    }catch(err){
+      console.error('openDedication failed',err);
+      if(typeof window.showToast==='function') window.showToast('専心を開けませんでした','warn');
+      return false;
+    }
+    requestAnimationFrame(ensureUiConsistency);
+    setTimeout(ensureUiConsistency,32);
+    setTimeout(ensureUiConsistency,160);
+    return true;
+  }
+  function closeDedication(){
+    if(typeof window.closeFocusMapModal==='function') return window.closeFocusMapModal();
+    const backdrop=document.getElementById('focusmap-backdrop');
+    if(backdrop){
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden','true');
+      backdrop.style.display='none';
+    }
+    document.body.classList.remove('focusmap-modal-open');
+  }
+  function dispatchMindmapCommand(type,payload){
+    payload=payload||{};
+    switch(type){
+      case 'open-dedication':
+        return openDedication(payload.nodeId || currentNodeId(), {source:payload.source||'command'});
+      case 'open-dedication-from-editor':
+        if(typeof window.tryCommitNodeEdit==='function'){
+          const ok=window.tryCommitNodeEdit();
+          if(ok===false) return false;
+        }
+        return openDedication(payload.nodeId || currentNodeId(), {source:payload.source||'edit'});
+      case 'close-dedication':
+        return closeDedication();
+      default:
+        return false;
+    }
+  }
+  function installOpenAliases(){
+    const aliasGetter=function(){ return openDedication; };
+    const aliasSetter=function(fn){
+      if(typeof fn==='function' && fn!==openDedication && !fn.__dedicationCore){
+        window.__nativeDedicationOpen=fn;
+      }
+    };
+    try{
+      Object.defineProperty(window,'openFocusMapModal',{configurable:true,get:aliasGetter,set:aliasSetter});
+      Object.defineProperty(window,'openFocusDocModal',{configurable:true,get:aliasGetter,set:aliasSetter});
+    }catch(_e){
+      window.openFocusMapModal=openDedication;
+      window.openFocusDocModal=openDedication;
+    }
+    openDedication.__dedicationCore=true;
+    window.openDedication=openDedication;
+    window.closeDedication=closeDedication;
+    window.dispatchMindmapCommand=dispatchMindmapCommand;
+  }
+  function patchQuickbarAction(){
+    if(typeof window.runQuickbarAction!=='function' || window.runQuickbarAction.__dedicationPatched) return;
+    const original=window.runQuickbarAction;
+    const wrapped=function(action){
+      if(action==='focus-doc' || action==='open-dedication'){
+        return dispatchMindmapCommand('open-dedication',{source:'quickbar'});
+      }
+      return original.apply(this,arguments);
+    };
+    wrapped.__dedicationPatched=true;
+    window.runQuickbarAction=wrapped;
+  }
+  function patchOpenEp(){
+    if(typeof window.openEp!=='function' || window.openEp.__dedicationPatched) return;
+    const original=window.openEp;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      setTimeout(markDedicationLabels,0);
+      return result;
+    };
+    wrapped.__dedicationPatched=true;
+    window.openEp=wrapped;
+  }
+  function patchUpdateQuickbar(){
+    if(typeof window.updateQuickbar!=='function' || window.updateQuickbar.__dedicationPatched) return;
+    const original=window.updateQuickbar;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      markDedicationLabels();
+      return result;
+    };
+    wrapped.__dedicationPatched=true;
+    window.updateQuickbar=wrapped;
+  }
+  function bindCommandRoutes(){
+    if(document.documentElement.dataset.dedicationCommandBound==='1') return;
+    document.documentElement.dataset.dedicationCommandBound='1';
+
+    document.addEventListener('click',function(e){
+      const target=e.target && e.target.closest ? e.target.closest('[data-command],#qb-focusdoc,#ep-focusdoc') : null;
+      if(!target) return;
+      const command=target.dataset.command || (target.id==='ep-focusdoc' ? 'open-dedication-from-editor' : 'open-dedication');
+      if(command!=='open-dedication' && command!=='open-dedication-from-editor') return;
+      e.preventDefault();
+      e.stopPropagation();
+      dispatchMindmapCommand(command,{source:target.id==='qb-focusdoc'?'quickbar':'edit-button'});
+    },true);
+
+    document.addEventListener('mousedown',function(e){
+      const target=e.target && e.target.closest ? e.target.closest('#c-work,[data-command="open-dedication-context"]') : null;
+      if(!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const cm=document.getElementById('cm');
+      if(cm) cm.style.display='none';
+      dispatchMindmapCommand('open-dedication',{source:'contextmenu',nodeId:currentNodeId()});
+    },true);
+
+    window.addEventListener('keydown',function(e){
+      if(e.key!=='F2') return;
+      if(document.body.classList.contains('focusmap-modal-open')) return;
+      if(!isNodeEditOpen()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dispatchMindmapCommand('open-dedication-from-editor',{source:'edit-f2'});
+    },true);
+  }
+  function deriveSavedMapTitle(payload){
+    try{
+      const title=String(payload&&payload.state&&payload.state.meta&&payload.state.meta.title||'').trim();
+      if(title) return title;
+      const nodes=Array.isArray(payload&&payload.state&&payload.state.nodes)?payload.state.nodes:[];
+      const root=nodes.find(function(n){ return n && String(n.id||'')==='n1'; }) || nodes[0] || null;
+      const label=String(root&&root.label||'').trim();
+      if(label) return label;
+    }catch(_e){}
+    return '名称未設定のマップ';
+  }
+  function patchStartupChoice(){
+    if(typeof window.showStartupChoice!=='function' || window.showStartupChoice.__dedicationPatched) return;
+    const original=window.showStartupChoice;
+    const wrapped=function(payload){
+      const result=original.apply(this,arguments);
+      try{
+        const modal=document.getElementById('startup-choice-modal');
+        if(!modal || modal.dataset.dedicationTitlePatched==='1') return result;
+        modal.dataset.dedicationTitlePatched='1';
+        const firstMeta=modal.querySelector('.startup-choice-meta');
+        if(firstMeta){
+          const row=document.createElement('div');
+          row.className='startup-choice-meta';
+          row.innerHTML='マップ名: <strong>'+escapeHtml(deriveSavedMapTitle(payload))+'</strong>';
+          firstMeta.insertAdjacentElement('afterend',row);
+        }
+      }catch(err){ console.warn('startup choice dedication patch failed',err); }
+      return result;
+    };
+    wrapped.__dedicationPatched=true;
+    window.showStartupChoice=wrapped;
+  }
+  function init(){
+    // capture native opener before aliasing
+    if(typeof window.__realOpenFocusMapModal==='function') window.__nativeDedicationOpen=window.__realOpenFocusMapModal;
+    else if(typeof window.openFocusMapModal==='function') window.__nativeDedicationOpen=window.openFocusMapModal;
+    patchNormalizeNode();
+    patchBuildExportObject();
+    patchParseImportData();
+    patchReplaceMapData();
+    syncAllNodesDedication();
+    installOpenAliases();
+    patchQuickbarAction();
+    patchOpenEp();
+    patchUpdateQuickbar();
+    patchStartupChoice();
+    bindCommandRoutes();
+    ensureUiConsistency();
+    markDedicationLabels();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
