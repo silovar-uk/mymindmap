@@ -13364,5 +13364,221 @@ body.focusmap-modal-open #focus-chip{display:none !important}
 })();
 </script>
 
+
+<style id="patch-v1-8-6-style">
+#startup-choice-modal .startup-choice-meta + .startup-choice-meta{margin-top:10px}
+</style>
+<script id="patch-v1-8-6-script">
+(function(){
+  'use strict';
+
+  function toast(msg,tone='ok'){
+    try{
+      if(typeof window.showToast==='function') window.showToast(msg,tone);
+      else console.warn(msg);
+    }catch(_e){ console.warn(msg); }
+  }
+  function byId(id){
+    try{ return typeof window.nb==='function' ? window.nb(id) : (Array.isArray(window.nodes) ? window.nodes.find(n=>n && n.id===id) : null); }
+    catch(_e){ return null; }
+  }
+  function currentNodeId(explicitId){
+    if(explicitId && typeof explicitId==='string') return explicitId;
+    if(typeof window.epid!=='undefined' && window.epid) return window.epid;
+    if(typeof window.cid!=='undefined' && window.cid) return window.cid;
+    if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
+    try{
+      if(window.selectedNodeIds && typeof window.selectedNodeIds.size==='number' && window.selectedNodeIds.size){
+        const first=window.selectedNodeIds.values().next();
+        if(first && !first.done) return first.value;
+      }
+    }catch(_e){}
+    return null;
+  }
+  function getNativeFocusOpen(){
+    const cand=window.__realOpenFocusMapModal;
+    if(typeof cand==='function' && cand!==window.openFocusMapModal && !/openFocusDedicated|stableDedicatedOpen/.test(cand.name||'')) return cand;
+    const cur=window.openFocusMapModal;
+    if(typeof cur==='function' && !/openFocusDedicated|stableDedicatedOpen/.test(cur.name||'')) return cur;
+    return null;
+  }
+  function hideLegacyFocus(){
+    const legacy=document.getElementById('focusdoc-backdrop');
+    if(legacy){
+      legacy.classList.remove('open');
+      legacy.setAttribute('aria-hidden','true');
+      legacy.style.display='none';
+      legacy.style.pointerEvents='none';
+    }
+  }
+  function normalizeDedicatedLabels(){
+    const epBtn=document.getElementById('ep-focusdoc');
+    if(epBtn) epBtn.textContent='専心';
+    const qbBtn=document.getElementById('qb-focusdoc');
+    if(qbBtn) qbBtn.textContent='専心';
+    const ctxBtn=document.getElementById('c-work');
+    if(ctxBtn) ctxBtn.textContent='専心を開く';
+  }
+  function forceBackdropVisible(){
+    const backdrop=document.getElementById('focusmap-backdrop');
+    if(backdrop){
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden','false');
+      backdrop.style.display='flex';
+      backdrop.style.pointerEvents='auto';
+    }
+    document.body.classList.add('focusmap-modal-open');
+    document.body.classList.remove('focusdoc-modal-open');
+    hideLegacyFocus();
+  }
+  function stableDedicatedOpen(explicitId,options={}){
+    const nodeId=currentNodeId(explicitId);
+    const node=byId(nodeId);
+    const openNative=getNativeFocusOpen();
+    normalizeDedicatedLabels();
+    hideLegacyFocus();
+    if(!node){
+      toast('専心を開くノードが選択されていません','warn');
+      return false;
+    }
+    if(typeof openNative!=='function'){
+      console.error('Native focus map opener not found');
+      toast('専心機能の初期化に失敗しています','warn');
+      return false;
+    }
+    try{
+      openNative(node.id, options||{});
+    }catch(err){
+      console.error('Failed to open dedication modal', err);
+      toast('専心を開けませんでした','warn');
+      return false;
+    }
+    requestAnimationFrame(forceBackdropVisible);
+    setTimeout(forceBackdropVisible,40);
+    setTimeout(forceBackdropVisible,180);
+    return true;
+  }
+  function openDedicatedFromEditor(source){
+    const nodeId=currentNodeId();
+    if(!nodeId) return false;
+    if(typeof window.tryCommitNodeEdit==='function'){
+      const ok=window.tryCommitNodeEdit();
+      if(ok===false) return false;
+    }
+    return stableDedicatedOpen(nodeId,{source:source||'edit'});
+  }
+  function patchOpenAliases(){
+    try{
+      Object.defineProperty(window,'openFocusMapModal',{configurable:true,writable:true,value:stableDedicatedOpen});
+      Object.defineProperty(window,'openFocusDocModal',{configurable:true,writable:true,value:stableDedicatedOpen});
+    }catch(_e){
+      window.openFocusMapModal=stableDedicatedOpen;
+      window.openFocusDocModal=stableDedicatedOpen;
+    }
+  }
+  function patchQuickbarAction(){
+    if(typeof window.runQuickbarAction==='function' && !window.runQuickbarAction.__v186DedicatedPatched){
+      const original=window.runQuickbarAction;
+      const wrapped=function(action){
+        if(action==='focus-doc'){
+          stableDedicatedOpen(currentNodeId(),{source:'quickbar'});
+          return;
+        }
+        return original.apply(this,arguments);
+      };
+      wrapped.__v186DedicatedPatched=true;
+      window.runQuickbarAction=wrapped;
+    }
+  }
+  function bindDedicatedRoutes(){
+    if(document.documentElement.dataset.v186DedicatedBound==='1') return;
+    document.documentElement.dataset.v186DedicatedBound='1';
+
+    window.addEventListener('click',function(e){
+      const qbBtn=e.target && e.target.closest ? e.target.closest('#qb-focusdoc') : null;
+      const epBtn=e.target && e.target.closest ? e.target.closest('#ep-focusdoc') : null;
+      if(!qbBtn && !epBtn) return;
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      e.preventDefault();
+      e.stopPropagation();
+      if(epBtn) openDedicatedFromEditor('edit-button');
+      else stableDedicatedOpen(currentNodeId(),{source:'quickbar'});
+    },true);
+
+    window.addEventListener('mousedown',function(e){
+      const ctxBtn=e.target && e.target.closest ? e.target.closest('#c-work') : null;
+      if(!ctxBtn) return;
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      e.preventDefault();
+      e.stopPropagation();
+      const cm=document.getElementById('cm');
+      if(cm) cm.style.display='none';
+      stableDedicatedOpen(currentNodeId(),{source:'contextmenu'});
+    },true);
+
+    window.addEventListener('keydown',function(e){
+      if(e.key!=='F2') return;
+      if(document.body.classList.contains('focusmap-modal-open')) return;
+      const ep=document.getElementById('ep');
+      if(!ep) return;
+      const style=window.getComputedStyle(ep);
+      const open=ep.style.display!=='none' && style.display!=='none' && style.visibility!=='hidden';
+      if(!open) return;
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      e.preventDefault();
+      e.stopPropagation();
+      openDedicatedFromEditor('edit-f2');
+    },true);
+  }
+
+  function deriveAutosaveTitle(payload){
+    try{
+      const metaTitle=String(payload?.state?.meta?.title||'').trim();
+      if(metaTitle) return metaTitle;
+      const list=Array.isArray(payload?.state?.nodes)?payload.state.nodes:[];
+      const root=list.find(n=>n && String(n.id||'')==='n1') || list[0] || null;
+      const label=String(root?.label||'').trim();
+      if(label) return label;
+    }catch(_e){}
+    return '名称未設定のマップ';
+  }
+  function patchStartupChoice(){
+    if(typeof window.showStartupChoice!=='function' || window.showStartupChoice.__v186Patched) return;
+    const original=window.showStartupChoice;
+    const wrapped=function(payload){
+      const result=original.apply(this,arguments);
+      try{
+        const modal=document.getElementById('startup-choice-modal');
+        if(!modal || modal.dataset.v186Meta==='1') return result;
+        modal.dataset.v186Meta='1';
+        const firstMeta=modal.querySelector('.startup-choice-meta');
+        if(firstMeta){
+          const titleRow=document.createElement('div');
+          titleRow.className='startup-choice-meta';
+          titleRow.innerHTML='マップ名: <strong>'+String(deriveAutosaveTitle(payload)).replace(/[&<>"]/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m];})+'</strong>';
+          firstMeta.insertAdjacentElement('afterend',titleRow);
+        }
+      }catch(err){ console.warn('startup choice patch failed',err); }
+      return result;
+    };
+    wrapped.__v186Patched=true;
+    window.showStartupChoice=wrapped;
+  }
+
+  function init(){
+    normalizeDedicatedLabels();
+    hideLegacyFocus();
+    patchOpenAliases();
+    patchQuickbarAction();
+    bindDedicatedRoutes();
+    patchStartupChoice();
+    setTimeout(function(){ normalizeDedicatedLabels(); patchOpenAliases(); patchQuickbarAction(); patchStartupChoice(); },60);
+    setTimeout(function(){ normalizeDedicatedLabels(); patchOpenAliases(); patchQuickbarAction(); patchStartupChoice(); },260);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
+</script>
+
 </body>
 </html>
