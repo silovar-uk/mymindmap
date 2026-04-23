@@ -206,6 +206,14 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 .epft{display:flex;gap:6px;justify-content:flex-end}
 .epft button{font-size:12px;padding:5px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:transparent;color:#333}
 .primary-btn{background:#dbeafe !important;color:#1d4ed8 !important;border-color:#93c5fd !important}
+.ep-url-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ep-url-row input{flex:1;min-width:0;margin-bottom:0 !important}
+#ep-url-open{flex:0 0 auto;min-height:36px;padding:6px 12px;white-space:nowrap}
+#ep-url-open:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:720px){
+  .ep-url-row{gap:6px}
+  #ep-url-open{padding:6px 10px;font-size:11px}
+}
 .mini-note{font-size:11px;color:#777;line-height:1.45;margin:-4px 0 10px}
 #tt{position:absolute;display:none;z-index:80;max-width:240px;background:rgba(17,24,39,.96);color:#fff;border-radius:10px;padding:10px 11px;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none}
 #tt .ttl{font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.35}
@@ -1338,6 +1346,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <div id="c-edit">ノードを編集</div>
       <div id="c-child">子ノードを追加</div>
       <div id="c-toggle">折りたたみ / 展開</div>
+      <div id="c-link">リンクを開く</div>
       <div id="c-focus">この枝に集中</div>
       <hr>
       <div id="c-del" style="color:#dc2626" >消す</div>
@@ -1348,6 +1357,11 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <input id="ep-lbl" type="text" autocomplete="off" spellcheck="false"/>
       <label>補足</label>
       <textarea id="ep-sub" placeholder="補足を入力"></textarea>
+      <label>関連URL</label>
+      <div class="ep-url-row">
+        <input id="ep-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://example.com"/>
+        <button id="ep-url-open" type="button">開く</button>
+      </div>
       <label>状態</label>
       <select id="ep-status">
         <option value="none">未完了</option>
@@ -1398,6 +1412,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <button id="qb-edit" class="primary" type="button">編集</button>
       <button id="qb-child" type="button">子を追加</button>
       <button id="qb-connect" type="button">つなぐ</button>
+      <button id="qb-link" type="button">リンク</button>
       <button id="qb-fit" type="button" style="display:none" aria-hidden="true" tabindex="-1">全体に戻す</button>
       <button id="qb-stack-right" type="button">選択だけ整える</button>
       <button id="qb-grid-right" type="button">2列で整える</button>
@@ -2178,13 +2193,51 @@ function wrapText(text,maxUnits,maxLines=99){
   if(lines.length===0) lines.push('');
   return lines;
 }
+function normalizeRelatedUrl(value){
+  const raw=String(value||'').trim();
+  if(!raw) return '';
+  if(/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+  if(/^www\./i.test(raw)) return `https://${raw}`;
+  if(/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?(?:[\/?#].*)?$/i.test(raw)) return `https://${raw}`;
+  return raw;
+}
+function canOpenRelatedUrl(value){
+  return /^(https?:\/\/|mailto:|tel:)/i.test(String(value||'').trim());
+}
+function getNodeRelatedUrl(nodeOrId){
+  const node=typeof nodeOrId==='string' ? nb(nodeOrId) : nodeOrId;
+  if(!node) return '';
+  return normalizeRelatedUrl(node.relatedUrl||node.url||'');
+}
+function openNodeRelatedUrl(nodeOrId,{source='ui'}={}){
+  const node=typeof nodeOrId==='string' ? nb(nodeOrId) : nodeOrId;
+  const url=getNodeRelatedUrl(node);
+  if(!url){
+    showToast('関連URLがありません','warn');
+    return false;
+  }
+  if(!canOpenRelatedUrl(url)){
+    showToast('関連URLの形式を確認してください','warn');
+    return false;
+  }
+  try{
+    window.open(url,'_blank','noopener,noreferrer');
+    return true;
+  }catch(err){
+    console.error('[related-url]',source,err);
+    showToast('リンクを開けませんでした','warn');
+    return false;
+  }
+}
 function normalizeNode(n){
   const label=(n.label||'新規案件').trim() || '新規案件';
-  const subtext=(n.subtext||'').replace(/\r/g,'').trim();
+  const subtext=(n.subtext||'').replace(/
+/g,'').trim();
   const status=STATUS_META[n.status] ? n.status : 'none';
   const collapsed=!!n.collapsed;
   const fitMode=n.fitMode==='wrap' ? 'wrap' : 'shrink';
   const favorite=!!n.favorite;
+  const relatedUrl=normalizeRelatedUrl(n.relatedUrl||n.url||'');
   const subLines=wrapText(subtext,22,SUBTEXT_MAX_LINES).filter(Boolean);
   const h=Math.max(NODE_H_MIN, NODE_TOP_PAD + 18 + (subLines.length ? NODE_SECTION_GAP + subLines.length*NODE_SUB_LINE_HEIGHT : 0) + NODE_BOTTOM_PAD);
   return {
@@ -2198,6 +2251,7 @@ function normalizeNode(n){
     y:Number.isFinite(n.y)?n.y:0,
     order:normalizeOrderValue(n.order,1),
     favorite,
+    relatedUrl,
     createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
     w:n.w||NODE_W_MIN,
     h:n.h||h,
@@ -2232,12 +2286,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.8.10';
-const APP_UPDATED_AT='2026-04-22 15:28 JST';
+const APP_VERSION='1.8.11';
+const APP_UPDATED_AT='2026-04-22 15:42 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.8.11',date:'2026-04-22 15:42 JST',summary:'ノードごとに関連URLを保持できるようにし、編集画面・クイックバー・ノード上バッジからリンクを開けるよう改善。',items:['ノード編集モーダルに関連URL入力欄と「開く」ボタンを追加し、URLをノード単位で保存できるようにした','関連URLは normalizeRelatedUrl で整形し、http(s) / mailto / tel を安全に開ける openNodeRelatedUrl を追加','単一選択時のクイックバーに「リンク」を追加し、関連URLがあるノードだけワンタップで開けるようにした','ノード右上に↗の小バッジを描画し、SVG上から直接リンクを開けるようにした','JSON / 共有URL / コピー用サブツリーでも relatedUrl を保持するようにし、読み書き時のデータ欠落を防いだ','ノードの右クリックメニューにも「リンクを開く」を追加し、関連URLがある時だけ表示するようにした']},
 
 {version:'1.8.10',date:'2026-04-22 15:28 JST',summary:'専心まわりの旧 focusDoc 実装と応急パッチを整理し、dedication ベースの導線とUIに寄せた削減版。',items:['旧 focusDoc アウトライナー本体（style + script）を実行時HTMLから外し、専心は内包マインドマップ側のみを本体として扱うよう整理','v1.8.5 / v1.8.6 の専心応急パッチを削除し、capture 横取りや alias の多重化を減らした','v1.8.2 では専心起動補助を外し、編集画面の readonly 表示整理だけを残して責務を分離','専心導線のUI要素は qb-dedication / ep-dedication / c-dedication へ寄せ、data-command ベースで起動できるよう補強','buildExportObject では dedicationMap を正本として書き出し、互換用 focusMap の書き出しはやめて不要データを削減','focusdoc-modal-open の残骸を整理し、専心表示中は dedication-modal-open / focusmap-modal-open 側で扱うよう調整']},
 {version:'1.8.7',date:'2026-04-22 15:24 JST',summary:'専心まわりを dedication ベースへ整理し、起動導線をコマンド経由で一本化。旧 focusDoc は移行専用に隔離。',items:['専心の内部APIを dedication 系へ統一し、window.openDedication / dispatchMindmapCommand を新設。旧 openFocusDocModal / openFocusMapModal は互換エイリアスとして専心コマンドへ流すだけに整理','クイックバー・右クリック・編集モーダル・F2 の4導線はすべて dispatchMindmapCommand("open-dedication") へ集約し、入口ごとの差分を source 情報だけに限定','各ノードは dedicationMap を正本として保持し、focusMap は互換用エイリアスへ変更。既存 focusMap は自動移行し、旧 focusDoc は起動時/読込時に dedicationMap へ変換して実行時本体から隔離','エクスポート / インポートも dedicationMap を優先するよう補強し、旧 focusDoc / focusMap を読んでも dedicationMap に正規化してから扱うよう変更','起動時の前回復元モーダルにはマップ名を必ず表示し、何のマップを引き継ぐか判断しやすいよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2403,10 +2458,20 @@ const ep=document.getElementById('ep');
 const eep=document.getElementById('eep');
 const epl=document.getElementById('ep-lbl');
 const eps=document.getElementById('ep-sub');
+const epu=document.getElementById('ep-url');
+const epuOpen=document.getElementById('ep-url-open');
 const epst=document.getElementById('ep-status');
 const epfm=document.getElementById('ep-fitmode');
 const epp=document.getElementById('ep-pick');
 const eph=document.getElementById('ep-hex');
+function refreshEpUrlUi(){
+  if(!epu || !epuOpen) return;
+  const normalized=normalizeRelatedUrl(epu.value);
+  const openable=canOpenRelatedUrl(normalized);
+  epuOpen.disabled=!openable;
+  epuOpen.setAttribute('aria-disabled',openable?'false':'true');
+  epuOpen.title=openable ? '関連URLを開く' : 'https:// などのURLを入力すると開けます';
+}
 const eepl=document.getElementById('eep-lbl');
 const eepFrom=document.getElementById('eep-from');
 const eepTo=document.getElementById('eep-to');
@@ -2695,7 +2760,7 @@ function toW(x,y){return{x:x*vs+vx,y:y*vs+vy}}
 
 function closePanels(){
   cm.style.display='none';
-  ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
+  ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
   const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   closeEp();
   closeEep();
@@ -3145,7 +3210,7 @@ function positionNodeSubtreeNearParent(nodeId,parentId,{anchor=null}={}){
 function createNewNodeDraft(options={}){
   const favorite=Object.prototype.hasOwnProperty.call(options,'favorite') ? !!options.favorite : shouldAutoFavoriteNewNodes();
   return normalizeNode({
-    id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',status:options.status||'none',collapsed:false,
+    id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',relatedUrl:options.relatedUrl||'',status:options.status||'none',collapsed:false,
     fitMode:options.fitMode||'shrink',favorite,x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
   });
 }
@@ -3153,7 +3218,7 @@ function createChildNode(parentId, options={}){
   const parent=nb(parentId);
   if(!parent) return null;
   const draft=createNewNodeDraft({
-    label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...parent.color}
+    label:options.label,subtext:options.subtext,relatedUrl:options.relatedUrl,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...parent.color}
   });
   const pos=findBestInsertPosition({
     parentId,
@@ -3164,7 +3229,7 @@ function createChildNode(parentId, options={}){
   });
   const newId='n'+(nid++);
   const child=normalizeNode({
-    id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    id:newId,label:draft.label,subtext:draft.subtext,relatedUrl:draft.relatedUrl,status:draft.status,collapsed:false,
     fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(child);
@@ -3177,7 +3242,7 @@ function createSiblingNode(sourceId, options={}){
   if(!source) return null;
   const parentId=getParentId(sourceId);
   const draft=createNewNodeDraft({
-    label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
+    label:options.label,subtext:options.subtext,relatedUrl:options.relatedUrl,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
   });
   const pos=findBestInsertPosition({
     parentId,
@@ -3188,7 +3253,7 @@ function createSiblingNode(sourceId, options={}){
   });
   const newId='n'+(nid++);
   const sibling=normalizeNode({
-    id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    id:newId,label:draft.label,subtext:draft.subtext,relatedUrl:draft.relatedUrl,status:draft.status,collapsed:false,
     fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(sibling);
@@ -3203,7 +3268,7 @@ function createStandaloneNode(options={}){
   const pos=findBestInsertPosition({anchor:options.anchor||getViewportCenterWorld(),templateNode:draft});
   const id='n'+(nid++);
   const node=normalizeNode({
-    id,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    id,label:draft.label,subtext:draft.subtext,relatedUrl:draft.relatedUrl,status:draft.status,collapsed:false,
     fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
   });
   nodes.push(node);
@@ -3224,6 +3289,7 @@ function buildSubtreeClipboardPayload(rootId){
       id:node.id,
       label:node.label,
       subtext:node.subtext,
+      relatedUrl:getNodeRelatedUrl(node)||undefined,
       status:node.status,
       collapsed:!!node.collapsed,
       fitMode:node.fitMode,
@@ -3276,6 +3342,7 @@ function createPastedSubtree(payload,{parentId=null,anchor=null}={}){
     id:'__subtree_root__',
     label:rootSource.label||'新規案件',
     subtext:rootSource.subtext||'',
+    relatedUrl:rootSource.relatedUrl||'',
     status:rootSource.status||'none',
     collapsed:false,
     fitMode:rootSource.fitMode||'shrink',
@@ -3299,6 +3366,7 @@ function createPastedSubtree(payload,{parentId=null,anchor=null}={}){
       id:newId,
       label:sourceNode.label||'新規案件',
       subtext:sourceNode.subtext||'',
+      relatedUrl:sourceNode.relatedUrl||'',
       status:sourceNode.status||'none',
       collapsed:isRoot ? false : !!hasChildren,
       fitMode:sourceNode.fitMode||'shrink',
@@ -4293,7 +4361,7 @@ function getPathInfo(f,t){
 function showTooltip(n,clientX,clientY){
   const st=STATUS_META[n.status]||STATUS_META.none;
   const displayLabel=getNodeDisplayLabel(n);
-  tt.innerHTML=`<div class="ttl">${escapeHtml(displayLabel)}</div>${n.subtext?`<div class="sub">${escapeHtml(n.subtext)}</div>`:''}${n.status!=='none'?`<div class="st">${escapeHtml((st.icon?st.icon+' ':'')+st.label)}</div>`:''}`;
+  tt.innerHTML=`<div class="ttl">${escapeHtml(displayLabel)}</div>${n.subtext?`<div class="sub">${escapeHtml(n.subtext)}</div>`:''}${getNodeRelatedUrl(n)?`<div class="sub">🔗 ${escapeHtml(shortenText(getNodeRelatedUrl(n).replace(/^https?:\/\//i,''),34))}</div>`:''}${n.status!=='none'?`<div class="st">${escapeHtml((st.icon?st.icon+' ':'')+st.label)}</div>`:''}`;
   const wr=cw.getBoundingClientRect();
   tt.style.display='block';
   let x=clientX-wr.left+14, y=clientY-wr.top+14;
@@ -4622,7 +4690,7 @@ function duplicateActiveNode(){
   const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
   if(!node) return;
   snapshot();
-  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,status:node.status,fitMode:node.fitMode,favorite:false,color:{...node.color}});
+  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,relatedUrl:getNodeRelatedUrl(node),status:node.status,fitMode:node.fitMode,favorite:false,color:{...node.color}});
   if(copy){
     copy.x=node.x+Math.max(180,node.w+30);
     copy.y=node.y+30;
@@ -4842,6 +4910,9 @@ function runQuickbarAction(action){
         openEep(selectedEdgeId,center?.x,center?.y);
       }else if(activeNodeId && nb(activeNodeId)) openEp(activeNodeId);
       break;
+    case 'open-related-url':
+      if(activeNodeId && nb(activeNodeId)) openNodeRelatedUrl(activeNodeId,{source:'quickbar'});
+      break;
     case 'add-child':
       if(activeNodeId && nb(activeNodeId)){
         snapshot();
@@ -4962,12 +5033,15 @@ function getQuickbarConfig(){
     ];
   }
   if(activeNodeId && nb(activeNodeId)){
-    return [
+    const activeNode=nb(activeNodeId);
+    const items=[
       {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
       {id:'qb-child',label:'子を追加',action:'add-child'},
-      {id:'qb-connect',label:'つなぐ',action:'connect'},
-      {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+      {id:'qb-connect',label:'つなぐ',action:'connect'}
     ];
+    if(getNodeRelatedUrl(activeNode)) items.push({id:'qb-link',label:'リンク',action:'open-related-url'});
+    items.push({id:'qb-delete',label:'消す',action:'delete',tone:'danger'});
+    return items;
   }
   return [];
 }
@@ -5128,6 +5202,7 @@ function updateQuickbar(){
     'qb-edit':document.getElementById('qb-edit'),
     'qb-child':document.getElementById('qb-child'),
     'qb-connect':document.getElementById('qb-connect'),
+    'qb-link':document.getElementById('qb-link'),
     'qb-fit':document.getElementById('qb-fit'),
     'qb-stack-right':document.getElementById('qb-stack-right'),
     'qb-grid-right':document.getElementById('qb-grid-right'),
@@ -5712,6 +5787,53 @@ function draw(){
     const favoriteSize=NODE_FAVORITE_ICON_SIZE;
     const favoriteX=n.w/2-NODE_INNER_PAD_X-favoriteSize-(hasVisibleChildren(n.id) && !meta?.presentationMode?28:0);
     const favoriteY=headerTop+Math.max(0,(NODE_NUMBER_BADGE_HEIGHT-favoriteSize)/2);
+    const linkUrl=getNodeRelatedUrl(n);
+    const topActionSize=16;
+    const topActionGap=6;
+
+    if(!meta?.presentationMode && linkUrl){
+      const linkGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
+      linkGroup.setAttribute('data-id',n.id);
+      linkGroup.setAttribute('data-action','open-url');
+      linkGroup.style.cursor='pointer';
+
+      const linkX=favoriteX-topActionSize-6;
+      const linkY=favoriteY;
+
+      const linkTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      linkTap.setAttribute('x',linkX-4);
+      linkTap.setAttribute('y',linkY-4);
+      linkTap.setAttribute('width',topActionSize+8);
+      linkTap.setAttribute('height',topActionSize+8);
+      linkTap.setAttribute('rx','8');
+      linkTap.setAttribute('fill','rgba(0,0,0,0)');
+      linkGroup.appendChild(linkTap);
+
+      const linkBox=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      linkBox.setAttribute('x',linkX);
+      linkBox.setAttribute('y',linkY);
+      linkBox.setAttribute('width',topActionSize);
+      linkBox.setAttribute('height',topActionSize);
+      linkBox.setAttribute('rx','5');
+      linkBox.setAttribute('fill','rgba(10,14,20,.94)');
+      linkBox.setAttribute('stroke','rgba(143,155,173,.42)');
+      linkBox.setAttribute('stroke-width','1.2');
+      linkGroup.appendChild(linkBox);
+
+      const linkText=document.createElementNS('http://www.w3.org/2000/svg','text');
+      linkText.setAttribute('x',linkX+8);
+      linkText.setAttribute('y',linkY+8.4);
+      linkText.setAttribute('text-anchor','middle');
+      linkText.setAttribute('dominant-baseline','middle');
+      linkText.setAttribute('font-size','10.5');
+      linkText.setAttribute('font-weight','800');
+      linkText.setAttribute('fill','#e7f7ff');
+      linkText.setAttribute('pointer-events','none');
+      linkText.textContent='↗';
+      linkGroup.appendChild(linkText);
+
+      g.appendChild(linkGroup);
+    }
 
     if(!meta?.presentationMode){
     const doneGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -5720,7 +5842,7 @@ function draw(){
     doneGroup.style.cursor='pointer';
 
     const boxSize=16;
-    const boxX=favoriteX-boxSize-6;
+    const boxX=favoriteX-boxSize-6-(linkUrl ? (topActionSize+topActionGap) : 0);
     const boxY=favoriteY;
 
     const doneTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -5757,7 +5879,7 @@ function draw(){
     g.appendChild(doneGroup);
     }
 
-    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){
+    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){
       const tagBg=document.createElementNS('http://www.w3.org/2000/svg','rect');
       tagBg.setAttribute('x',-28);
       tagBg.setAttribute('y',n.h/2+4);
@@ -5829,6 +5951,8 @@ function openEp(id){
 
   epl.value=n.label;
   eps.value=n.subtext||'';
+  if(epu) epu.value=getNodeRelatedUrl(n);
+  refreshEpUrlUi();
   epst.value=n.status||'none';
   epfm.value=n.fitMode||'shrink';
   epp.value=n.color.fill;
@@ -5899,6 +6023,7 @@ function tryCommitNodeEdit(){
   snapshot();
   n.label=epl.value.trim()||'新規案件';
   n.subtext=eps.value.trim();
+  n.relatedUrl=normalizeRelatedUrl(epu?.value||'');
   applyNodeStatusWithChildCompletion(n,epst.value,epst.value==='done' ? getChildrenMap() : null);
   n.fitMode=epfm.value;
   n.color={...epc};
@@ -5977,6 +6102,12 @@ NL.addEventListener('mousedown',e=>{
   if(toggle){
     e.stopPropagation();
     toggleCollapse(toggle.dataset.id);
+    return;
+  }
+  const linkTrigger=e.target.closest('[data-action="open-url"]');
+  if(linkTrigger){
+    e.stopPropagation();
+    openNodeRelatedUrl(linkTrigger.dataset.id,{source:'node-badge'});
     return;
   }
   const doneToggle=e.target.closest('[data-action="toggle-done"]');
@@ -6073,12 +6204,14 @@ NL.addEventListener('contextmenu',e=>{
   const cChild=document.getElementById('c-child');
   const cToggle=document.getElementById('c-toggle');
   const cDelete=document.getElementById('c-del');
+  const cLink=document.getElementById('c-link');
   const cFocus=document.getElementById('c-focus');
   const cHr=cm.querySelector('hr');
   if(cEdit) cEdit.style.display='none';
   if(cChild) cChild.style.display='none';
   if(cToggle) cToggle.style.display='none';
   if(cDelete) cDelete.style.display='none';
+  if(cLink) cLink.style.display=getNodeRelatedUrl(id)?'block':'none';
   if(cHr) cHr.style.display='none';
   if(cFocus){
     cFocus.style.display='block';
@@ -6127,7 +6260,7 @@ EL.addEventListener('contextmenu',e=>{
   e.preventDefault();
   e.stopPropagation();
   cm.style.display='none';
-  ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
+  ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   clearSelection();
   selectedEdgeId=g.dataset.eid;
   draw();
@@ -6263,7 +6396,7 @@ document.addEventListener('mousedown',e=>{
   if(!flushOpenEditors(e.target)) return;
   if(!cm.contains(e.target)){
     cm.style.display='none';
-    ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
+    ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
     const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   }
 });
@@ -6271,7 +6404,7 @@ document.addEventListener('mousedown',e=>{
 document.getElementById('c-edit').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   openEp(id);
 });
 document.getElementById('c-child').addEventListener('mousedown',e=>{
@@ -6279,29 +6412,34 @@ document.getElementById('c-child').addEventListener('mousedown',e=>{
   if(!nb(cid)) return;
   snapshot();
   const child=createChildNode(cid,{status:'none',fitMode:'shrink'});
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   draw();
   if(child) openEp(child.id);
 });
 document.getElementById('c-toggle').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   toggleCollapse(id);
 });
 document.getElementById('c-focus').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   if(!nb(id)) return;
   toggleFocusMode(true,{seedId:id,silent:false});
+});
+document.getElementById('c-link').addEventListener('mousedown',e=>{
+  e.stopPropagation();
+  if(cid) openNodeRelatedUrl(cid,{source:'contextmenu'});
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
 });
 document.getElementById('c-del').addEventListener('mousedown',e=>{
   e.stopPropagation();
   snapshot();
   const ids=isSelected(cid) && selectedNodeIds.size>1 ? [...selectedNodeIds] : [cid];
   deleteNodes(ids);
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   draw();
 });
 
@@ -6395,6 +6533,17 @@ eepl.addEventListener('keydown',e=>{
   ep.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
   eep.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
 });
+if(epu){
+  epu.addEventListener('input',refreshEpUrlUi);
+  epu.addEventListener('blur',refreshEpUrlUi);
+}
+if(epuOpen){
+  epuOpen.addEventListener('click',e=>{
+    e.stopPropagation();
+    const tempNode={relatedUrl:normalizeRelatedUrl(epu?.value||'')};
+    if(!openNodeRelatedUrl(tempNode,{source:'editor'})) refreshEpUrlUi();
+  });
+}
 document.getElementById('ep-cn').addEventListener('click',e=>{e.stopPropagation();closeEp();});
 document.getElementById('ep-ok').addEventListener('click',e=>{e.stopPropagation();commitNodeEdit();});
 document.getElementById('eep-cn').addEventListener('click',e=>{e.stopPropagation();closeEep();});
@@ -7039,7 +7188,7 @@ function buildExportObject(options={}){
     schemaVersion:'1.0',
     meta,
     nodes:exportNodes.map(n=>({
-      id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
+      id:n.id,label:n.label,subtext:n.subtext,relatedUrl:getNodeRelatedUrl(n)||undefined,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
       x:Math.round(n.x),y:Math.round(n.y),color:n.color
     })),
     edges:exportEdges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
@@ -7121,6 +7270,7 @@ function buildShareObject(options={}){
         i:n.id,
         l:n.label,
         s:n.subtext||undefined,
+        u:getNodeRelatedUrl(n)||undefined,
         x:roundToStep(n.x, coordStep),
         y:roundToStep(n.y, coordStep),
         o:n.order!==1 ? n.order : undefined,
@@ -7153,6 +7303,7 @@ function expandCompactShareObject(obj){
       id:n.i || `n${idx+1}`,
       label:n.l || '新規案件',
       subtext:n.s || '',
+      relatedUrl:n.u || '',
       status:'none',
       collapsed:!!n.k,
       fitMode:n.w ? 'wrap' : 'shrink',
@@ -7398,7 +7549,7 @@ function setIoOpen(open){
 function toggleIo(){
   setIoOpen(!appEl.classList.contains('io-open'));
 }
-['qb-edit','qb-child','qb-connect','qb-fit','qb-stack-right','qb-grid-right','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
+['qb-edit','qb-child','qb-connect','qb-link','qb-fit','qb-stack-right','qb-grid-right','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
   const btn=document.getElementById(id);
   if(!btn) return;
   btn.addEventListener('click',()=>{
