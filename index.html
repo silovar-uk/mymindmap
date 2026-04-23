@@ -7795,53 +7795,21 @@ function getExportDateForFilename(){
 function getImageExportFilename(ext){
   return `mindmap_${getSafeMapTitleForFilename()}_${getExportDateForFilename()}.${ext}`;
 }
-function getSvgExportContentBounds(){
-  const boxes=[];
-  [EL,NL].forEach(group=>{
-    if(!group) return;
-    try{
-      const box=group.getBBox();
-      if(box && Number.isFinite(box.x) && Number.isFinite(box.y) && Number.isFinite(box.width) && Number.isFinite(box.height) && (box.width>0 || box.height>0)){
-        boxes.push(box);
-      }
-    }catch(_e){}
-  });
-  if(!boxes.length){
-    return {x:0,y:0,width:Math.max(1,sv.clientWidth||1),height:Math.max(1,sv.clientHeight||1)};
-  }
-  const left=Math.min(...boxes.map(box=>box.x));
-  const top=Math.min(...boxes.map(box=>box.y));
-  const right=Math.max(...boxes.map(box=>box.x+box.width));
-  const bottom=Math.max(...boxes.map(box=>box.y+box.height));
-  return {x:left,y:top,width:Math.max(1,right-left),height:Math.max(1,bottom-top)};
-}
 function getSvgExportString(){
   const clone=sv.cloneNode(true);
-  const bounds=getSvgExportContentBounds();
-  const padding=32;
-  const titleHeight=meta.title?34:0;
-  const exportWidth=Math.max(1,Math.ceil(bounds.width+padding*2));
-  const exportHeight=Math.max(1,Math.ceil(bounds.height+padding*2+titleHeight));
-  const offsetX=padding-bounds.x;
-  const offsetY=padding+titleHeight-bounds.y;
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  clone.setAttribute('width',exportWidth);
-  clone.setAttribute('height',exportHeight);
-  clone.setAttribute('viewBox',`0 0 ${exportWidth} ${exportHeight}`);
-  const cloneEL=clone.querySelector('#EL');
-  const cloneNL=clone.querySelector('#NL');
-  const exportTransform=`translate(${offsetX},${offsetY}) scale(1)`;
-  if(cloneEL) cloneEL.setAttribute('transform',exportTransform);
-  if(cloneNL) cloneNL.setAttribute('transform',exportTransform);
+  clone.setAttribute('width',sv.clientWidth);
+  clone.setAttribute('height',sv.clientHeight);
+  clone.setAttribute('viewBox',`0 0 ${sv.clientWidth} ${sv.clientHeight}`);
   const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
   bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',exportWidth);
-  bg.setAttribute('height',exportHeight);
+  bg.setAttribute('width',sv.clientWidth);
+  bg.setAttribute('height',sv.clientHeight);
   bg.setAttribute('fill','#fafafa');
   clone.insertBefore(bg, clone.firstChild);
   if(meta.title){
     const title=document.createElementNS('http://www.w3.org/2000/svg','text');
-    title.setAttribute('x',String(padding)); title.setAttribute('y','28');
+    title.setAttribute('x','18'); title.setAttribute('y','28');
     title.setAttribute('font-size','16'); title.setAttribute('font-weight','700');
     title.setAttribute('fill','#111827');
     title.textContent=meta.title;
@@ -7862,15 +7830,13 @@ document.getElementById('b-png').addEventListener('click',()=>{
   const url=URL.createObjectURL(svgBlob);
   img.onload=()=>{
     const canvas=document.createElement('canvas');
-    const width=Math.max(1,Math.round(img.naturalWidth||img.width||sv.clientWidth||1));
-    const height=Math.max(1,Math.round(img.naturalHeight||img.height||sv.clientHeight||1));
-    canvas.width=width*2;
-    canvas.height=height*2;
+    canvas.width=sv.clientWidth*2;
+    canvas.height=sv.clientHeight*2;
     const ctx=canvas.getContext('2d');
     ctx.scale(2,2);
     ctx.fillStyle='#fafafa';
-    ctx.fillRect(0,0,width,height);
-    ctx.drawImage(img,0,0,width,height);
+    ctx.fillRect(0,0,sv.clientWidth,sv.clientHeight);
+    ctx.drawImage(img,0,0,sv.clientWidth,sv.clientHeight);
     canvas.toBlob(blob=>{
       if(blob) downloadBlob(blob,getImageExportFilename('png'));
       URL.revokeObjectURL(url);
@@ -11716,7 +11682,7 @@ html,body{
       if(first && first.tagName && first.tagName.toLowerCase() === 'rect'){
         first.setAttribute('fill', '#05070b');
       }
-      const title = svg.querySelector('text[y="28"]');
+      const title = svg.querySelector('text[x="18"][y="28"]');
       if(title) title.setAttribute('fill', '#f6f3ed');
     }
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
@@ -11744,8 +11710,8 @@ html,body{
       const url = URL.createObjectURL(svgBlob);
       img.onload = ()=>{
         const canvas = document.createElement('canvas');
-        const width = Math.max(1, Math.round(img.naturalWidth || img.width || ((window.sv && sv.clientWidth) ? sv.clientWidth : 1)));
-        const height = Math.max(1, Math.round(img.naturalHeight || img.height || ((window.sv && sv.clientHeight) ? sv.clientHeight : 1)));
+        const width = (window.sv && sv.clientWidth) ? sv.clientWidth : img.width;
+        const height = (window.sv && sv.clientHeight) ? sv.clientHeight : img.height;
         canvas.width = width * 2;
         canvas.height = height * 2;
         const ctx = canvas.getContext('2d');
@@ -13449,6 +13415,366 @@ body.dedication-modal-open #quickbar{display:none !important;}
   document.addEventListener('click', ensureLegacyAliases, true);
   window.addEventListener('focus', ensureLegacyAliases);
   setInterval(ensureLegacyAliases, 400);
+})();
+</script>
+
+
+<script id="patch-v1-8-19-partial-arrange-and-export">
+(()=>{
+  const PARTIAL_ROW_GAP = 18;
+  const PARTIAL_COL_GAP = 28;
+  const PARTIAL_RIGHT_GAP = 74;
+
+  function safeNodesFromIds(ids){
+    return (ids||[]).map(id=>typeof nb==='function' ? nb(id) : null).filter(Boolean);
+  }
+
+  function getChildArrangeScopeForParent(parentId){
+    if(!(typeof nb==='function' && typeof getHierarchyMaps==='function')) return {type:'invalid',message:'階層情報を取得できません'};
+    const parent=nb(parentId);
+    if(!parent) return {type:'invalid',message:'親ノードが見つかりません'};
+    const hierarchy=getHierarchyMaps();
+    const targetIds=(hierarchy.childMap[parentId]||[]).filter(id=>nb(id)).sort(hierarchy.compareIds);
+    if(targetIds.length<2) return {type:'invalid',message:'子ノードが2つ以上ある親を選ぶと整えられます'};
+    return {
+      type:'children-of-parent',
+      parentId,
+      parent,
+      targetIds,
+      targets:safeNodesFromIds(targetIds),
+      compareIds:hierarchy.compareIds,
+      selectedOnly:false,
+      selectedIncludesParent:true
+    };
+  }
+
+  function resolveArrangeScope(){
+    if(!(typeof nb==='function' && typeof getHierarchyMaps==='function')) return {type:'invalid',message:'階層情報を取得できません'};
+    const hierarchy=getHierarchyMaps();
+    const compareIds=hierarchy.compareIds;
+    const selected=[...(selectedNodeIds||new Set())].filter(id=>nb(id));
+    if(!selected.length) return {type:'invalid',message:'ノードを選択してください'};
+
+    if(selected.length===1){
+      return getChildArrangeScopeForParent(selected[0]);
+    }
+
+    const directParentId=selected.find(candidate=>selected.every(other=>other===candidate || hierarchy.parentMap[other]===candidate));
+    if(directParentId){
+      const targetIds=selected.filter(id=>id!==directParentId && hierarchy.parentMap[id]===directParentId).sort(compareIds);
+      if(targetIds.length<2) return {type:'invalid',message:'親の子ノードを2つ以上選ぶと整えられます'};
+      return {
+        type:'children-of-parent',
+        parentId:directParentId,
+        parent:nb(directParentId),
+        targetIds,
+        targets:safeNodesFromIds(targetIds),
+        compareIds,
+        selectedOnly:true,
+        selectedIncludesParent:true
+      };
+    }
+
+    const parentIds=[...new Set(selected.map(id=>hierarchy.parentMap[id]??null))];
+    if(parentIds.length!==1) return {type:'invalid',message:'今は同じ親のノードだけ整えられます'};
+    const parentId=parentIds[0];
+    if(!parentId || !nb(parentId)) return {type:'invalid',message:'ルート直下の複数選択はまだ未対応です'};
+    const targetIds=[...selected].sort(compareIds);
+    if(targetIds.length<2) return {type:'invalid',message:'2つ以上選ぶと整えられます'};
+    return {
+      type:'selected-siblings',
+      parentId,
+      parent:nb(parentId),
+      targetIds,
+      targets:safeNodesFromIds(targetIds),
+      compareIds,
+      selectedOnly:true,
+      selectedIncludesParent:false
+    };
+  }
+
+  function applyScopedArrange(mode='stack-right', explicitScope=null){
+    const scope=explicitScope || resolveArrangeScope();
+    if(!scope || scope.type==='invalid'){
+      showToast(scope?.message || '整列対象を決められませんでした','warn');
+      return false;
+    }
+    const {parent,targets,type}=scope;
+    if(!parent || !targets || targets.length<2){
+      showToast('整列対象が足りません','warn');
+      return false;
+    }
+    const numberMap=typeof getOutlineNumberMap==='function' ? getOutlineNumberMap() : {};
+    [parent,...targets].forEach(node=>{ if(typeof updateNodeMetrics==='function') updateNodeMetrics(node,numberMap); });
+    const parentRect=typeof getNodeWorldRect==='function' ? getNodeWorldRect(parent) : {right:parent.x+(parent.w||0)/2};
+    const currentBounds=typeof getNodeBoundsWorld==='function' ? getNodeBoundsWorld(targets) : null;
+    const baseLeft=(parentRect?.right || parent.x) + PARTIAL_RIGHT_GAP;
+    const baseCy=currentBounds?.cy ?? parent.y;
+
+    if(typeof snapshot==='function') snapshot();
+
+    if(mode==='stack-right'){
+      const totalHeight=targets.reduce((sum,node)=>sum+(node.h||0),0)+Math.max(0,targets.length-1)*PARTIAL_ROW_GAP;
+      let cursorTop=baseCy-totalHeight/2;
+      targets.forEach(node=>{
+        node.x=baseLeft + (node.w||0)/2;
+        node.y=cursorTop + (node.h||0)/2;
+        cursorTop += (node.h||0) + PARTIAL_ROW_GAP;
+      });
+    }else if(mode==='grid-right'){
+      const rows=[];
+      for(let i=0;i<targets.length;i+=2) rows.push(targets.slice(i,i+2));
+      const colWidths=[0,0];
+      const rowHeights=rows.map(row=>{
+        row.forEach((node,colIndex)=>{ colWidths[colIndex]=Math.max(colWidths[colIndex]||0,node.w||0); });
+        return Math.max(...row.map(node=>node.h||0));
+      });
+      const totalHeight=rowHeights.reduce((sum,h)=>sum+h,0)+Math.max(0,rowHeights.length-1)*PARTIAL_ROW_GAP;
+      const colLefts=[baseLeft, baseLeft + (colWidths[0]||0) + PARTIAL_COL_GAP];
+      let cursorTop=baseCy-totalHeight/2;
+      rows.forEach((row,rowIndex)=>{
+        const rowHeight=rowHeights[rowIndex]||0;
+        row.forEach((node,colIndex)=>{
+          node.x=(colLefts[colIndex]||baseLeft) + (node.w||0)/2;
+          node.y=cursorTop + rowHeight/2;
+        });
+        cursorTop += rowHeight + PARTIAL_ROW_GAP;
+      });
+    }else{
+      return false;
+    }
+
+    if(typeof renderNow==='function') renderNow();
+    if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts();
+    const message = mode==='grid-right'
+      ? (type==='children-of-parent' ? '子ノードだけ2列で整えました' : '選択ノードだけ2列で整えました')
+      : (type==='children-of-parent' ? '子ノードだけ整えました' : '選択ノードだけ整えました');
+    showToast(message);
+    return true;
+  }
+
+  function repositionQuickbarPatched(){
+    const quickbar=document.getElementById('quickbar');
+    if(!quickbar || quickbar.style.display==='none') return;
+    if(typeof getSelectionScreenAnchor!=='function' || !window.cw) return;
+    const anchor=(selectedNodeIds?.size || window.selectedEdgeId || (window.activeNodeId && typeof nb==='function' && nb(window.activeNodeId)))
+      ? getSelectionScreenAnchor()
+      : {x:(cw.clientWidth||0)/2,y:(cw.clientHeight||0)-66};
+    if(!anchor) return;
+    const cwRect=cw.getBoundingClientRect();
+    const qbRect={w:quickbar.offsetWidth||280,h:quickbar.offsetHeight||40};
+    let left=anchor.x-qbRect.w/2;
+    let top=anchor.y-54;
+    left=Math.max(10,Math.min(cwRect.width-qbRect.w-10,left));
+    if(top<10) top=Math.min(cwRect.height-qbRect.h-10, anchor.y+18);
+    quickbar.style.left=left+'px';
+    quickbar.style.top=top+'px';
+  }
+
+  function patchQuickbarArrange(){
+    if(typeof window.runQuickbarAction==='function' && !window.runQuickbarAction.__partialArrangePatched){
+      const original=window.runQuickbarAction;
+      window.runQuickbarAction=function(action){
+        if(action==='children-stack-right' || action==='selection-stack-right'){
+          applyScopedArrange('stack-right');
+          return;
+        }
+        if(action==='children-grid-right' || action==='selection-grid-right'){
+          applyScopedArrange('grid-right');
+          return;
+        }
+        return original.apply(this, arguments);
+      };
+      window.runQuickbarAction.__partialArrangePatched=true;
+    }
+    if(typeof window.updateQuickbar==='function' && !window.updateQuickbar.__partialArrangePatched){
+      const original=window.updateQuickbar;
+      window.updateQuickbar=function(){
+        const result=original.apply(this, arguments);
+        const quickbar=document.getElementById('quickbar');
+        const stackBtn=document.getElementById('qb-stack-right');
+        const gridBtn=document.getElementById('qb-grid-right');
+        if(!quickbar || !stackBtn || !gridBtn || quickbar.style.display==='none') return result;
+        const scope=resolveArrangeScope();
+        if(scope.type==='children-of-parent'){
+          stackBtn.style.display='';
+          gridBtn.style.display='';
+          stackBtn.textContent='子を整える';
+          gridBtn.textContent='子を2列で整える';
+          stackBtn.dataset.action='children-stack-right';
+          gridBtn.dataset.action='children-grid-right';
+          stackBtn.classList.add('primary');
+          repositionQuickbarPatched();
+        }else if(scope.type==='selected-siblings'){
+          stackBtn.style.display='';
+          gridBtn.style.display='';
+          stackBtn.textContent='選択だけ整える';
+          gridBtn.textContent='2列で整える';
+          stackBtn.dataset.action='selection-stack-right';
+          gridBtn.dataset.action='selection-grid-right';
+          repositionQuickbarPatched();
+        }
+        return result;
+      };
+      window.updateQuickbar.__partialArrangePatched=true;
+    }
+  }
+
+  function ensureContextArrangeItems(){
+    const cm=document.getElementById('cm');
+    if(!cm) return {};
+    let stack=document.getElementById('c-arrange-children');
+    let grid=document.getElementById('c-arrange-children-grid');
+    if(!stack){
+      stack=document.createElement('div');
+      stack.id='c-arrange-children';
+      stack.textContent='この子階層を整える';
+      const focus=document.getElementById('c-focus');
+      if(focus && focus.parentNode===cm) focus.insertAdjacentElement('afterend', stack);
+      else cm.insertBefore(stack, cm.querySelector('hr'));
+    }
+    if(!grid){
+      grid=document.createElement('div');
+      grid.id='c-arrange-children-grid';
+      grid.textContent='この子階層を2列で整える';
+      stack.insertAdjacentElement('afterend', grid);
+    }
+    if(!stack.dataset.bound){
+      const bind=(el,mode)=>{
+        const handler=(e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          const parentId=(typeof cid!=='undefined' && cid) ? cid : null;
+          cm.style.display='none';
+          if(!parentId) return;
+          const scope=getChildArrangeScopeForParent(parentId);
+          applyScopedArrange(mode, scope);
+        };
+        el.addEventListener('mousedown',handler);
+        el.addEventListener('click',handler);
+      };
+      bind(stack,'stack-right');
+      bind(grid,'grid-right');
+      stack.dataset.bound='1';
+      grid.dataset.bound='1';
+    }
+    return {stack,grid};
+  }
+
+  function syncContextArrangeItems(){
+    const items=ensureContextArrangeItems();
+    const parentId=(typeof cid!=='undefined' && cid) ? cid : null;
+    const show=parentId ? getChildArrangeScopeForParent(parentId).type!=='invalid' : false;
+    if(items.stack) items.stack.style.display=show?'block':'none';
+    if(items.grid) items.grid.style.display=show?'block':'none';
+  }
+
+  function patchContextMenuArrange(){
+    const nl=window.NL || document.getElementById('NL');
+    if(!nl || nl.dataset.partialArrangeContextPatched==='1') return;
+    nl.dataset.partialArrangeContextPatched='1';
+    nl.addEventListener('contextmenu',()=>{ setTimeout(syncContextArrangeItems,0); });
+  }
+
+  function patchFullPngExport(){
+    function getSvgExportContentBounds(){
+      const groups=[window.EL || document.getElementById('EL'), window.NL || document.getElementById('NL')].filter(Boolean);
+      const boxes=[];
+      groups.forEach(group=>{
+        try{
+          const box=group.getBBox();
+          if(box && Number.isFinite(box.x) && Number.isFinite(box.y) && Number.isFinite(box.width) && Number.isFinite(box.height) && (box.width>0 || box.height>0)) boxes.push(box);
+        }catch(_e){}
+      });
+      const svg=window.sv || document.getElementById('sv');
+      if(!boxes.length){
+        return {x:0,y:0,width:Math.max(1,svg?.clientWidth||1),height:Math.max(1,svg?.clientHeight||1)};
+      }
+      const left=Math.min(...boxes.map(box=>box.x));
+      const top=Math.min(...boxes.map(box=>box.y));
+      const right=Math.max(...boxes.map(box=>box.x+box.width));
+      const bottom=Math.max(...boxes.map(box=>box.y+box.height));
+      return {x:left,y:top,width:Math.max(1,right-left),height:Math.max(1,bottom-top)};
+    }
+    const oldGetSvg=window.getSvgExportString;
+    if(typeof oldGetSvg==='function' && !oldGetSvg.__fullExportPatched){
+      const patched=function(){
+        const svg=window.sv || document.getElementById('sv');
+        const clone=svg.cloneNode(true);
+        const bounds=getSvgExportContentBounds();
+        const padding=32;
+        const titleHeight=(window.meta && meta.title)?34:0;
+        const exportWidth=Math.max(1,Math.ceil(bounds.width+padding*2));
+        const exportHeight=Math.max(1,Math.ceil(bounds.height+padding*2+titleHeight));
+        const offsetX=padding-bounds.x;
+        const offsetY=padding+titleHeight-bounds.y;
+        clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+        clone.setAttribute('width',exportWidth);
+        clone.setAttribute('height',exportHeight);
+        clone.setAttribute('viewBox',`0 0 ${exportWidth} ${exportHeight}`);
+        const cloneEL=clone.querySelector('#EL');
+        const cloneNL=clone.querySelector('#NL');
+        const exportTransform=`translate(${offsetX},${offsetY}) scale(1)`;
+        if(cloneEL) cloneEL.setAttribute('transform',exportTransform);
+        if(cloneNL) cloneNL.setAttribute('transform',exportTransform);
+        const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('x','0'); bg.setAttribute('y','0');
+        bg.setAttribute('width',exportWidth); bg.setAttribute('height',exportHeight);
+        bg.setAttribute('fill','#fafafa');
+        clone.insertBefore(bg, clone.firstChild);
+        if(window.meta && meta.title){
+          const title=document.createElementNS('http://www.w3.org/2000/svg','text');
+          title.setAttribute('x',String(padding)); title.setAttribute('y','28');
+          title.setAttribute('font-size','16'); title.setAttribute('font-weight','700');
+          title.setAttribute('fill','#111827'); title.textContent=meta.title; clone.appendChild(title);
+        }
+        return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(clone);
+      };
+      patched.__fullExportPatched=true;
+      window.getSvgExportString=patched;
+      try{ getSvgExportString = patched; }catch(_e){}
+    }
+    const pngBtn=document.getElementById('b-png');
+    if(pngBtn && pngBtn.dataset.fullExportPatched!=='1'){
+      const btn=pngBtn.cloneNode(true);
+      btn.dataset.fullExportPatched='1';
+      pngBtn.parentNode.replaceChild(btn,pngBtn);
+      btn.addEventListener('click',()=>{
+        if(typeof ensureMapTitle==='function' && !ensureMapTitle()) return;
+        const bgMode=(document.getElementById('png-bg-mode')?.value || localStorage.getItem('mindmap_png_bg_mode') || 'black') === 'transparent' ? 'transparent' : 'black';
+        const svgString=(typeof buildPngSvgString==='function') ? buildPngSvgString(bgMode) : getSvgExportString();
+        const img=new Image();
+        const svgBlob=new Blob([svgString],{type:'image/svg+xml;charset=utf-8'});
+        const url=URL.createObjectURL(svgBlob);
+        img.onload=()=>{
+          const width=Math.max(1,Math.round(img.naturalWidth||img.width||1));
+          const height=Math.max(1,Math.round(img.naturalHeight||img.height||1));
+          const canvas=document.createElement('canvas');
+          canvas.width=width*2; canvas.height=height*2;
+          const ctx=canvas.getContext('2d');
+          ctx.scale(2,2);
+          if(bgMode==='black'){
+            ctx.fillStyle='#05070b';
+            ctx.fillRect(0,0,width,height);
+          }else{
+            ctx.clearRect(0,0,width,height);
+          }
+          ctx.drawImage(img,0,0,width,height);
+          canvas.toBlob(blob=>{
+            if(blob && typeof downloadBlob==='function' && typeof getImageExportFilename==='function') downloadBlob(blob,getImageExportFilename('png'));
+            URL.revokeObjectURL(url);
+          },'image/png');
+        };
+        img.onerror=()=>URL.revokeObjectURL(url);
+        img.src=url;
+      });
+    }
+  }
+
+  patchQuickbarArrange();
+  patchContextMenuArrange();
+  patchFullPngExport();
+  try{ if(typeof updateQuickbar==='function') updateQuickbar(); }catch(_e){}
 })();
 </script>
 
