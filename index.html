@@ -206,6 +206,14 @@ svg{width:100%;height:100%;display:block;background:#fafafa}
 .epft{display:flex;gap:6px;justify-content:flex-end}
 .epft button{font-size:12px;padding:5px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:transparent;color:#333}
 .primary-btn{background:#dbeafe !important;color:#1d4ed8 !important;border-color:#93c5fd !important}
+.ep-url-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ep-url-row input{flex:1;min-width:0;margin-bottom:0 !important}
+#ep-url-open{flex:0 0 auto;min-height:36px;padding:6px 12px;white-space:nowrap}
+#ep-url-open:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:720px){
+  .ep-url-row{gap:6px}
+  #ep-url-open{padding:6px 10px;font-size:11px}
+}
 .mini-note{font-size:11px;color:#777;line-height:1.45;margin:-4px 0 10px}
 #tt{position:absolute;display:none;z-index:80;max-width:240px;background:rgba(17,24,39,.96);color:#fff;border-radius:10px;padding:10px 11px;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none}
 #tt .ttl{font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.35}
@@ -1338,6 +1346,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <div id="c-edit">ノードを編集</div>
       <div id="c-child">子ノードを追加</div>
       <div id="c-toggle">折りたたみ / 展開</div>
+      <div id="c-link">リンクを開く</div>
       <div id="c-focus">この枝に集中</div>
       <hr>
       <div id="c-del" style="color:#dc2626" >消す</div>
@@ -1348,6 +1357,11 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <input id="ep-lbl" type="text" autocomplete="off" spellcheck="false"/>
       <label>補足</label>
       <textarea id="ep-sub" placeholder="補足を入力"></textarea>
+      <label>関連URL</label>
+      <div class="ep-url-row">
+        <input id="ep-url" type="url" autocomplete="off" spellcheck="false" placeholder="https://example.com"/>
+        <button id="ep-url-open" type="button">開く</button>
+      </div>
       <label>状態</label>
       <select id="ep-status">
         <option value="none">未完了</option>
@@ -1398,6 +1412,7 @@ body.mobile-rename-scroll-lock #app{height:100dvh !important}
       <button id="qb-edit" class="primary" type="button">編集</button>
       <button id="qb-child" type="button">子を追加</button>
       <button id="qb-connect" type="button">つなぐ</button>
+      <button id="qb-link" type="button">リンク</button>
       <button id="qb-fit" type="button" style="display:none" aria-hidden="true" tabindex="-1">全体に戻す</button>
       <button id="qb-stack-right" type="button">選択だけ整える</button>
       <button id="qb-grid-right" type="button">2列で整える</button>
@@ -2125,7 +2140,7 @@ const NODE_NUMBER_BADGE_HEIGHT=18;
 
 const LAYOUT_LABELS={radial:'放射',radial_half:'右向き',radial_fan:'扇形',horizontal:'横並び',vertical:'縦並び',outline:'リスト'};
 
-let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:true,showCreatedAt:false,focusMode:false,focusNodeId:null,presentationMode:false};
+let meta={title:'案件マインドマップ',layoutMode:'radial',hideDone:true,showCreatedAt:false,focusMode:false,focusNodeId:null,presentationMode:false,coloringMode:'manual'};
 
 function dk(h,f){return'#'+[1,3,5].map(i=>Math.max(0,Math.round(parseInt(h.slice(i,i+2),16)*f)).toString(16).padStart(2,'0')).join('')}
 function cfh(fill){const[r,g,b]=[1,3,5].map(i=>parseInt(fill.slice(i,i+2),16));const l=0.299*r+0.587*g+0.114*b;return{fill,stroke:dk(fill,l>160?.52:.75),text:dk(fill,l>160?.35:.6)}}
@@ -2178,13 +2193,53 @@ function wrapText(text,maxUnits,maxLines=99){
   if(lines.length===0) lines.push('');
   return lines;
 }
+function normalizeRelatedUrl(value){
+  const raw=String(value||'').trim();
+  if(!raw) return '';
+  if(/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+  if(/^www\./i.test(raw)) return `https://${raw}`;
+  if(/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?(?:[\/?#].*)?$/i.test(raw)) return `https://${raw}`;
+  return raw;
+}
+function canOpenRelatedUrl(value){
+  return /^(https?:\/\/|mailto:|tel:)/i.test(String(value||'').trim());
+}
+function getNodeRelatedUrl(nodeOrId){
+  const node=typeof nodeOrId==='string' ? nb(nodeOrId) : nodeOrId;
+  if(!node) return '';
+  return normalizeRelatedUrl(node.relatedUrl||node.url||'');
+}
+function openNodeRelatedUrl(nodeOrId,{source='ui'}={}){
+  const node=typeof nodeOrId==='string' ? nb(nodeOrId) : nodeOrId;
+  const url=getNodeRelatedUrl(node);
+  if(!url){
+    showToast('関連URLがありません','warn');
+    return false;
+  }
+  if(!canOpenRelatedUrl(url)){
+    showToast('関連URLの形式を確認してください','warn');
+    return false;
+  }
+  try{
+    window.open(url,'_blank','noopener,noreferrer');
+    return true;
+  }catch(err){
+    console.error('[related-url]',source,err);
+    showToast('リンクを開けませんでした','warn');
+    return false;
+  }
+}
+function stripLineBreaks(value){
+  return String(value==null?'':value).split('\r').join('').split('\n').join('');
+}
 function normalizeNode(n){
   const label=(n.label||'新規案件').trim() || '新規案件';
-  const subtext=(n.subtext||'').replace(/\r/g,'').trim();
+  const subtext=stripLineBreaks(n.subtext||'').trim();
   const status=STATUS_META[n.status] ? n.status : 'none';
   const collapsed=!!n.collapsed;
   const fitMode=n.fitMode==='wrap' ? 'wrap' : 'shrink';
   const favorite=!!n.favorite;
+  const relatedUrl=normalizeRelatedUrl(n.relatedUrl||n.url||'');
   const subLines=wrapText(subtext,22,SUBTEXT_MAX_LINES).filter(Boolean);
   const h=Math.max(NODE_H_MIN, NODE_TOP_PAD + 18 + (subLines.length ? NODE_SECTION_GAP + subLines.length*NODE_SUB_LINE_HEIGHT : 0) + NODE_BOTTOM_PAD);
   return {
@@ -2198,6 +2253,7 @@ function normalizeNode(n){
     y:Number.isFinite(n.y)?n.y:0,
     order:normalizeOrderValue(n.order,1),
     favorite,
+    relatedUrl,
     createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
     w:n.w||NODE_W_MIN,
     h:n.h||h,
@@ -2232,13 +2288,16 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.8.7';
-const APP_UPDATED_AT='2026-04-22 15:24 JST';
+const APP_VERSION='1.8.15';
+const APP_UPDATED_AT='2026-04-22 15:57 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.8.15',date:'2026-04-22 15:57 JST',summary:'マップ名と初期ノード名を連動させ、色分けモード中に追加した新規ノードも現在の配色ルールを引き継ぐよう改善。',items:['マップ名入力時は先頭ノードのラベルへ、先頭ノード編集時はマップ名へ反映する双方向同期を追加','初期ノード編集欄では入力中にもマップ名表示へ反映されるようにし、起点ノードとタイトルのズレを減らした','meta.coloringMode を追加し、「ノードを色分け」「線を色分け」を押した時点の配色モードを保持するよう変更','新規の子ノード・同階層ノード・単独ノードは、現在の配色モードに応じて深さ配色または枝配色の色で生成されるよう修正','JSON / 共有URL / 取込時にも coloringMode を保持し、再読込後も新規ノードの色付けルールが維持されるようにした']} ,
+{version:'1.8.11',date:'2026-04-22 15:42 JST',summary:'ノードごとに関連URLを保持できるようにし、編集画面・クイックバー・ノード上バッジからリンクを開けるよう改善。',items:['ノード編集モーダルに関連URL入力欄と「開く」ボタンを追加し、URLをノード単位で保存できるようにした','関連URLは normalizeRelatedUrl で整形し、http(s) / mailto / tel を安全に開ける openNodeRelatedUrl を追加','単一選択時のクイックバーに「リンク」を追加し、関連URLがあるノードだけワンタップで開けるようにした','ノード右上に↗の小バッジを描画し、SVG上から直接リンクを開けるようにした','JSON / 共有URL / コピー用サブツリーでも relatedUrl を保持するようにし、読み書き時のデータ欠落を防いだ','ノードの右クリックメニューにも「リンクを開く」を追加し、関連URLがある時だけ表示するようにした']},
 
+{version:'1.8.10',date:'2026-04-22 15:28 JST',summary:'専心まわりの旧 focusDoc 実装と応急パッチを整理し、dedication ベースの導線とUIに寄せた削減版。',items:['旧 focusDoc アウトライナー本体（style + script）を実行時HTMLから外し、専心は内包マインドマップ側のみを本体として扱うよう整理','v1.8.5 / v1.8.6 の専心応急パッチを削除し、capture 横取りや alias の多重化を減らした','v1.8.2 では専心起動補助を外し、編集画面の readonly 表示整理だけを残して責務を分離','専心導線のUI要素は qb-dedication / ep-dedication / c-dedication へ寄せ、data-command ベースで起動できるよう補強','buildExportObject では dedicationMap を正本として書き出し、互換用 focusMap の書き出しはやめて不要データを削減','focusdoc-modal-open の残骸を整理し、専心表示中は dedication-modal-open / focusmap-modal-open 側で扱うよう調整']},
 {version:'1.8.7',date:'2026-04-22 15:24 JST',summary:'専心まわりを dedication ベースへ整理し、起動導線をコマンド経由で一本化。旧 focusDoc は移行専用に隔離。',items:['専心の内部APIを dedication 系へ統一し、window.openDedication / dispatchMindmapCommand を新設。旧 openFocusDocModal / openFocusMapModal は互換エイリアスとして専心コマンドへ流すだけに整理','クイックバー・右クリック・編集モーダル・F2 の4導線はすべて dispatchMindmapCommand("open-dedication") へ集約し、入口ごとの差分を source 情報だけに限定','各ノードは dedicationMap を正本として保持し、focusMap は互換用エイリアスへ変更。既存 focusMap は自動移行し、旧 focusDoc は起動時/読込時に dedicationMap へ変換して実行時本体から隔離','エクスポート / インポートも dedicationMap を優先するよう補強し、旧 focusDoc / focusMap を読んでも dedicationMap に正規化してから扱うよう変更','起動時の前回復元モーダルにはマップ名を必ず表示し、何のマップを引き継ぐか判断しやすいよう改善','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
   {version:'1.8.4',date:'2026-04-22 14:34 JST',summary:'編集モーダルの状態表示文を撤去し、完了表示トグルを正表示・未チェック既定へ変更。',items:['編集モーダル内の「状態」「文字の表示」と補足説明文を削除し、余計な説明が出ないよう整理','完了表示トグルの文言を「完了を表示」へ変更し、上部バーとモバイル下部バーの両方で表記を統一','チェック状態の意味を反転し、未チェックを既定値として完了ノードは初期状態で非表示になるよう変更','トグル変更時のトースト文言も「表示しました / 非表示にしました」に合わせて整理','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
 {version:'1.8.1',date:'2026-04-22 14:21 JST',summary:'上部操作から折り畳みを一括展開できるようにし、専心マップ側にも同じ導線を追加。',items:['主な操作エリアに「全部開く」ボタンを追加し、メインマップ内で折り畳まれているノードをまとめて展開できるようにした','展開対象がないときはトーストで分かるようにし、対象があるときは Undo できる状態で一括展開するよう対応','専心モード内のツールバーにも「全部開く」を追加し、内包マップ内の折り畳みをまとめて展開できるようにした','専心モード側では展開件数をステータス表示に返し、今の操作結果が分かるよう補強','APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG を最新状態に更新']},
@@ -2402,10 +2461,20 @@ const ep=document.getElementById('ep');
 const eep=document.getElementById('eep');
 const epl=document.getElementById('ep-lbl');
 const eps=document.getElementById('ep-sub');
+const epu=document.getElementById('ep-url');
+const epuOpen=document.getElementById('ep-url-open');
 const epst=document.getElementById('ep-status');
 const epfm=document.getElementById('ep-fitmode');
 const epp=document.getElementById('ep-pick');
 const eph=document.getElementById('ep-hex');
+function refreshEpUrlUi(){
+  if(!epu || !epuOpen) return;
+  const normalized=normalizeRelatedUrl(epu.value);
+  const openable=canOpenRelatedUrl(normalized);
+  epuOpen.disabled=!openable;
+  epuOpen.setAttribute('aria-disabled',openable?'false':'true');
+  epuOpen.title=openable ? '関連URLを開く' : 'https:// などのURLを入力すると開けます';
+}
 const eepl=document.getElementById('eep-lbl');
 const eepFrom=document.getElementById('eep-from');
 const eepTo=document.getElementById('eep-to');
@@ -2589,17 +2658,19 @@ function updateExportOptionsUi(kind=currentExportKind){
 function setInitialTitleNodeSyncArmed(value=true){
   initialTitleNodeSyncArmed=!!value;
 }
-function syncFirstNodeLabelWithTitle(titleValue){
-  if(!initialTitleNodeSyncArmed) return;
-  const firstNode=nodes[0];
+function getPrimaryTitleNode(){
+  return nodes[0] || null;
+}
+function syncFirstNodeLabelWithTitle(titleValue,{redraw=true}={}){
+  const firstNode=getPrimaryTitleNode();
   const nextLabel=String(titleValue||'').trim();
   if(!firstNode || !nextLabel) return;
+  if(String(firstNode.label||'').trim()===nextLabel) return;
   firstNode.label=nextLabel;
-  firstNode.w=Math.max(NODE_W_MIN, firstNode.w||NODE_W_MIN);
-  draw();
+  updateNodeMetrics(firstNode,getOutlineNumberMap());
+  if(redraw && typeof draw==='function') draw();
 }
 function syncTitleWithFirstNodeLabel(labelValue,{lock=false}={}){
-  if(!initialTitleNodeSyncArmed) return;
   const nextTitle=String(labelValue||'').trim();
   if(!nextTitle) return;
   meta.title=nextTitle;
@@ -2607,6 +2678,11 @@ function syncTitleWithFirstNodeLabel(labelValue,{lock=false}={}){
   if(input && input.value!==nextTitle) input.value=nextTitle;
   updateDocumentTitle();
   if(lock) setInitialTitleNodeSyncArmed(false);
+}
+function syncMapTitleAndPrimaryNode(){
+  const rawTitle=String(meta?.title||'').trim();
+  if(!rawTitle) return;
+  syncFirstNodeLabelWithTitle(rawTitle,{redraw:false});
 }
 function renderNow(){
   applyT();
@@ -2661,8 +2737,9 @@ function restoreState(payload){
   nodes=(payload.nodes||[]).map(normalizeNode);
   edges=(payload.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:(payload.meta&&'hideDone' in payload.meta)?!!payload.meta.hideDone:true,showCreatedAt:!!(payload.meta&&payload.meta.showCreatedAt),focusMode:!!(payload.meta&&payload.meta.focusMode),focusNodeId:(payload.meta&&payload.meta.focusNodeId)||null,presentationMode:!!(payload.meta&&payload.meta.presentationMode)};
+  meta={title:(payload.meta&&payload.meta.title)||'案件マインドマップ',layoutMode:(payload.meta&&payload.meta.layoutMode)||'radial',hideDone:(payload.meta&&'hideDone' in payload.meta)?!!payload.meta.hideDone:true,showCreatedAt:!!(payload.meta&&payload.meta.showCreatedAt),focusMode:!!(payload.meta&&payload.meta.focusMode),focusNodeId:(payload.meta&&payload.meta.focusNodeId)||null,presentationMode:!!(payload.meta&&payload.meta.presentationMode),coloringMode:(payload.meta&&payload.meta.coloringMode)||'manual'};
   document.getElementById('map-title').value=meta.title;
+  syncMapTitleAndPrimaryNode();
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
   setInitialTitleNodeSyncArmed(false);
@@ -2694,7 +2771,7 @@ function toW(x,y){return{x:x*vs+vx,y:y*vs+vy}}
 
 function closePanels(){
   cm.style.display='none';
-  ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
+  ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
   const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   closeEp();
   closeEep();
@@ -3144,15 +3221,17 @@ function positionNodeSubtreeNearParent(nodeId,parentId,{anchor=null}={}){
 function createNewNodeDraft(options={}){
   const favorite=Object.prototype.hasOwnProperty.call(options,'favorite') ? !!options.favorite : shouldAutoFavoriteNewNodes();
   return normalizeNode({
-    id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',status:options.status||'none',collapsed:false,
+    id:'__draft__',label:options.label||'新規案件',subtext:options.subtext||'',relatedUrl:options.relatedUrl||'',status:options.status||'none',collapsed:false,
     fitMode:options.fitMode||'shrink',favorite,x:0,y:0,color:options.color||{...PRESETS[nodes.length%PRESETS.length]}
   });
 }
 function createChildNode(parentId, options={}){
   const parent=nb(parentId);
   if(!parent) return null;
+  const dm=calcDepthMap();
+  const childDepth=(Number.isFinite(dm[parentId]) ? dm[parentId] : 0) + 1;
   const draft=createNewNodeDraft({
-    label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...parent.color}
+    label:options.label,subtext:options.subtext,relatedUrl:options.relatedUrl,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||getColorForNewNode({parentId,sourceId:parentId,newDepth:childDepth,fallbackColor:parent.color})
   });
   const pos=findBestInsertPosition({
     parentId,
@@ -3163,7 +3242,7 @@ function createChildNode(parentId, options={}){
   });
   const newId='n'+(nid++);
   const child=normalizeNode({
-    id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    id:newId,label:draft.label,subtext:draft.subtext,relatedUrl:draft.relatedUrl,status:draft.status,collapsed:false,
     fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(child);
@@ -3175,8 +3254,10 @@ function createSiblingNode(sourceId, options={}){
   const source=nb(sourceId);
   if(!source) return null;
   const parentId=getParentId(sourceId);
+  const dm=calcDepthMap();
+  const siblingDepth=Number.isFinite(dm[sourceId]) ? dm[sourceId] : 0;
   const draft=createNewNodeDraft({
-    label:options.label,subtext:options.subtext,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||{...source.color}
+    label:options.label,subtext:options.subtext,relatedUrl:options.relatedUrl,status:options.status||'none',fitMode:options.fitMode||'shrink',color:options.color||getColorForNewNode({parentId,sourceId,newDepth:siblingDepth,fallbackColor:source.color})
   });
   const pos=findBestInsertPosition({
     parentId,
@@ -3187,7 +3268,7 @@ function createSiblingNode(sourceId, options={}){
   });
   const newId='n'+(nid++);
   const sibling=normalizeNode({
-    id:newId,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    id:newId,label:draft.label,subtext:draft.subtext,relatedUrl:draft.relatedUrl,status:draft.status,collapsed:false,
     fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(parentId),color:draft.color
   });
   nodes.push(sibling);
@@ -3198,11 +3279,11 @@ function createSiblingNode(sourceId, options={}){
   return sibling;
 }
 function createStandaloneNode(options={}){
-  const draft=createNewNodeDraft(options);
+  const draft=createNewNodeDraft({...options,color:options.color||getColorForNewNode({parentId:null,sourceId:null,newDepth:0,fallbackColor:options.color||PRESETS[nodes.length%PRESETS.length]})});
   const pos=findBestInsertPosition({anchor:options.anchor||getViewportCenterWorld(),templateNode:draft});
   const id='n'+(nid++);
   const node=normalizeNode({
-    id,label:draft.label,subtext:draft.subtext,status:draft.status,collapsed:false,
+    id,label:draft.label,subtext:draft.subtext,relatedUrl:draft.relatedUrl,status:draft.status,collapsed:false,
     fitMode:draft.fitMode,favorite:draft.favorite,createdAt:Date.now(),x:pos.x,y:pos.y,order:getNextOutlineOrder(null),color:draft.color
   });
   nodes.push(node);
@@ -3223,6 +3304,7 @@ function buildSubtreeClipboardPayload(rootId){
       id:node.id,
       label:node.label,
       subtext:node.subtext,
+      relatedUrl:getNodeRelatedUrl(node)||undefined,
       status:node.status,
       collapsed:!!node.collapsed,
       fitMode:node.fitMode,
@@ -3275,6 +3357,7 @@ function createPastedSubtree(payload,{parentId=null,anchor=null}={}){
     id:'__subtree_root__',
     label:rootSource.label||'新規案件',
     subtext:rootSource.subtext||'',
+    relatedUrl:rootSource.relatedUrl||'',
     status:rootSource.status||'none',
     collapsed:false,
     fitMode:rootSource.fitMode||'shrink',
@@ -3298,6 +3381,7 @@ function createPastedSubtree(payload,{parentId=null,anchor=null}={}){
       id:newId,
       label:sourceNode.label||'新規案件',
       subtext:sourceNode.subtext||'',
+      relatedUrl:sourceNode.relatedUrl||'',
       status:sourceNode.status||'none',
       collapsed:isRoot ? false : !!hasChildren,
       fitMode:sourceNode.fitMode||'shrink',
@@ -3607,7 +3691,8 @@ function parseImportData(raw,{kind}={}){
     showCreatedAt:!!((parsed.meta&&parsed.meta.showCreatedAt)??parsed.showCreatedAt),
     focusMode:!!((parsed.meta&&parsed.meta.focusMode)??parsed.focusMode),
     focusNodeId:((parsed.meta&&parsed.meta.focusNodeId)??parsed.focusNodeId)||null,
-    presentationMode:!!((parsed.meta&&parsed.meta.presentationMode)??parsed.presentationMode)
+    presentationMode:!!((parsed.meta&&parsed.meta.presentationMode)??parsed.presentationMode),
+    coloringMode:((parsed.meta&&parsed.meta.coloringMode)??parsed.coloringMode)||'manual'
   };
   ensureOutlineOrders(nodesNorm,edgesNorm);
   return {nodes:nodesNorm,edges:edgesNorm,meta:metaNorm,importKind:'json'};
@@ -4292,7 +4377,7 @@ function getPathInfo(f,t){
 function showTooltip(n,clientX,clientY){
   const st=STATUS_META[n.status]||STATUS_META.none;
   const displayLabel=getNodeDisplayLabel(n);
-  tt.innerHTML=`<div class="ttl">${escapeHtml(displayLabel)}</div>${n.subtext?`<div class="sub">${escapeHtml(n.subtext)}</div>`:''}${n.status!=='none'?`<div class="st">${escapeHtml((st.icon?st.icon+' ':'')+st.label)}</div>`:''}`;
+  tt.innerHTML=`<div class="ttl">${escapeHtml(displayLabel)}</div>${n.subtext?`<div class="sub">${escapeHtml(n.subtext)}</div>`:''}${getNodeRelatedUrl(n)?`<div class="sub">🔗 ${escapeHtml(shortenText(getNodeRelatedUrl(n).replace(/^https?:\/\//i,''),34))}</div>`:''}${n.status!=='none'?`<div class="st">${escapeHtml((st.icon?st.icon+' ':'')+st.label)}</div>`:''}`;
   const wr=cw.getBoundingClientRect();
   tt.style.display='block';
   let x=clientX-wr.left+14, y=clientY-wr.top+14;
@@ -4541,8 +4626,9 @@ function replaceMapData(d,{toastMessage='マップを読み込みました',skip
   nodes=(d.nodes||[]).map(normalizeNode);
   edges=(d.edges||[]).map(normalizeEdge);
   ensureOutlineOrders(nodes,edges);
-  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:(d.meta&&'hideDone' in d.meta)?!!d.meta.hideDone:true,focusMode:!!(d.meta&&d.meta.focusMode),focusNodeId:(d.meta&&d.meta.focusNodeId)||null,presentationMode:!!(d.meta&&d.meta.presentationMode)};
+  meta={title:(d.meta&&d.meta.title)||'案件マインドマップ',layoutMode:(d.meta&&d.meta.layoutMode)||'radial',hideDone:(d.meta&&'hideDone' in d.meta)?!!d.meta.hideDone:true,focusMode:!!(d.meta&&d.meta.focusMode),focusNodeId:(d.meta&&d.meta.focusNodeId)||null,presentationMode:!!(d.meta&&d.meta.presentationMode),coloringMode:(d.meta&&d.meta.coloringMode)||'manual'};
   document.getElementById('map-title').value=meta.title;
+  syncMapTitleAndPrimaryNode();
   document.getElementById('layout-mode').value=meta.layoutMode;
   updatePresentationUi();
   setInitialTitleNodeSyncArmed(false);
@@ -4621,7 +4707,7 @@ function duplicateActiveNode(){
   const node=activeNodeId && nb(activeNodeId) ? nb(activeNodeId) : null;
   if(!node) return;
   snapshot();
-  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,status:node.status,fitMode:node.fitMode,favorite:false,color:{...node.color}});
+  const copy=createStandaloneNode({label:node.label+' コピー',subtext:node.subtext,relatedUrl:getNodeRelatedUrl(node),status:node.status,fitMode:node.fitMode,favorite:false,color:{...node.color}});
   if(copy){
     copy.x=node.x+Math.max(180,node.w+30);
     copy.y=node.y+30;
@@ -4841,6 +4927,9 @@ function runQuickbarAction(action){
         openEep(selectedEdgeId,center?.x,center?.y);
       }else if(activeNodeId && nb(activeNodeId)) openEp(activeNodeId);
       break;
+    case 'open-related-url':
+      if(activeNodeId && nb(activeNodeId)) openNodeRelatedUrl(activeNodeId,{source:'quickbar'});
+      break;
     case 'add-child':
       if(activeNodeId && nb(activeNodeId)){
         snapshot();
@@ -4961,12 +5050,15 @@ function getQuickbarConfig(){
     ];
   }
   if(activeNodeId && nb(activeNodeId)){
-    return [
+    const activeNode=nb(activeNodeId);
+    const items=[
       {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
       {id:'qb-child',label:'子を追加',action:'add-child'},
-      {id:'qb-connect',label:'つなぐ',action:'connect'},
-      {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
+      {id:'qb-connect',label:'つなぐ',action:'connect'}
     ];
+    if(getNodeRelatedUrl(activeNode)) items.push({id:'qb-link',label:'リンク',action:'open-related-url'});
+    items.push({id:'qb-delete',label:'消す',action:'delete',tone:'danger'});
+    return items;
   }
   return [];
 }
@@ -5127,6 +5219,7 @@ function updateQuickbar(){
     'qb-edit':document.getElementById('qb-edit'),
     'qb-child':document.getElementById('qb-child'),
     'qb-connect':document.getElementById('qb-connect'),
+    'qb-link':document.getElementById('qb-link'),
     'qb-fit':document.getElementById('qb-fit'),
     'qb-stack-right':document.getElementById('qb-stack-right'),
     'qb-grid-right':document.getElementById('qb-grid-right'),
@@ -5711,6 +5804,53 @@ function draw(){
     const favoriteSize=NODE_FAVORITE_ICON_SIZE;
     const favoriteX=n.w/2-NODE_INNER_PAD_X-favoriteSize-(hasVisibleChildren(n.id) && !meta?.presentationMode?28:0);
     const favoriteY=headerTop+Math.max(0,(NODE_NUMBER_BADGE_HEIGHT-favoriteSize)/2);
+    const linkUrl=getNodeRelatedUrl(n);
+    const topActionSize=16;
+    const topActionGap=6;
+
+    if(!meta?.presentationMode && linkUrl){
+      const linkGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
+      linkGroup.setAttribute('data-id',n.id);
+      linkGroup.setAttribute('data-action','open-url');
+      linkGroup.style.cursor='pointer';
+
+      const linkX=favoriteX-topActionSize-6;
+      const linkY=favoriteY;
+
+      const linkTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      linkTap.setAttribute('x',linkX-4);
+      linkTap.setAttribute('y',linkY-4);
+      linkTap.setAttribute('width',topActionSize+8);
+      linkTap.setAttribute('height',topActionSize+8);
+      linkTap.setAttribute('rx','8');
+      linkTap.setAttribute('fill','rgba(0,0,0,0)');
+      linkGroup.appendChild(linkTap);
+
+      const linkBox=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      linkBox.setAttribute('x',linkX);
+      linkBox.setAttribute('y',linkY);
+      linkBox.setAttribute('width',topActionSize);
+      linkBox.setAttribute('height',topActionSize);
+      linkBox.setAttribute('rx','5');
+      linkBox.setAttribute('fill','rgba(10,14,20,.94)');
+      linkBox.setAttribute('stroke','rgba(143,155,173,.42)');
+      linkBox.setAttribute('stroke-width','1.2');
+      linkGroup.appendChild(linkBox);
+
+      const linkText=document.createElementNS('http://www.w3.org/2000/svg','text');
+      linkText.setAttribute('x',linkX+8);
+      linkText.setAttribute('y',linkY+8.4);
+      linkText.setAttribute('text-anchor','middle');
+      linkText.setAttribute('dominant-baseline','middle');
+      linkText.setAttribute('font-size','10.5');
+      linkText.setAttribute('font-weight','800');
+      linkText.setAttribute('fill','#e7f7ff');
+      linkText.setAttribute('pointer-events','none');
+      linkText.textContent='↗';
+      linkGroup.appendChild(linkText);
+
+      g.appendChild(linkGroup);
+    }
 
     if(!meta?.presentationMode){
     const doneGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -5719,7 +5859,7 @@ function draw(){
     doneGroup.style.cursor='pointer';
 
     const boxSize=16;
-    const boxX=favoriteX-boxSize-6;
+    const boxX=favoriteX-boxSize-6-(linkUrl ? (topActionSize+topActionGap) : 0);
     const boxY=favoriteY;
 
     const doneTap=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -5828,6 +5968,8 @@ function openEp(id){
 
   epl.value=n.label;
   eps.value=n.subtext||'';
+  if(epu) epu.value=getNodeRelatedUrl(n);
+  refreshEpUrlUi();
   epst.value=n.status||'none';
   epfm.value=n.fitMode||'shrink';
   epp.value=n.color.fill;
@@ -5898,13 +6040,14 @@ function tryCommitNodeEdit(){
   snapshot();
   n.label=epl.value.trim()||'新規案件';
   n.subtext=eps.value.trim();
+  n.relatedUrl=normalizeRelatedUrl(epu?.value||'');
   applyNodeStatusWithChildCompletion(n,epst.value,epst.value==='done' ? getChildrenMap() : null);
   n.fitMode=epfm.value;
   n.color={...epc};
   updateNodeMetrics(n);
 
-  const firstNode=nodes[0];
-  if(firstNode && firstNode.id===epid && !String(meta.title||'').trim()){
+  const firstNode=getPrimaryTitleNode();
+  if(firstNode && firstNode.id===epid){
     syncTitleWithFirstNodeLabel(n.label,{lock:true});
   }
 
@@ -5976,6 +6119,12 @@ NL.addEventListener('mousedown',e=>{
   if(toggle){
     e.stopPropagation();
     toggleCollapse(toggle.dataset.id);
+    return;
+  }
+  const linkTrigger=e.target.closest('[data-action="open-url"]');
+  if(linkTrigger){
+    e.stopPropagation();
+    openNodeRelatedUrl(linkTrigger.dataset.id,{source:'node-badge'});
     return;
   }
   const doneToggle=e.target.closest('[data-action="toggle-done"]');
@@ -6072,12 +6221,14 @@ NL.addEventListener('contextmenu',e=>{
   const cChild=document.getElementById('c-child');
   const cToggle=document.getElementById('c-toggle');
   const cDelete=document.getElementById('c-del');
+  const cLink=document.getElementById('c-link');
   const cFocus=document.getElementById('c-focus');
   const cHr=cm.querySelector('hr');
   if(cEdit) cEdit.style.display='none';
   if(cChild) cChild.style.display='none';
   if(cToggle) cToggle.style.display='none';
   if(cDelete) cDelete.style.display='none';
+  if(cLink) cLink.style.display=getNodeRelatedUrl(id)?'block':'none';
   if(cHr) cHr.style.display='none';
   if(cFocus){
     cFocus.style.display='block';
@@ -6126,7 +6277,7 @@ EL.addEventListener('contextmenu',e=>{
   e.preventDefault();
   e.stopPropagation();
   cm.style.display='none';
-  ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
+  ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   clearSelection();
   selectedEdgeId=g.dataset.eid;
   draw();
@@ -6262,7 +6413,7 @@ document.addEventListener('mousedown',e=>{
   if(!flushOpenEditors(e.target)) return;
   if(!cm.contains(e.target)){
     cm.style.display='none';
-    ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
+    ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; });
     const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block';
   }
 });
@@ -6270,7 +6421,7 @@ document.addEventListener('mousedown',e=>{
 document.getElementById('c-edit').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   openEp(id);
 });
 document.getElementById('c-child').addEventListener('mousedown',e=>{
@@ -6278,29 +6429,34 @@ document.getElementById('c-child').addEventListener('mousedown',e=>{
   if(!nb(cid)) return;
   snapshot();
   const child=createChildNode(cid,{status:'none',fitMode:'shrink'});
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   draw();
   if(child) openEp(child.id);
 });
 document.getElementById('c-toggle').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   toggleCollapse(id);
 });
 document.getElementById('c-focus').addEventListener('mousedown',e=>{
   e.stopPropagation();
   const id=cid;
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   if(!nb(id)) return;
   toggleFocusMode(true,{seedId:id,silent:false});
+});
+document.getElementById('c-link').addEventListener('mousedown',e=>{
+  e.stopPropagation();
+  if(cid) openNodeRelatedUrl(cid,{source:'contextmenu'});
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
 });
 document.getElementById('c-del').addEventListener('mousedown',e=>{
   e.stopPropagation();
   snapshot();
   const ids=isSelected(cid) && selectedNodeIds.size>1 ? [...selectedNodeIds] : [cid];
   deleteNodes(ids);
-  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
+  cm.style.display='none'; ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='block'; }); const cHr=cm.querySelector('hr'); if(cHr) cHr.style.display='block'; cid=null;
   draw();
 });
 
@@ -6367,6 +6523,12 @@ epl.addEventListener('keydown',e=>{
     closeEp();
   }
 });
+epl.addEventListener('input',()=>{
+  const firstNode=getPrimaryTitleNode();
+  if(firstNode && epid && firstNode.id===epid){
+    syncTitleWithFirstNodeLabel(epl.value);
+  }
+});
 eps.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){
     e.preventDefault();
@@ -6394,6 +6556,17 @@ eepl.addEventListener('keydown',e=>{
   ep.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
   eep.addEventListener(type,e=>{ e.stopPropagation(); }, {passive:type==='touchstart'});
 });
+if(epu){
+  epu.addEventListener('input',refreshEpUrlUi);
+  epu.addEventListener('blur',refreshEpUrlUi);
+}
+if(epuOpen){
+  epuOpen.addEventListener('click',e=>{
+    e.stopPropagation();
+    const tempNode={relatedUrl:normalizeRelatedUrl(epu?.value||'')};
+    if(!openNodeRelatedUrl(tempNode,{source:'editor'})) refreshEpUrlUi();
+  });
+}
 document.getElementById('ep-cn').addEventListener('click',e=>{e.stopPropagation();closeEp();});
 document.getElementById('ep-ok').addEventListener('click',e=>{e.stopPropagation();commitNodeEdit();});
 document.getElementById('eep-cn').addEventListener('click',e=>{e.stopPropagation();closeEep();});
@@ -6804,9 +6977,53 @@ const DEPTH_COLORS=[
   {fill:'#1a2028',stroke:'#96a5b8',text:'#f2f6fb'},
   {fill:'#1b1923',stroke:'#d29cff',text:'#faf1ff'},
 ];
+function getNodeColoringMode(){
+  return meta?.coloringMode==='depth' || meta?.coloringMode==='branch' ? meta.coloringMode : 'manual';
+}
+function setNodeColoringMode(mode='manual'){
+  meta.coloringMode=(mode==='depth' || mode==='branch') ? mode : 'manual';
+}
+function getBranchHueForNodeCreation(parentId,newDepth){
+  const dm=calcDepthMap();
+  const parentMap={};
+  edges.forEach(e=>{ parentMap[e.to]=e.from; });
+  const depthOneNodes=nodes.filter(n=>dm[n.id]===1).sort((a,b)=>normalizeOrderValue(a.order,1)-normalizeOrderValue(b.order,1));
+  const d1Hue={};
+  depthOneNodes.forEach((n,i)=>{ d1Hue[n.id]=REFINED_BRANCH_HUES[i%REFINED_BRANCH_HUES.length]; });
+  function getAncestorD1(id){
+    let cur=id;
+    for(let i=0;i<50;i++){
+      if(dm[cur]===1) return cur;
+      if(dm[cur]===0) return null;
+      const p=parentMap[cur];
+      if(!p) return null;
+      cur=p;
+    }
+    return null;
+  }
+  if(newDepth<=0) return null;
+  if(newDepth===1){
+    return REFINED_BRANCH_HUES[depthOneNodes.length%REFINED_BRANCH_HUES.length];
+  }
+  const d1Id=parentId ? (dm[parentId]===1 ? parentId : getAncestorD1(parentId)) : null;
+  return d1Id && d1Hue[d1Id]!=null ? d1Hue[d1Id] : REFINED_BRANCH_HUES[0];
+}
+function getColorForNewNode({parentId=null,sourceId=null,newDepth=0,fallbackColor=null}={}){
+  const mode=getNodeColoringMode();
+  if(mode==='depth'){
+    return {...DEPTH_COLORS[Math.max(0,newDepth)%DEPTH_COLORS.length]};
+  }
+  if(mode==='branch'){
+    if(newDepth<=0) return {fill:'#171b23',stroke:'#96a5b8',text:'#f2f6fb'};
+    const hue=getBranchHueForNodeCreation(parentId,newDepth);
+    return createRefinedTone(hue,Math.max(0,newDepth-1));
+  }
+  return fallbackColor ? {...fallbackColor} : {...PRESETS[nodes.length%PRESETS.length]};
+}
 document.getElementById('b-color-depth').addEventListener('click',()=>{
   if(!nodes.length) return;
   snapshot();
+  setNodeColoringMode('depth');
   const dm=calcDepthMap();
   nodes.forEach(n=>{n.color={...DEPTH_COLORS[dm[n.id]%DEPTH_COLORS.length]};});
   draw();
@@ -6814,6 +7031,7 @@ document.getElementById('b-color-depth').addEventListener('click',()=>{
 document.getElementById('b-color-branch').addEventListener('click',()=>{
   if(!nodes.length) return;
   snapshot();
+  setNodeColoringMode('branch');
   const dm=calcDepthMap();
   const parentMap={};
   edges.forEach(e=>{parentMap[e.to]=e.from;});
@@ -6856,6 +7074,7 @@ document.getElementById('confirm-yes').addEventListener('click',()=>{
   meta.focusMode=false;
   meta.focusNodeId=null;
   meta.presentationMode=false;
+  meta.coloringMode='manual';
   updatePresentationUi();
   document.getElementById('map-title').value='';
   document.getElementById('map-title').placeholder='まずマップ名を入力';
@@ -7038,7 +7257,7 @@ function buildExportObject(options={}){
     schemaVersion:'1.0',
     meta,
     nodes:exportNodes.map(n=>({
-      id:n.id,label:n.label,subtext:n.subtext,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
+      id:n.id,label:n.label,subtext:n.subtext,relatedUrl:getNodeRelatedUrl(n)||undefined,status:n.status,collapsed:n.collapsed,fitMode:n.fitMode,order:n.order,favorite:!!n.favorite,createdAt:Number.isFinite(n.createdAt)?n.createdAt:null,
       x:Math.round(n.x),y:Math.round(n.y),color:n.color
     })),
     edges:exportEdges.map(e=>({id:e.id,from:e.from,to:e.to,label:e.label}))
@@ -7111,6 +7330,7 @@ function buildShareObject(options={}){
       l:meta.layoutMode && meta.layoutMode!=='radial' ? meta.layoutMode : undefined,
       h:meta.hideDone ? 1 : undefined,
       p:meta.presentationMode ? 1 : undefined,
+      cm:getNodeColoringMode()!=='manual' ? getNodeColoringMode() : undefined,
       fm:meta.focusMode && focusSeedId && shareNodeIds.has(focusSeedId) ? 1 : undefined,
       fi:meta.focusMode && focusSeedId && shareNodeIds.has(focusSeedId) ? focusSeedId : undefined
     }),
@@ -7120,6 +7340,7 @@ function buildShareObject(options={}){
         i:n.id,
         l:n.label,
         s:n.subtext||undefined,
+        u:getNodeRelatedUrl(n)||undefined,
         x:roundToStep(n.x, coordStep),
         y:roundToStep(n.y, coordStep),
         o:n.order!==1 ? n.order : undefined,
@@ -7146,12 +7367,14 @@ function expandCompactShareObject(obj){
       hideDone:!!obj.m?.h,
       focusMode,
       focusNodeId:focusMode ? focusSeedId : null,
-      presentationMode:!!obj.m?.p
+      presentationMode:!!obj.m?.p,
+      coloringMode:(obj.m?.cm==='depth' || obj.m?.cm==='branch') ? obj.m.cm : 'manual'
     },
     nodes:obj.n.map((n,idx)=>({
       id:n.i || `n${idx+1}`,
       label:n.l || '新規案件',
       subtext:n.s || '',
+      relatedUrl:n.u || '',
       status:'none',
       collapsed:!!n.k,
       fitMode:n.w ? 'wrap' : 'shrink',
@@ -7397,7 +7620,7 @@ function setIoOpen(open){
 function toggleIo(){
   setIoOpen(!appEl.classList.contains('io-open'));
 }
-['qb-edit','qb-child','qb-connect','qb-fit','qb-stack-right','qb-grid-right','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
+['qb-edit','qb-child','qb-connect','qb-link','qb-fit','qb-stack-right','qb-grid-right','qb-align-left','qb-align-center-h','qb-align-right','qb-align-top','qb-align-middle-v','qb-align-bottom','qb-space-h','qb-space-v','qb-delete'].forEach(id=>{
   const btn=document.getElementById(id);
   if(!btn) return;
   btn.addEventListener('click',()=>{
@@ -7539,9 +7762,6 @@ document.getElementById('map-title').addEventListener('input',e=>{
   syncFirstNodeLabelWithTitle(meta.title);
   markDirty();
   updateDocumentTitle();
-});
-document.getElementById('map-title').addEventListener('blur',()=>{
-  if(initialTitleNodeSyncArmed && String(meta.title||'').trim()) setInitialTitleNodeSyncArmed(false);
 });
 document.getElementById('layout-mode').addEventListener('change',e=>{
   meta.layoutMode=e.target.value;
@@ -7855,9 +8075,9 @@ if(document.readyState==='complete'){
     }
   }
 
-  const _restoreState=restoreState;
-  restoreState=function(payload){
-    _restoreState(payload);
+  const _restoreState = typeof window.restoreState === 'function' ? window.restoreState : null;
+  window.restoreState = function(payload){
+    if(_restoreState) _restoreState(payload);
     updateCurrentLocationUi();
   };
   const _buildExportObject=buildExportObject;
@@ -9064,8 +9284,8 @@ if(document.readyState==='complete'){
       snapshot();
       node.label=nextValue;
       updateNodeMetrics(node, getOutlineNumberMap());
-      const firstNode=nodes[0];
-      if(firstNode && firstNode.id===node.id && !String(meta.title||'').trim()) syncTitleWithFirstNodeLabel(node.label,{lock:true});
+      const firstNode=getPrimaryTitleNode();
+      if(firstNode && firstNode.id===node.id) syncTitleWithFirstNodeLabel(node.label,{lock:true});
       if(activeNodeId!==node.id) activeNodeId=node.id;
       draw();
       mobileDebugLog('rename committed', {nodeId:currentId,label:node.label});
@@ -9483,9 +9703,9 @@ if(document.readyState==='complete'){
   const updateMobileUi=renderMobileUiFromState;
 
 
-  const _renderNow=renderNow;
-  renderNow=function(){
-    const result=_renderNow.apply(this,arguments);
+  const _renderNow = typeof window.renderNow === 'function' ? window.renderNow : null;
+  window.renderNow = function(){
+    const result = _renderNow ? _renderNow.apply(this,arguments) : undefined;
     updateMobileUi();
     return result;
   };
@@ -10599,6 +10819,7 @@ html,body{
     return {
       savedAt:Date.now(),
       appVersion:(typeof APP_VERSION!=='undefined'?APP_VERSION:''),
+      mapTitle:(typeof currentTitle==='function'?currentTitle():'案件マインドマップ'),
       state:{nodes,edges,nid,meta},
       viewport:{vx,vy,vs},
       selection:{activeNodeId,selectedEdgeId,selectedNodeIds:Array.from(selectedNodeIds||[])},
@@ -10705,6 +10926,10 @@ html,body{
       return '時刻不明';
     }
   }
+  function getAutosaveTitle(payload){
+    const raw=String(payload?.mapTitle || payload?.state?.meta?.title || '').trim();
+    return raw || '名称未設定のマップ';
+  }
   function buildFreshStartState(){
     const now=Date.now();
     return {
@@ -10723,7 +10948,7 @@ html,body{
         color:{fill:'#161b23',stroke:'#ff8a4c',text:'#f7f2eb'}
       }],
       edges:[],
-      meta:{title:'',layoutMode:'horizontal',hideDone:true,presentationMode:false}
+      meta:{title:'',layoutMode:'horizontal',hideDone:true,presentationMode:false,coloringMode:'manual'}
     };
   }
   function startFreshFromZero(){
@@ -10759,6 +10984,7 @@ html,body{
   }
   function showStartupChoice(payload){
     if(startupChoiceWrap || !payload) return true;
+    const mapTitle=getAutosaveTitle(payload);
     const wrap=document.createElement('div');
     wrap.id='startup-choice-backdrop';
     wrap.innerHTML=`
@@ -10766,6 +10992,7 @@ html,body{
         <div class="startup-choice-kicker">START</div>
         <h2 id="startup-choice-title">前回の内容をどうしますか？</h2>
         <p class="startup-choice-copy">このブラウザには前回の作業内容が残っています。続きから入るか、0から始めるかを選べます。</p>
+        <div class="startup-choice-meta">前回のマップ: <strong>${escapeHtml(mapTitle)}</strong></div>
         <div class="startup-choice-meta">最終保存: <strong>${formatAutosaveTime(payload.savedAt)}</strong></div>
         <div class="startup-choice-actions">
           <button type="button" class="primary" data-startup-choice="restore">前回の内容を引き継ぐ</button>
@@ -11064,7 +11291,7 @@ html,body{
 
   function getCurrentExportCanonicalString(){
     try{
-      return typeof getExportString === 'function' ? getExportString(currentExportKind || 'json') : '';
+      return typeof getExportString === 'function' ? getExportString(window.currentExportKind || 'json') : '';
     }catch(err){
       return '';
     }
@@ -11268,823 +11495,6 @@ html,body{
   }
 })();
 
-</script>
-
-
-<style id="focusdoc-style">
-#focusdoc-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(3,6,10,.58);backdrop-filter:blur(10px);z-index:120}
-#focusdoc-backdrop.open{display:flex}
-#focusdoc-modal{width:min(1180px,calc(100vw - 64px));height:min(860px,calc(100vh - 56px));display:grid;grid-template-rows:auto auto 1fr auto;background:linear-gradient(180deg, rgba(18,23,32,.98), rgba(9,13,18,.99));border:1px solid rgba(132,145,164,.22);border-radius:24px;box-shadow:0 28px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden;color:var(--sf-text-0)}
-#focusdoc-modal *{box-sizing:border-box}
-#focusdoc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 22px 14px;border-bottom:1px solid rgba(132,145,164,.16);background:linear-gradient(180deg, rgba(20,25,34,.96), rgba(13,17,24,.9))}
-.focusdoc-head-copy{min-width:0;display:flex;flex-direction:column;gap:8px}
-.focusdoc-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#ffcfb9}
-#focusdoc-title{font-size:30px;line-height:1.1;font-family:var(--font-display-en), var(--font-ui-ja);letter-spacing:.04em;color:var(--sf-text-0)}
-#focusdoc-path{font-size:12px;line-height:1.55;color:var(--sf-text-2);word-break:break-word}
-#focusdoc-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.focusdoc-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:8px 14px;border-radius:12px;border:1px solid rgba(132,145,164,.24);background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));color:var(--sf-text-0);font-size:12px;font-weight:800;cursor:pointer;transition:transform .16s var(--sf-ease-standard),border-color .16s var(--sf-ease-standard),background .16s var(--sf-ease-standard),box-shadow .16s var(--sf-ease-standard)}
-.focusdoc-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);background:linear-gradient(180deg, rgba(35,43,57,.96), rgba(17,23,31,.98));box-shadow:0 10px 18px rgba(0,0,0,.2)}
-.focusdoc-btn.primary{background:linear-gradient(180deg, rgba(54,28,18,.96), rgba(24,15,14,.98));border-color:rgba(255,122,57,.64);color:#fff7f1}
-.focusdoc-btn.subtle{background:rgba(255,255,255,.03)}
-#focusdoc-status{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:8px 12px;border-radius:12px;border:1px solid rgba(18,198,255,.18);background:rgba(18,198,255,.08);font-size:12px;font-weight:700;color:#dff9ff;white-space:nowrap}
-#focusdoc-status .dot{width:8px;height:8px;border-radius:999px;background:var(--sf-cyan);box-shadow:0 0 10px rgba(18,198,255,.36)}
-#focusdoc-meta{display:flex;gap:10px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid rgba(132,145,164,.12);background:rgba(255,255,255,.018)}
-.focusdoc-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid rgba(132,145,164,.16);background:rgba(255,255,255,.03);font-size:12px;line-height:1.4;color:var(--sf-text-1)}
-.focusdoc-chip strong{color:var(--sf-text-0);font-weight:800}
-#focusdoc-layout{display:grid;grid-template-rows:minmax(0,1fr) 196px;min-height:0}
-#focusdoc-outline{min-height:0;display:flex;flex-direction:column;padding:16px 18px 0}
-#focusdoc-outline-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-#focusdoc-outline-title{font-size:14px;font-weight:800;letter-spacing:.04em;color:var(--sf-text-0)}
-#focusdoc-outline-sub{font-size:12px;line-height:1.45;color:var(--sf-text-2)}
-#focusdoc-outline-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-#focusdoc-list{flex:1;min-height:0;overflow:auto;padding:4px 2px 18px 0}
-.focusdoc-empty{display:flex;align-items:center;justify-content:center;height:100%;border:1px dashed rgba(132,145,164,.22);border-radius:18px;background:rgba(255,255,255,.02);color:var(--sf-text-2);font-size:13px;text-align:center;padding:22px}
-.focusdoc-row{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:14px;transition:background .16s ease,border-color .16s ease;min-height:44px;border:1px solid transparent}
-.focusdoc-row + .focusdoc-row{margin-top:4px}
-.focusdoc-row:hover{background:rgba(255,255,255,.03);border-color:rgba(132,145,164,.12)}
-.focusdoc-row.is-active{background:rgba(18,198,255,.06);border-color:rgba(18,198,255,.22)}
-.focusdoc-row.is-collapsed{background:rgba(255,111,44,.03)}
-.focusdoc-fold{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--sf-text-2);border-radius:8px;cursor:pointer;font-size:11px;margin-top:10px}
-.focusdoc-fold:hover{background:rgba(255,255,255,.05);color:var(--sf-text-0)}
-.focusdoc-fold.leaf{opacity:.45}
-.focusdoc-input-wrap{min-width:0}
-.focusdoc-input{width:100%;min-height:40px;max-height:180px;resize:none;border:none;outline:none;background:transparent;color:var(--sf-text-0);font-size:15px;line-height:1.55;font-family:var(--font-ui-ja);padding:8px 0;margin:0;overflow:hidden}
-.focusdoc-input::placeholder{color:rgba(214,222,232,.36)}
-.focusdoc-row-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
-.focusdoc-depth-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid rgba(132,145,164,.14);font-size:10px;color:var(--sf-text-3)}
-.focusdoc-actions{display:flex;align-items:center;gap:4px;opacity:0;pointer-events:none;transition:opacity .12s ease;margin-top:8px}
-.focusdoc-row:hover .focusdoc-actions,.focusdoc-row.is-active .focusdoc-actions{opacity:1;pointer-events:auto}
-.focusdoc-icon{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:9px;border:1px solid rgba(132,145,164,.14);background:rgba(255,255,255,.03);color:var(--sf-text-1);font-size:11px;font-weight:800;cursor:pointer}
-.focusdoc-icon:hover{background:rgba(255,255,255,.07);color:var(--sf-text-0)}
-.focusdoc-icon.danger:hover{background:rgba(255,107,120,.10);border-color:rgba(255,107,120,.28);color:#ffe6ea}
-#focusdoc-memo{padding:14px 18px 18px;border-top:1px solid rgba(132,145,164,.12);background:linear-gradient(180deg, rgba(16,21,29,.76), rgba(9,13,18,.92));display:flex;flex-direction:column;gap:8px}
-#focusdoc-memo-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-#focusdoc-memo-title{font-size:13px;font-weight:800;color:var(--sf-text-0)}
-#focusdoc-memo-sub{font-size:12px;line-height:1.5;color:var(--sf-text-2)}
-#focusdoc-memo-box{flex:1;min-height:96px;max-height:168px;resize:none;border:1px solid rgba(132,145,164,.22);border-radius:16px;background:rgba(5,8,12,.55);color:var(--sf-text-0);outline:none;padding:14px 16px;font-size:14px;line-height:1.65;font-family:var(--font-ui-ja)}
-#focusdoc-memo-box:focus,.focusdoc-input:focus{border-color:rgba(18,198,255,.42);box-shadow:0 0 0 3px rgba(18,198,255,.10)}
-#focusdoc-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-top:1px solid rgba(132,145,164,.12);background:rgba(255,255,255,.02)}
-#focusdoc-footer-copy{font-size:12px;line-height:1.5;color:var(--sf-text-2)}
-#focusdoc-footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.focusdoc-node-meta{pointer-events:none}
-.focusdoc-node-pill rect{fill:rgba(8,12,17,.95);stroke:rgba(255,122,57,.22);stroke-width:1}
-.focusdoc-node-pill.secondary rect{stroke:rgba(18,198,255,.18)}
-.focusdoc-node-pill text{fill:#fff2e7;font-size:9.2px;font-weight:800;letter-spacing:.02em;font-family:Rajdhani, Noto Sans JP, sans-serif}
-.focusdoc-node-pill.secondary text{fill:#dff8ff;font-size:8.8px;font-weight:700}
-body.focusdoc-modal-open #quickbar{display:none !important}
-@media (max-width:960px){
-  #focusdoc-modal{width:min(1180px,calc(100vw - 28px));height:min(860px,calc(100vh - 24px));border-radius:20px}
-}
-</style>
-<script>
-(function(){
-  const APP_FOCUSDOC_VERSION='1.7.0';
-  const FOCUSDOC_ROW_LINE_HEIGHT=24;
-  let focusDocState={nodeId:null,activeItemId:null,pendingFocusId:null,renderTick:0};
-  let focusDocRenderTimer=null;
-  let focusDocBackdrop=null, focusDocModal=null, focusDocListEl=null, focusDocMemoBox=null, focusDocStatusEl=null;
-
-  function fdEscape(value){
-    const s=String(value==null?'':value);
-    return s.replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  }
-  function fdUid(prefix='fd'){ return `${prefix}-${Math.random().toString(36).slice(2,8)}${Date.now().toString(36).slice(-4)}`; }
-  function fdNow(){ return Date.now(); }
-  function fdFormatShort(value){
-    if(!Number.isFinite(value)) return '未更新';
-    const d=new Date(value);
-    if(Number.isNaN(d.getTime())) return '未更新';
-    return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  }
-  function fdClone(value){
-    try{ return JSON.parse(JSON.stringify(value)); }catch(_e){ return value; }
-  }
-  function fdNormalizeItem(raw, index=0){
-    const text=String(raw?.text||'').replace(/\r/g,'');
-    const depth=Math.max(0, Number.isFinite(raw?.depth)?raw.depth:0);
-    return {
-      id:String(raw?.id||fdUid('fdi')),
-      text,
-      depth,
-      collapsed:!!raw?.collapsed,
-      createdAt:Number.isFinite(raw?.createdAt)?raw.createdAt:fdNow(),
-      updatedAt:Number.isFinite(raw?.updatedAt)?raw.updatedAt:fdNow()
-    };
-  }
-  function normalizeFocusDoc(raw){
-    if(!raw) return null;
-    const items=Array.isArray(raw.items) ? raw.items.map(fdNormalizeItem).filter(Boolean) : [];
-    return {
-      items,
-      memo:String(raw.memo||'').replace(/\r/g,''),
-      createdAt:Number.isFinite(raw.createdAt)?raw.createdAt:fdNow(),
-      updatedAt:Number.isFinite(raw.updatedAt)?raw.updatedAt:fdNow()
-    };
-  }
-  function makeFocusDocItem(text='', depth=0){
-    return fdNormalizeItem({id:fdUid('fdi'), text, depth, collapsed:false, createdAt:fdNow(), updatedAt:fdNow()});
-  }
-  function getNodeById(id){ try{ return typeof nb==='function' ? nb(id) : (Array.isArray(nodes)?nodes.find(n=>n.id===id):null); }catch(_e){ return null; } }
-  function ensureFocusDoc(node,{seedBlank=false}={}){
-    if(!node) return null;
-    let doc=normalizeFocusDoc(node.focusDoc);
-    if(!doc) doc={items:[],memo:'',createdAt:fdNow(),updatedAt:fdNow()};
-    if(seedBlank && !doc.items.length) doc.items=[makeFocusDocItem('')];
-    node.focusDoc=doc;
-    return doc;
-  }
-  function getFocusDocCount(node){
-    const doc=normalizeFocusDoc(node?.focusDoc);
-    if(!doc?.items?.length) return 0;
-    return doc.items.filter(item=>String(item.text||'').trim()).length;
-  }
-  function getFocusDocStats(node){
-    const doc=normalizeFocusDoc(node?.focusDoc);
-    return {count:getFocusDocCount(node), updatedAt:doc?.updatedAt||null, memoLength:String(doc?.memo||'').trim().length};
-  }
-  function markFocusDocUpdated(node,{renderBadge=true}={}){
-    if(!node) return;
-    const doc=ensureFocusDoc(node,{seedBlank:false});
-    if(!doc) return;
-    doc.updatedAt=fdNow();
-    node.focusDoc=doc;
-    if(typeof markDirty==='function') markDirty();
-    if(renderBadge) scheduleFocusDocRender();
-    updateFocusDocHeader();
-  }
-  function scheduleFocusDocRender(){
-    clearTimeout(focusDocRenderTimer);
-    focusDocRenderTimer=setTimeout(()=>{
-      try{ if(typeof renderNow==='function') renderNow(); }catch(_e){}
-    },120);
-  }
-  function ensureQuickbarFocusButton(){
-    const qb=document.getElementById('quickbar');
-    if(!qb || document.getElementById('qb-focusdoc')) return;
-    const btn=document.createElement('button');
-    btn.id='qb-focusdoc';
-    btn.type='button';
-    btn.textContent='専心';
-    btn.addEventListener('click',()=>runQuickbarAction('focus-doc'));
-    const danger=document.getElementById('qb-delete');
-    if(danger && danger.parentNode===qb) qb.insertBefore(btn,danger); else qb.appendChild(btn);
-  }
-  function ensureContextMenuFocusEntry(){
-    const cm=document.getElementById('cm');
-    if(!cm || document.getElementById('c-work')) return;
-    const hr=cm.querySelector('hr');
-    const div=document.createElement('div');
-    div.id='c-work';
-    div.textContent='専心モードを開く';
-    div.addEventListener('mousedown',e=>{
-      e.stopPropagation();
-      const nodeId=(typeof cid!=='undefined' && cid) ? cid : activeNodeId;
-      cm.style.display='none';
-      try{ if(nodeId) openFocusDocModal(nodeId,{source:'contextmenu'}); }catch(err){ console.error(err); }
-    });
-    if(hr) cm.insertBefore(div, hr); else cm.appendChild(div);
-  }
-  function ensureEditPanelFocusEntry(){
-    const epft=document.querySelector('#ep .epft');
-    if(!epft || document.getElementById('ep-focusdoc')) return;
-    const btn=document.createElement('button');
-    btn.id='ep-focusdoc';
-    btn.type='button';
-    btn.textContent='専心';
-    btn.addEventListener('click',e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      const nodeId=(typeof epid!=='undefined' && epid) ? epid : activeNodeId;
-      if(!nodeId) return;
-      let resolvedNodeId=nodeId;
-      if(typeof tryCommitNodeEdit==='function' && document.getElementById('ep')?.style.display==='block'){
-        const ok=tryCommitNodeEdit();
-        if(!ok) return;
-        resolvedNodeId=nodeId;
-      }
-      openFocusDocModal(resolvedNodeId,{source:'edit'});
-    });
-    epft.insertBefore(btn, document.getElementById('ep-ok'));
-  }
-  function ensureFocusDocModal(){
-    if(document.getElementById('focusdoc-backdrop')){
-      focusDocBackdrop=document.getElementById('focusdoc-backdrop');
-      focusDocModal=document.getElementById('focusdoc-modal');
-      focusDocListEl=document.getElementById('focusdoc-list');
-      focusDocMemoBox=document.getElementById('focusdoc-memo-box');
-      focusDocStatusEl=document.getElementById('focusdoc-status');
-      return;
-    }
-    const wrap=document.createElement('div');
-    wrap.id='focusdoc-backdrop';
-    wrap.setAttribute('aria-hidden','true');
-    wrap.innerHTML=`
-      <div id="focusdoc-modal" role="dialog" aria-modal="true" aria-labelledby="focusdoc-title">
-        <div id="focusdoc-head">
-          <div class="focusdoc-head-copy">
-            <div class="focusdoc-kicker">専心モード</div>
-            <div id="focusdoc-title">専心モード</div>
-            <div id="focusdoc-path"></div>
-          </div>
-          <div id="focusdoc-head-actions">
-            <div id="focusdoc-status"><span class="dot"></span><span>保存済み</span></div>
-            <button id="focusdoc-edit-node" class="focusdoc-btn subtle" type="button">ノード編集</button>
-            <button id="focusdoc-jump-node" class="focusdoc-btn subtle" type="button">マップで位置を見る</button>
-            <button id="focusdoc-close-top" class="focusdoc-btn" type="button">閉じる</button>
-          </div>
-        </div>
-        <div id="focusdoc-meta"></div>
-        <div id="focusdoc-layout">
-          <div id="focusdoc-outline">
-            <div id="focusdoc-outline-top">
-              <div>
-                <div id="focusdoc-outline-title">専心ログ</div>
-                <div id="focusdoc-outline-sub">1行1項目で掘り下げます。Enterで次行、Tabで子、Shift+Tabで親に戻せます。</div>
-              </div>
-              <div id="focusdoc-outline-actions">
-                <button id="focusdoc-add-row" class="focusdoc-btn primary" type="button">行を追加</button>
-                <button id="focusdoc-copy-md" class="focusdoc-btn" type="button">Markdownコピー</button>
-              </div>
-            </div>
-            <div id="focusdoc-list"></div>
-          </div>
-          <div id="focusdoc-memo">
-            <div id="focusdoc-memo-head">
-              <div>
-                <div id="focusdoc-memo-title">自由メモ</div>
-                <div id="focusdoc-memo-sub">補足とは別管理です。URLや長文の逃がし先として使えます。</div>
-              </div>
-            </div>
-            <textarea id="focusdoc-memo-box" spellcheck="false" placeholder="ここにはラフなメモ、URL、会話ログ断片などを自由に残せます。"></textarea>
-          </div>
-        </div>
-        <div id="focusdoc-footer">
-          <div id="focusdoc-footer-copy">マップは俯瞰、ここは作業机。ノード単位で深掘りしたいときに使います。</div>
-          <div id="focusdoc-footer-actions">
-            <button id="focusdoc-add-child" class="focusdoc-btn subtle" type="button">子の行を追加</button>
-            <button id="focusdoc-close-bottom" class="focusdoc-btn primary" type="button">閉じる</button>
-          </div>
-        </div>
-      </div>`;
-    document.body.appendChild(wrap);
-    focusDocBackdrop=wrap;
-    focusDocModal=document.getElementById('focusdoc-modal');
-    focusDocListEl=document.getElementById('focusdoc-list');
-    focusDocMemoBox=document.getElementById('focusdoc-memo-box');
-    focusDocStatusEl=document.getElementById('focusdoc-status');
-
-    focusDocBackdrop.addEventListener('mousedown',e=>{ if(e.target===focusDocBackdrop) closeFocusDocModal(); });
-    document.getElementById('focusdoc-close-top').addEventListener('click',()=>closeFocusDocModal());
-    document.getElementById('focusdoc-close-bottom').addEventListener('click',()=>closeFocusDocModal());
-    document.getElementById('focusdoc-edit-node').addEventListener('click',()=>{
-      const node=getNodeById(focusDocState.nodeId);
-      if(!node) return;
-      closeFocusDocModal({render:false});
-      if(typeof openEp==='function') openEp(node.id);
-    });
-    document.getElementById('focusdoc-jump-node').addEventListener('click',()=>{
-      const node=getNodeById(focusDocState.nodeId);
-      if(!node) return;
-      if(typeof setSingleSelection==='function') setSingleSelection(node.id);
-      if(typeof moveV==='function') moveV(node.x,node.y,1.18);
-      if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts();
-      closeFocusDocModal();
-    });
-    document.getElementById('focusdoc-add-row').addEventListener('click',()=>focusDocInsertRow());
-    document.getElementById('focusdoc-add-child').addEventListener('click',()=>focusDocInsertRow({asChild:true}));
-    document.getElementById('focusdoc-copy-md').addEventListener('click',()=>copyFocusDocMarkdown());
-    focusDocMemoBox.addEventListener('input',()=>{
-      const node=getNodeById(focusDocState.nodeId);
-      const doc=ensureFocusDoc(node,{seedBlank:true});
-      doc.memo=focusDocMemoBox.value;
-      markFocusDocUpdated(node,{renderBadge:false});
-      setFocusDocStatus('編集中');
-    });
-    focusDocMemoBox.addEventListener('blur',()=>{
-      const node=getNodeById(focusDocState.nodeId);
-      if(node) markFocusDocUpdated(node,{renderBadge:true});
-      setFocusDocStatus('保存済み');
-    });
-    focusDocListEl.addEventListener('input',handleFocusDocInput);
-    focusDocListEl.addEventListener('focusin',handleFocusDocFocus);
-    focusDocListEl.addEventListener('keydown',handleFocusDocKeydown);
-    focusDocListEl.addEventListener('click',handleFocusDocClick);
-  }
-  function setFocusDocStatus(text){
-    if(!focusDocStatusEl) return;
-    focusDocStatusEl.innerHTML=`<span class="dot"></span><span>${fdEscape(text||'保存済み')}</span>`;
-  }
-  function focusDocVisibleRows(doc){
-    const rows=[];
-    let skipDepth=-1;
-    (doc?.items||[]).forEach((item,index)=>{
-      if(skipDepth!==-1){
-        if(item.depth>skipDepth) return;
-        skipDepth=-1;
-      }
-      rows.push({item,index});
-      if(item.collapsed) skipDepth=item.depth;
-    });
-    return rows;
-  }
-  function focusDocHasChildren(doc,index){
-    const items=doc?.items||[];
-    const base=items[index];
-    if(!base) return false;
-    return !!items[index+1] && items[index+1].depth>base.depth;
-  }
-  function getFocusDocPath(node){
-    try{
-      const hierarchy=typeof getHierarchyMaps==='function' ? getHierarchyMaps(nodes,edges) : null;
-      if(!hierarchy?.parentMap) return node?.label||'専心モード';
-      const parts=[];
-      let current=node?.id;
-      while(current){
-        const found=getNodeById(current);
-        if(found) parts.unshift(found.label||'新規案件');
-        current=hierarchy.parentMap[current]||null;
-      }
-      return parts.join(' > ');
-    }catch(_e){
-      return node?.label||'専心モード';
-    }
-  }
-  function updateFocusDocHeader(){
-    const node=getNodeById(focusDocState.nodeId);
-    if(!node || !focusDocBackdrop?.classList.contains('open')) return;
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const stats=getFocusDocStats(node);
-    const titleEl=document.getElementById('focusdoc-title');
-    const pathEl=document.getElementById('focusdoc-path');
-    const metaEl=document.getElementById('focusdoc-meta');
-    if(titleEl) titleEl.textContent=node.label||'専心モード';
-    if(pathEl) pathEl.textContent=getFocusDocPath(node);
-    if(metaEl){
-      const lastLine=(doc.items||[]).map(item=>String(item.text||'').trim()).filter(Boolean).slice(-1)[0] || 'まだ項目はありません';
-      metaEl.innerHTML=`
-        <div class="focusdoc-chip"><strong>補足</strong><span>${fdEscape(node.subtext||'未設定')}</span></div>
-        <div class="focusdoc-chip"><strong>行数</strong><span>${stats.count}件</span></div>
-        <div class="focusdoc-chip"><strong>最終更新</strong><span>${fdEscape(fdFormatShort(stats.updatedAt))}</span></div>
-        <div class="focusdoc-chip"><strong>最新項目</strong><span>${fdEscape(lastLine.slice(0,42))}</span></div>`;
-    }
-  }
-  function focusDocRowMarkup(doc,item,index){
-    const hasChildren=focusDocHasChildren(doc,index);
-    const depth=Math.max(0, item.depth||0);
-    const indent=Math.min(12 + depth*24, 260);
-    const active=focusDocState.activeItemId===item.id ? ' is-active' : '';
-    const collapsed=item.collapsed ? ' is-collapsed' : '';
-    return `
-      <div class="focusdoc-row${active}${collapsed}" data-index="${index}" data-item-id="${fdEscape(item.id)}" style="padding-left:${indent}px">
-        <button class="focusdoc-fold ${hasChildren ? '' : 'leaf'}" type="button" data-focusdoc-action="toggle" title="折りたたみ">${hasChildren ? (item.collapsed ? '▶' : '▼') : '•'}</button>
-        <div class="focusdoc-input-wrap">
-          <textarea class="focusdoc-input" data-item-id="${fdEscape(item.id)}" rows="1" spellcheck="false" placeholder="このノードで掘りたいことを書く">${fdEscape(item.text||'')}</textarea>
-          <div class="focusdoc-row-meta"><span class="focusdoc-depth-tag">深さ ${depth}</span></div>
-        </div>
-        <div class="focusdoc-actions">
-          <button class="focusdoc-icon" type="button" data-focusdoc-action="child" title="子を追加">＋子</button>
-          <button class="focusdoc-icon" type="button" data-focusdoc-action="up" title="上へ">↑</button>
-          <button class="focusdoc-icon" type="button" data-focusdoc-action="down" title="下へ">↓</button>
-          <button class="focusdoc-icon" type="button" data-focusdoc-action="duplicate" title="複製">⧉</button>
-          <button class="focusdoc-icon danger" type="button" data-focusdoc-action="delete" title="削除">削除</button>
-        </div>
-      </div>`;
-  }
-  function autoResizeFocusTextarea(el){
-    if(!el) return;
-    el.style.height='auto';
-    el.style.height=Math.min(Math.max(el.scrollHeight,40),180)+'px';
-  }
-  function renderFocusDocModal(){
-    ensureFocusDocModal();
-    const node=getNodeById(focusDocState.nodeId);
-    if(!node){ closeFocusDocModal(); return; }
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    updateFocusDocHeader();
-    const rows=focusDocVisibleRows(doc);
-    if(!rows.length){
-      focusDocListEl.innerHTML=`<div class="focusdoc-empty"><div><div style="font-weight:800;color:var(--sf-text-0);margin-bottom:6px">まだ専心ログがありません</div><div>まずは1行だけ置いて、そこから枝を伸ばしていけます。</div></div></div>`;
-    }else{
-      focusDocListEl.innerHTML=rows.map(({item,index})=>focusDocRowMarkup(doc,item,index)).join('');
-      focusDocListEl.querySelectorAll('.focusdoc-input').forEach(el=>autoResizeFocusTextarea(el));
-    }
-    focusDocMemoBox.value=doc.memo||'';
-    setFocusDocStatus('保存済み');
-    requestAnimationFrame(()=>focusPendingFocusRow());
-  }
-  function focusPendingFocusRow(){
-    const id=focusDocState.pendingFocusId || focusDocState.activeItemId;
-    if(!id) return;
-    const target=focusDocListEl?.querySelector(`.focusdoc-input[data-item-id="${id.replace(/"/g,'\\"')}"]`);
-    if(!target) return;
-    focusDocState.pendingFocusId=null;
-    try{ target.focus({preventScroll:false}); }catch(_e){ target.focus(); }
-    target.setSelectionRange(target.value.length,target.value.length);
-    autoResizeFocusTextarea(target);
-    const row=target.closest('.focusdoc-row');
-    if(row) row.scrollIntoView({block:'nearest'});
-  }
-  function openFocusDocModal(nodeId,{source='quickbar'}={}){
-    const node=getNodeById(nodeId);
-    if(!node) return;
-    if(typeof closePanels==='function') closePanels();
-    if(typeof closeEep==='function') closeEep();
-    if(typeof closeEp==='function') closeEp();
-    focusDocState.nodeId=node.id;
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const firstTextItem=(doc.items||[]).find(item=>String(item.text||'').trim()) || doc.items[0] || null;
-    focusDocState.activeItemId=firstTextItem?.id||null;
-    focusDocState.pendingFocusId=focusDocState.activeItemId;
-    ensureFocusDocModal();
-    focusDocBackdrop.classList.add('open');
-    focusDocBackdrop.setAttribute('aria-hidden','false');
-    document.body.classList.add('focusdoc-modal-open');
-    renderFocusDocModal();
-    if(typeof setSingleSelection==='function') setSingleSelection(node.id);
-    scheduleFocusDocRender();
-  }
-  function closeFocusDocModal({render=true}={}){
-    if(!focusDocBackdrop) return;
-    focusDocBackdrop.classList.remove('open');
-    focusDocBackdrop.setAttribute('aria-hidden','true');
-    document.body.classList.remove('focusdoc-modal-open');
-    if(render) scheduleFocusDocRender();
-    if(typeof focusCanvasForShortcuts==='function') setTimeout(()=>focusCanvasForShortcuts(),20);
-  }
-  function getFocusDocRowContext(target){
-    const row=target.closest('.focusdoc-row');
-    if(!row) return null;
-    const index=Number(row.dataset.index);
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    if(!Number.isFinite(index) || !doc?.items?.[index]) return null;
-    return {row,index,node,doc,item:doc.items[index]};
-  }
-  function updateFocusDocTextareaValue(itemId, value){
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const item=doc.items.find(entry=>entry.id===itemId);
-    if(!item) return;
-    item.text=value;
-    item.updatedAt=fdNow();
-    focusDocState.activeItemId=item.id;
-    markFocusDocUpdated(node,{renderBadge:false});
-    setFocusDocStatus('編集中');
-    updateFocusDocHeader();
-  }
-  function focusDocInsertRow({asChild=false,index=null}={}){
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const targetIndex=Number.isInteger(index) ? index : Math.max(0, doc.items.findIndex(item=>item.id===focusDocState.activeItemId));
-    const base=doc.items[targetIndex] || makeFocusDocItem('',0);
-    const newItem=makeFocusDocItem('', asChild ? base.depth+1 : base.depth);
-    if(typeof snapshot==='function') snapshot();
-    doc.items.splice(Math.max(0,targetIndex)+1,0,newItem);
-    focusDocState.activeItemId=newItem.id;
-    focusDocState.pendingFocusId=newItem.id;
-    markFocusDocUpdated(node,{renderBadge:true});
-    renderFocusDocModal();
-  }
-  function focusDocRemoveRow(index){
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    if(!doc.items[index]) return;
-    if(doc.items.length===1){
-      doc.items[0].text='';
-      focusDocState.activeItemId=doc.items[0].id;
-      focusDocState.pendingFocusId=doc.items[0].id;
-    }else{
-      if(typeof snapshot==='function') snapshot();
-      const fallback=doc.items[Math.max(0,index-1)] || doc.items[Math.min(doc.items.length-1,index+1)] || null;
-      doc.items.splice(index,1);
-      focusDocState.activeItemId=fallback?.id||null;
-      focusDocState.pendingFocusId=fallback?.id||null;
-    }
-    markFocusDocUpdated(node,{renderBadge:true});
-    renderFocusDocModal();
-  }
-  function focusDocIndent(index,delta){
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const item=doc.items[index];
-    if(!item) return;
-    if(typeof snapshot==='function') snapshot();
-    if(delta>0){
-      if(index===0) return;
-      const prev=doc.items[index-1];
-      item.depth=Math.min(item.depth+1, (prev?.depth||0)+1);
-    }else item.depth=Math.max(0,item.depth-1);
-    markFocusDocUpdated(node,{renderBadge:true});
-    focusDocState.pendingFocusId=item.id;
-    renderFocusDocModal();
-  }
-  function focusDocMove(index,delta){
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const next=index+delta;
-    if(!doc.items[index] || next<0 || next>=doc.items.length) return;
-    if(typeof snapshot==='function') snapshot();
-    const [item]=doc.items.splice(index,1);
-    doc.items.splice(next,0,item);
-    focusDocState.pendingFocusId=item.id;
-    markFocusDocUpdated(node,{renderBadge:true});
-    renderFocusDocModal();
-  }
-  function focusDocDuplicate(index){
-    const node=getNodeById(focusDocState.nodeId);
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const item=doc.items[index];
-    if(!item) return;
-    if(typeof snapshot==='function') snapshot();
-    const copy=makeFocusDocItem(item.text, item.depth);
-    copy.collapsed=false;
-    doc.items.splice(index+1,0,copy);
-    focusDocState.pendingFocusId=copy.id;
-    focusDocState.activeItemId=copy.id;
-    markFocusDocUpdated(node,{renderBadge:true});
-    renderFocusDocModal();
-  }
-  function handleFocusDocInput(e){
-    const target=e.target;
-    if(!target.classList.contains('focusdoc-input')) return;
-    autoResizeFocusTextarea(target);
-    updateFocusDocTextareaValue(target.dataset.itemId, target.value);
-  }
-  function handleFocusDocFocus(e){
-    const target=e.target;
-    if(!target.classList.contains('focusdoc-input')) return;
-    focusDocState.activeItemId=target.dataset.itemId;
-    focusDocListEl.querySelectorAll('.focusdoc-row.is-active').forEach(row=>row.classList.remove('is-active'));
-    target.closest('.focusdoc-row')?.classList.add('is-active');
-  }
-  function handleFocusDocKeydown(e){
-    const target=e.target;
-    if(!target.classList.contains('focusdoc-input')) return;
-    const ctx=getFocusDocRowContext(target);
-    if(!ctx) return;
-    if(e.key==='Enter' && !e.shiftKey){
-      e.preventDefault();
-      focusDocInsertRow({index:ctx.index,asChild:false});
-      return;
-    }
-    if(e.key==='Tab'){
-      e.preventDefault();
-      focusDocIndent(ctx.index, e.shiftKey ? -1 : 1);
-      return;
-    }
-    if(e.key==='Backspace' && !target.value){
-      e.preventDefault();
-      focusDocRemoveRow(ctx.index);
-      return;
-    }
-    if(e.key==='Escape'){
-      e.preventDefault();
-      closeFocusDocModal();
-      return;
-    }
-    if(e.key==='ArrowUp' && target.selectionStart===0 && target.selectionEnd===0){
-      const prev=ctx.row.previousElementSibling?.querySelector('.focusdoc-input');
-      if(prev){ e.preventDefault(); prev.focus(); prev.setSelectionRange(prev.value.length, prev.value.length); }
-      return;
-    }
-    if(e.key==='ArrowDown' && target.selectionStart===target.value.length && target.selectionEnd===target.value.length){
-      const next=ctx.row.nextElementSibling?.querySelector('.focusdoc-input');
-      if(next){ e.preventDefault(); next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
-      return;
-    }
-  }
-  function handleFocusDocClick(e){
-    const actionEl=e.target.closest('[data-focusdoc-action]');
-    if(!actionEl) return;
-    const ctx=getFocusDocRowContext(actionEl);
-    if(!ctx) return;
-    const action=actionEl.dataset.focusdocAction;
-    if(action==='toggle'){
-      if(!focusDocHasChildren(ctx.doc,ctx.index)) return;
-      ctx.item.collapsed=!ctx.item.collapsed;
-      markFocusDocUpdated(ctx.node,{renderBadge:true});
-      focusDocState.pendingFocusId=ctx.item.id;
-      renderFocusDocModal();
-      return;
-    }
-    if(action==='child'){ focusDocInsertRow({index:ctx.index,asChild:true}); return; }
-    if(action==='up'){ focusDocMove(ctx.index,-1); return; }
-    if(action==='down'){ focusDocMove(ctx.index,1); return; }
-    if(action==='duplicate'){ focusDocDuplicate(ctx.index); return; }
-    if(action==='delete'){ focusDocRemoveRow(ctx.index); return; }
-  }
-  function copyFocusDocMarkdown(){
-    const node=getNodeById(focusDocState.nodeId);
-    if(!node) return;
-    const doc=ensureFocusDoc(node,{seedBlank:true});
-    const lines=[];
-    lines.push(`# ${node.label||'専心モード'}`);
-    if(node.subtext) lines.push('', node.subtext);
-    lines.push('', '## 専心ログ');
-    (doc.items||[]).forEach(item=>{
-      if(!String(item.text||'').trim()) return;
-      lines.push(`${'  '.repeat(Math.max(0,item.depth||0))}- ${item.text}`);
-    });
-    if(String(doc.memo||'').trim()) lines.push('', '## 自由メモ', doc.memo.trim());
-    const markdown=lines.join('\n');
-    if(typeof copyTextToClipboard==='function') copyTextToClipboard(markdown,{successMessage:'専心ログをMarkdownでコピーしました'});
-    else if(navigator.clipboard?.writeText) navigator.clipboard.writeText(markdown).then(()=>{ try{ showToast('専心ログをコピーしました'); }catch(_e){} });
-  }
-  function decorateFocusDocNodeBadges(){
-    if(!window.NL || !Array.isArray(window.nodes)) return;
-    NL.querySelectorAll('.focusdoc-node-meta').forEach(el=>el.remove());
-    (nodes||[]).forEach(node=>{
-      const stats=getFocusDocStats(node);
-      if(!stats.count && !stats.memoLength) return;
-      const group=NL.querySelector(`[data-id="${node.id}"]`);
-      if(!group) return;
-      const badgeGroup=document.createElementNS('http://www.w3.org/2000/svg','g');
-      badgeGroup.setAttribute('class','focusdoc-node-meta');
-      const countLabel=`専心 ${stats.count}`;
-      const timeLabel=fdFormatShort(stats.updatedAt);
-      const labels=[{text:countLabel, cls:'focusdoc-node-pill', y:node.h/2+10},{text:timeLabel, cls:'focusdoc-node-pill secondary', y:node.h/2+28}];
-      labels.forEach(meta=>{
-        const pill=document.createElementNS('http://www.w3.org/2000/svg','g');
-        pill.setAttribute('class',meta.cls);
-        const w=Math.max(58, Math.min(node.w-20, Math.ceil(meta.text.length*6.3 + 16)));
-        const x=node.w/2-w;
-        const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-        rect.setAttribute('x',String(x));
-        rect.setAttribute('y',String(meta.y));
-        rect.setAttribute('width',String(w));
-        rect.setAttribute('height','16');
-        rect.setAttribute('rx','8');
-        const text=document.createElementNS('http://www.w3.org/2000/svg','text');
-        text.setAttribute('x',String(x+w/2));
-        text.setAttribute('y',String(meta.y+11.2));
-        text.setAttribute('text-anchor','middle');
-        text.textContent=meta.text;
-        pill.appendChild(rect);
-        pill.appendChild(text);
-        badgeGroup.appendChild(pill);
-      });
-      group.appendChild(badgeGroup);
-    });
-  }
-  function patchCoreFunctions(){
-    if(typeof normalizeNode==='function' && !normalizeNode.__focusDocPatched){
-      const original=normalizeNode;
-      window.normalizeNode=function(n){
-        const base=original(n||{});
-        base.focusDoc=normalizeFocusDoc(n&&n.focusDoc);
-        return base;
-      };
-      window.normalizeNode.__focusDocPatched=true;
-    }
-    if(typeof buildExportObject==='function' && !buildExportObject.__focusDocPatched){
-      const original=buildExportObject;
-      window.buildExportObject=function(options={}){
-        const payload=original(options);
-        if(payload && Array.isArray(payload.nodes)){
-          payload.nodes=payload.nodes.map(outNode=>{
-            const source=getNodeById(outNode.id);
-            if(source?.focusDoc) outNode.focusDoc=fdClone(source.focusDoc);
-            return outNode;
-          });
-        }
-        return payload;
-      };
-      window.buildExportObject.__focusDocPatched=true;
-    }
-    if(typeof parseImportData==='function' && !parseImportData.__focusDocPatched){
-      const original=parseImportData;
-      window.parseImportData=function(raw, options={}){
-        const result=original(raw, options);
-        try{
-          const resolvedKind=(options&&options.kind) || window.currentExportKind || 'json';
-          if(resolvedKind==='json'){
-            let parsed=JSON.parse(String(raw||'').trim().replace(/^﻿/,''));
-            if(Array.isArray(parsed)) parsed={nodes:parsed,edges:[]};
-            if(parsed.data && (parsed.data.nodes||parsed.data.edges)) parsed=parsed.data;
-            const nodesSrc=Array.isArray(parsed.nodes) ? parsed.nodes : [];
-            if(Array.isArray(result?.nodes)){
-              result.nodes.forEach((node,index)=>{ node.focusDoc=normalizeFocusDoc(nodesSrc[index]?.focusDoc); });
-            }
-          }
-        }catch(_e){}
-        return result;
-      };
-      window.parseImportData.__focusDocPatched=true;
-    }
-    if(typeof updateQuickbar==='function' && !updateQuickbar.__focusDocPatched){
-      const original=updateQuickbar;
-      window.getQuickbarConfig=function(){
-        if(selectedEdgeId && typeof eb==='function' && eb(selectedEdgeId)){
-          return [
-            {id:'qb-edit',label:'線を編集',action:'edit',tone:'primary'},
-            {id:'qb-child',label:'向きを反転',action:'reverse-edge'},
-            {id:'qb-connect',label:'消す',action:'delete',tone:'danger'}
-          ];
-        }
-        if(selectedNodeIds.size>1){
-          return [
-            {id:'qb-align-left',label:'左揃え',action:'align-left',tone:'primary'},
-            {id:'qb-align-center-h',label:'中央(横)',action:'align-center-h'},
-            {id:'qb-align-right',label:'右揃え',action:'align-right'},
-            {id:'qb-align-top',label:'上揃え',action:'align-top'},
-            {id:'qb-align-middle-v',label:'中央(縦)',action:'align-middle-v'},
-            {id:'qb-align-bottom',label:'下揃え',action:'align-bottom'},
-            {id:'qb-space-h',label:'横均等',action:'distribute-h'},
-            {id:'qb-space-v',label:'縦均等',action:'distribute-v'},
-            {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
-          ];
-        }
-        if(activeNodeId && typeof nb==='function' && nb(activeNodeId)){
-          return [
-            {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
-            {id:'qb-focusdoc',label:'専心',action:'focus-doc'},
-            {id:'qb-child',label:'子を追加',action:'add-child'},
-            {id:'qb-connect',label:'つなぐ',action:'connect'},
-            {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
-          ];
-        }
-        return [];
-      };
-      window.updateQuickbar=function(){
-        ensureQuickbarFocusButton();
-        if(document.body.classList.contains('focusdoc-modal-open')){
-          if(quickbar){ quickbar.style.display='none'; quickbar.setAttribute('aria-hidden','true'); }
-          return;
-        }
-        const hasModal=ep.style.display==='block' || eep.style.display==='block' || helpBackdrop?.classList.contains('open') || historyBackdrop?.classList.contains('open');
-        if(hasModal || !nodes.length){
-          quickbar.style.display='none';
-          quickbar.setAttribute('aria-hidden','true');
-          return;
-        }
-        const config=getQuickbarConfig().filter(item=>!item.hidden);
-        if(!config.length){ quickbar.style.display='none'; quickbar.setAttribute('aria-hidden','true'); return; }
-        const anchor=(selectedNodeIds.size || selectedEdgeId || (activeNodeId && nb(activeNodeId))) ? getSelectionScreenAnchor() : {x:(cw.clientWidth||0)/2,y:(cw.clientHeight||0)-66};
-        if(!anchor){ quickbar.style.display='none'; quickbar.setAttribute('aria-hidden','true'); return; }
-        const map={
-          'qb-edit':document.getElementById('qb-edit'),
-          'qb-focusdoc':document.getElementById('qb-focusdoc'),
-          'qb-child':document.getElementById('qb-child'),
-          'qb-connect':document.getElementById('qb-connect'),
-          'qb-fit':document.getElementById('qb-fit'),
-          'qb-align-left':document.getElementById('qb-align-left'),
-          'qb-align-center-h':document.getElementById('qb-align-center-h'),
-          'qb-align-right':document.getElementById('qb-align-right'),
-          'qb-align-top':document.getElementById('qb-align-top'),
-          'qb-align-middle-v':document.getElementById('qb-align-middle-v'),
-          'qb-align-bottom':document.getElementById('qb-align-bottom'),
-          'qb-space-h':document.getElementById('qb-space-h'),
-          'qb-space-v':document.getElementById('qb-space-v'),
-          'qb-delete':document.getElementById('qb-delete')
-        };
-        Object.values(map).forEach(btn=>{ if(!btn) return; btn.style.display='none'; btn.classList.remove('primary','danger'); btn.dataset.action=''; });
-        config.forEach(item=>{ const btn=map[item.id]; if(!btn) return; btn.style.display=''; btn.textContent=item.label; btn.dataset.action=item.action; if(item.tone==='primary') btn.classList.add('primary'); if(item.tone==='danger') btn.classList.add('danger'); });
-        const wasHidden=quickbar.style.display==='none' || quickbar.getAttribute('aria-hidden')!=='false';
-        quickbar.style.display='flex';
-        quickbar.setAttribute('aria-hidden','false');
-        if(wasHidden){ quickbar.classList.remove('showing'); void quickbar.offsetWidth; quickbar.classList.add('showing'); setTimeout(()=>quickbar.classList.remove('showing'),220); }
-        const cwRect=cw.getBoundingClientRect();
-        const qbRect={w:quickbar.offsetWidth||300,h:quickbar.offsetHeight||42};
-        let left=anchor.x-qbRect.w/2;
-        let top=anchor.y-54;
-        left=Math.max(10,Math.min(cwRect.width-qbRect.w-10,left));
-        if(top<10) top=Math.min(cwRect.height-qbRect.h-10, anchor.y+18);
-        quickbar.style.left=left+'px';
-        quickbar.style.top=top+'px';
-      };
-      window.updateQuickbar.__focusDocPatched=true;
-    }
-    if(typeof runQuickbarAction==='function' && !runQuickbarAction.__focusDocPatched){
-      const original=runQuickbarAction;
-      window.runQuickbarAction=function(action){
-        if(action==='focus-doc'){
-          if(activeNodeId && typeof nb==='function' && nb(activeNodeId)) openFocusDocModal(activeNodeId,{source:'quickbar'});
-          return;
-        }
-        return original(action);
-      };
-      window.runQuickbarAction.__focusDocPatched=true;
-    }
-    if(typeof draw==='function' && !draw.__focusDocPatched){
-      const original=draw;
-      window.draw=function(){
-        const result=original.apply(this, arguments);
-        decorateFocusDocNodeBadges();
-        return result;
-      };
-      window.draw.__focusDocPatched=true;
-    }
-  }
-  ensureQuickbarFocusButton();
-  ensureContextMenuFocusEntry();
-  ensureEditPanelFocusEntry();
-  ensureFocusDocModal();
-  patchCoreFunctions();
-  if(Array.isArray(window.nodes)) window.nodes.forEach(node=>{ if(node && 'focusDoc' in node) node.focusDoc=normalizeFocusDoc(node.focusDoc); });
-  if(document.getElementById('qb-focusdoc')) document.getElementById('qb-focusdoc').addEventListener('click',()=>runQuickbarAction('focus-doc'));
-  window.addEventListener('keydown',e=>{ if(e.key==='Escape' && document.body.classList.contains('focusdoc-modal-open')){ e.preventDefault(); closeFocusDocModal(); } });
-  if(typeof renderNow==='function') scheduleFocusDocRender();
-})();
 </script>
 
 
@@ -12826,7 +12236,7 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     ensureFocusMapModal();
     fmBackdrop.classList.add('open');
     fmBackdrop.setAttribute('aria-hidden','false');
-    document.body.classList.add('focusmap-modal-open','focusdoc-modal-open');
+    document.body.classList.add('focusmap-modal-open','dedication-modal-open');
     const old=document.getElementById('focusdoc-backdrop'); if(old){ old.classList.remove('open'); old.setAttribute('aria-hidden','true'); }
     renderFocusMapModal();
     setFocusMapStatus('保存済み');
@@ -12836,7 +12246,7 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     const parent=currentParentNode(); if(parent?.focusMap) parent.focusMap.collapsedInParent=true;
     fmBackdrop.classList.remove('open');
     fmBackdrop.setAttribute('aria-hidden','true');
-    document.body.classList.remove('focusmap-modal-open','focusdoc-modal-open');
+    document.body.classList.remove('focusmap-modal-open','dedication-modal-open');
     if(parent && typeof window.setSingleSelection==='function') window.setSingleSelection(parent.id);
     if(typeof window.markDirty==='function') window.markDirty();
     if(typeof window.renderNow==='function') setTimeout(()=>window.renderNow(),20);
@@ -13052,31 +12462,6 @@ body.focusmap-modal-open #focus-chip{display:none !important}
   const STATUS_LABELS={none:'未完了',done:'完了'};
   const FITMODE_LABELS={shrink:'小さくして表示',wrap:'折り返して表示'};
 
-  function isNodeEditOpen(){
-    const ep=document.getElementById('ep');
-    return !!(ep && getComputedStyle(ep).display!=='none' && ep.style.display!=='none');
-  }
-  function currentEditNodeId(){
-    if(typeof window.epid!=='undefined' && window.epid) return window.epid;
-    if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
-    return null;
-  }
-  function getDedicatedOpenFn(){
-    if(typeof window.openFocusMapModal==='function') return window.openFocusMapModal;
-    if(typeof window.openFocusDocModal==='function') return window.openFocusDocModal;
-    return null;
-  }
-  function openDedicationFromEditor(source){
-    const nodeId=currentEditNodeId();
-    const openFn=getDedicatedOpenFn();
-    if(!nodeId || !openFn) return false;
-    if(typeof window.tryCommitNodeEdit==='function'){
-      const ok=window.tryCommitNodeEdit();
-      if(ok===false) return false;
-    }
-    openFn(nodeId,{source:source||'edit'});
-    return true;
-  }
   function ensureEditReadonlyUi(){
     const ep=document.getElementById('ep');
     const epst=document.getElementById('ep-status');
@@ -13095,8 +12480,7 @@ body.focusmap-modal-open #focus-chip{display:none !important}
       wrap=document.createElement('div');
       wrap.id='ep-readonly-wrap';
       wrap.className='ep-readonly-wrap';
-      wrap.innerHTML=''
-        + '';
+      wrap.innerHTML='';
       epfm.insertAdjacentElement('afterend', wrap);
     }
 
@@ -13117,465 +12501,19 @@ body.focusmap-modal-open #focus-chip{display:none !important}
       const original=window.openEp;
       window.openEp=function(){
         const result=original.apply(this, arguments);
-        setTimeout(syncReadonlyValues,0);
+        setTimeout(function(){
+          ensureEditReadonlyUi();
+          syncReadonlyValues();
+        },0);
         return result;
       };
       window.openEp.__v182ReadonlyPatched=true;
-    }
-  }
-  function bindDedicatedTriggers(){
-    if(document.body.dataset.v182DedicatedBound==='1') return;
-    document.body.dataset.v182DedicatedBound='1';
-
-    document.addEventListener('keydown',function(e){
-      if(e.key!=='F2') return;
-      if(!isNodeEditOpen()) return;
-      const ep=document.getElementById('ep');
-      const target=e.target;
-      if(ep && target && !ep.contains(target) && target!==document.body && target!==document.documentElement) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openDedicationFromEditor('edit-f2');
-    },true);
-
-    document.addEventListener('click',function(e){
-      const epBtn=e.target.closest('#ep-focusdoc');
-      if(epBtn){
-        e.preventDefault();
-        e.stopPropagation();
-        openDedicationFromEditor('edit-button');
-        return;
-      }
-      const qbBtn=e.target.closest('#qb-focusdoc');
-      if(qbBtn){
-        const nodeId=(typeof window.activeNodeId!=='undefined' && window.activeNodeId) ? window.activeNodeId : currentEditNodeId();
-        const openFn=getDedicatedOpenFn();
-        if(nodeId && openFn){
-          e.preventDefault();
-          e.stopPropagation();
-          openFn(nodeId,{source:'quickbar'});
-        }
-      }
-    },true);
-
-    document.addEventListener('mousedown',function(e){
-      const ctxBtn=e.target.closest('#c-work');
-      if(!ctxBtn) return;
-      const nodeId=(typeof window.cid!=='undefined' && window.cid) ? window.cid : ((typeof window.activeNodeId!=='undefined' && window.activeNodeId) ? window.activeNodeId : null);
-      const openFn=getDedicatedOpenFn();
-      if(!nodeId || !openFn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const cm=document.getElementById('cm');
-      if(cm) cm.style.display='none';
-      openFn(nodeId,{source:'contextmenu'});
-    },true);
-  }
-  function keepGlobalsInSync(){
-    if(typeof window.openFocusMapModal==='function'){
-      window.openFocusDocModal=window.openFocusMapModal;
-      return;
-    }
-    const openFn=getDedicatedOpenFn();
-    if(openFn){
-      window.openFocusMapModal=openFn;
-      window.openFocusDocModal=openFn;
     }
   }
   function init(){
     ensureEditReadonlyUi();
     syncReadonlyValues();
     patchOpenEpSync();
-    bindDedicatedTriggers();
-    keepGlobalsInSync();
-    setInterval(function(){
-      ensureEditReadonlyUi();
-      syncReadonlyValues();
-      keepGlobalsInSync();
-    },800);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
-  else init();
-})();
-</script>
-
-
-<style id="patch-v1-8-5-style">
-#focusdoc-backdrop{pointer-events:none !important}
-</style>
-<script id="patch-v1-8-5-script">
-(function(){
-  'use strict';
-  let realOpenFocusMapModal = typeof window.openFocusMapModal === 'function' ? window.openFocusMapModal : null;
-  if(realOpenFocusMapModal) window.__realOpenFocusMapModal = realOpenFocusMapModal;
-
-  function resolveNodeId(explicitId){
-    if(explicitId && typeof explicitId === 'string') return explicitId;
-    if(typeof window.epid !== 'undefined' && window.epid) return window.epid;
-    if(typeof window.activeNodeId !== 'undefined' && window.activeNodeId) return window.activeNodeId;
-    if(typeof window.cid !== 'undefined' && window.cid) return window.cid;
-    return null;
-  }
-  function isEditPanelOpen(){
-    const ep=document.getElementById('ep');
-    if(!ep) return false;
-    const style=window.getComputedStyle(ep);
-    return ep.style.display !== 'none' && style.display !== 'none' && style.visibility !== 'hidden';
-  }
-  function hideLegacyFocusDoc(){
-    const legacy=document.getElementById('focusdoc-backdrop');
-    if(!legacy) return;
-    legacy.classList.remove('open');
-    legacy.setAttribute('aria-hidden','true');
-    legacy.style.pointerEvents='none';
-    legacy.style.display='none';
-  }
-  function normalizeLabels(){
-    const epBtn=document.getElementById('ep-focusdoc');
-    if(epBtn) epBtn.textContent='専心';
-    const qb=document.getElementById('qb-focusdoc');
-    if(qb) qb.textContent='専心';
-    const ctx=document.getElementById('c-work');
-    if(ctx) ctx.textContent='専心を開く';
-  }
-  function getRealOpenFn(){
-    if(typeof window.__realOpenFocusMapModal === 'function') return window.__realOpenFocusMapModal;
-    if(typeof realOpenFocusMapModal === 'function') return realOpenFocusMapModal;
-    return null;
-  }
-  function openFocusDedicated(explicitId, options={}){
-    const nodeId=resolveNodeId(explicitId);
-    const openFn=getRealOpenFn();
-    if(!nodeId || typeof openFn !== 'function') return false;
-    hideLegacyFocusDoc();
-    try{
-      openFn(nodeId, options || {});
-    }catch(err){
-      console.error('Failed to open dedication modal', err);
-      return false;
-    }
-    window.requestAnimationFrame(()=>{
-      hideLegacyFocusDoc();
-      const backdrop=document.getElementById('focusmap-backdrop');
-      if(backdrop){
-        backdrop.classList.add('open');
-        backdrop.setAttribute('aria-hidden','false');
-      }
-      document.body.classList.add('focusmap-modal-open');
-      document.body.classList.remove('focusdoc-modal-open');
-    });
-    return true;
-  }
-  function openFocusDedicatedFromEditor(source){
-    const nodeId=resolveNodeId();
-    if(!nodeId) return false;
-    if(typeof window.tryCommitNodeEdit === 'function'){
-      const ok=window.tryCommitNodeEdit();
-      if(ok === false) return false;
-    }
-    return openFocusDedicated(nodeId,{source:source||'edit'});
-  }
-
-  try{
-    Object.defineProperty(window,'openFocusMapModal',{
-      configurable:true,
-      get(){ return openFocusDedicated; },
-      set(fn){
-        if(typeof fn === 'function' && fn !== openFocusDedicated){
-          realOpenFocusMapModal = fn;
-          window.__realOpenFocusMapModal = fn;
-        }
-      }
-    });
-    Object.defineProperty(window,'openFocusDocModal',{
-      configurable:true,
-      get(){ return openFocusDedicated; },
-      set(fn){
-        if(typeof fn === 'function' && fn !== openFocusDedicated){
-          window.__legacyOpenFocusDocModal = fn;
-        }
-      }
-    });
-  }catch(err){
-    window.openFocusDocModal = openFocusDedicated;
-    window.openFocusMapModal = openFocusDedicated;
-  }
-
-  if(typeof window.runQuickbarAction === 'function' && !window.runQuickbarAction.__focusRepairPatched){
-    const original = window.runQuickbarAction;
-    window.runQuickbarAction = function(action){
-      if(action === 'focus-doc'){
-        openFocusDedicated(resolveNodeId(),{source:'quickbar'});
-        return;
-      }
-      return original.apply(this, arguments);
-    };
-    window.runQuickbarAction.__focusRepairPatched = true;
-  }
-
-  document.addEventListener('click',function(e){
-    const qbBtn=e.target.closest('#qb-focusdoc');
-    if(qbBtn){
-      e.preventDefault();
-      e.stopPropagation();
-      openFocusDedicated(resolveNodeId(),{source:'quickbar'});
-      return;
-    }
-    const epBtn=e.target.closest('#ep-focusdoc');
-    if(epBtn){
-      e.preventDefault();
-      e.stopPropagation();
-      openFocusDedicatedFromEditor('edit-button');
-      return;
-    }
-  },true);
-
-  document.addEventListener('mousedown',function(e){
-    const ctxBtn=e.target.closest('#c-work');
-    if(!ctxBtn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const cm=document.getElementById('cm');
-    if(cm) cm.style.display='none';
-    openFocusDedicated(resolveNodeId(),{source:'contextmenu'});
-  },true);
-
-  window.addEventListener('keydown',function(e){
-    if(e.key !== 'F2') return;
-    if(document.body.classList.contains('focusmap-modal-open')) return;
-    if(!isEditPanelOpen()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openFocusDedicatedFromEditor('edit-f2');
-  },true);
-
-  function settle(){
-    normalizeLabels();
-    hideLegacyFocusDoc();
-    const current = typeof window.__realOpenFocusMapModal === 'function' ? window.__realOpenFocusMapModal : realOpenFocusMapModal;
-    if(typeof current === 'function') realOpenFocusMapModal = current;
-  }
-  function init(){
-    settle();
-    setTimeout(settle,50);
-    setTimeout(settle,250);
-    setInterval(settle,1000);
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
-  else init();
-})();
-</script>
-
-
-<style id="patch-v1-8-6-style">
-#startup-choice-modal .startup-choice-meta + .startup-choice-meta{margin-top:10px}
-</style>
-<script id="patch-v1-8-6-script">
-(function(){
-  'use strict';
-
-  function toast(msg,tone='ok'){
-    try{
-      if(typeof window.showToast==='function') window.showToast(msg,tone);
-      else console.warn(msg);
-    }catch(_e){ console.warn(msg); }
-  }
-  function byId(id){
-    try{ return typeof window.nb==='function' ? window.nb(id) : (Array.isArray(window.nodes) ? window.nodes.find(n=>n && n.id===id) : null); }
-    catch(_e){ return null; }
-  }
-  function currentNodeId(explicitId){
-    if(explicitId && typeof explicitId==='string') return explicitId;
-    if(typeof window.epid!=='undefined' && window.epid) return window.epid;
-    if(typeof window.cid!=='undefined' && window.cid) return window.cid;
-    if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
-    try{
-      if(window.selectedNodeIds && typeof window.selectedNodeIds.size==='number' && window.selectedNodeIds.size){
-        const first=window.selectedNodeIds.values().next();
-        if(first && !first.done) return first.value;
-      }
-    }catch(_e){}
-    return null;
-  }
-  function getNativeFocusOpen(){
-    const cand=window.__realOpenFocusMapModal;
-    if(typeof cand==='function' && cand!==window.openFocusMapModal && !/openFocusDedicated|stableDedicatedOpen/.test(cand.name||'')) return cand;
-    const cur=window.openFocusMapModal;
-    if(typeof cur==='function' && !/openFocusDedicated|stableDedicatedOpen/.test(cur.name||'')) return cur;
-    return null;
-  }
-  function hideLegacyFocus(){
-    const legacy=document.getElementById('focusdoc-backdrop');
-    if(legacy){
-      legacy.classList.remove('open');
-      legacy.setAttribute('aria-hidden','true');
-      legacy.style.display='none';
-      legacy.style.pointerEvents='none';
-    }
-  }
-  function normalizeDedicatedLabels(){
-    const epBtn=document.getElementById('ep-focusdoc');
-    if(epBtn) epBtn.textContent='専心';
-    const qbBtn=document.getElementById('qb-focusdoc');
-    if(qbBtn) qbBtn.textContent='専心';
-    const ctxBtn=document.getElementById('c-work');
-    if(ctxBtn) ctxBtn.textContent='専心を開く';
-  }
-  function forceBackdropVisible(){
-    const backdrop=document.getElementById('focusmap-backdrop');
-    if(backdrop){
-      backdrop.classList.add('open');
-      backdrop.setAttribute('aria-hidden','false');
-      backdrop.style.display='flex';
-      backdrop.style.pointerEvents='auto';
-    }
-    document.body.classList.add('focusmap-modal-open');
-    document.body.classList.remove('focusdoc-modal-open');
-    hideLegacyFocus();
-  }
-  function stableDedicatedOpen(explicitId,options={}){
-    const nodeId=currentNodeId(explicitId);
-    const node=byId(nodeId);
-    const openNative=getNativeFocusOpen();
-    normalizeDedicatedLabels();
-    hideLegacyFocus();
-    if(!node){
-      toast('専心を開くノードが選択されていません','warn');
-      return false;
-    }
-    if(typeof openNative!=='function'){
-      console.error('Native focus map opener not found');
-      toast('専心機能の初期化に失敗しています','warn');
-      return false;
-    }
-    try{
-      openNative(node.id, options||{});
-    }catch(err){
-      console.error('Failed to open dedication modal', err);
-      toast('専心を開けませんでした','warn');
-      return false;
-    }
-    requestAnimationFrame(forceBackdropVisible);
-    setTimeout(forceBackdropVisible,40);
-    setTimeout(forceBackdropVisible,180);
-    return true;
-  }
-  function openDedicatedFromEditor(source){
-    const nodeId=currentNodeId();
-    if(!nodeId) return false;
-    if(typeof window.tryCommitNodeEdit==='function'){
-      const ok=window.tryCommitNodeEdit();
-      if(ok===false) return false;
-    }
-    return stableDedicatedOpen(nodeId,{source:source||'edit'});
-  }
-  function patchOpenAliases(){
-    try{
-      Object.defineProperty(window,'openFocusMapModal',{configurable:true,writable:true,value:stableDedicatedOpen});
-      Object.defineProperty(window,'openFocusDocModal',{configurable:true,writable:true,value:stableDedicatedOpen});
-    }catch(_e){
-      window.openFocusMapModal=stableDedicatedOpen;
-      window.openFocusDocModal=stableDedicatedOpen;
-    }
-  }
-  function patchQuickbarAction(){
-    if(typeof window.runQuickbarAction==='function' && !window.runQuickbarAction.__v186DedicatedPatched){
-      const original=window.runQuickbarAction;
-      const wrapped=function(action){
-        if(action==='focus-doc'){
-          stableDedicatedOpen(currentNodeId(),{source:'quickbar'});
-          return;
-        }
-        return original.apply(this,arguments);
-      };
-      wrapped.__v186DedicatedPatched=true;
-      window.runQuickbarAction=wrapped;
-    }
-  }
-  function bindDedicatedRoutes(){
-    if(document.documentElement.dataset.v186DedicatedBound==='1') return;
-    document.documentElement.dataset.v186DedicatedBound='1';
-
-    window.addEventListener('click',function(e){
-      const qbBtn=e.target && e.target.closest ? e.target.closest('#qb-focusdoc') : null;
-      const epBtn=e.target && e.target.closest ? e.target.closest('#ep-focusdoc') : null;
-      if(!qbBtn && !epBtn) return;
-      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
-      e.preventDefault();
-      e.stopPropagation();
-      if(epBtn) openDedicatedFromEditor('edit-button');
-      else stableDedicatedOpen(currentNodeId(),{source:'quickbar'});
-    },true);
-
-    window.addEventListener('mousedown',function(e){
-      const ctxBtn=e.target && e.target.closest ? e.target.closest('#c-work') : null;
-      if(!ctxBtn) return;
-      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
-      e.preventDefault();
-      e.stopPropagation();
-      const cm=document.getElementById('cm');
-      if(cm) cm.style.display='none';
-      stableDedicatedOpen(currentNodeId(),{source:'contextmenu'});
-    },true);
-
-    window.addEventListener('keydown',function(e){
-      if(e.key!=='F2') return;
-      if(document.body.classList.contains('focusmap-modal-open')) return;
-      const ep=document.getElementById('ep');
-      if(!ep) return;
-      const style=window.getComputedStyle(ep);
-      const open=ep.style.display!=='none' && style.display!=='none' && style.visibility!=='hidden';
-      if(!open) return;
-      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
-      e.preventDefault();
-      e.stopPropagation();
-      openDedicatedFromEditor('edit-f2');
-    },true);
-  }
-
-  function deriveAutosaveTitle(payload){
-    try{
-      const metaTitle=String(payload?.state?.meta?.title||'').trim();
-      if(metaTitle) return metaTitle;
-      const list=Array.isArray(payload?.state?.nodes)?payload.state.nodes:[];
-      const root=list.find(n=>n && String(n.id||'')==='n1') || list[0] || null;
-      const label=String(root?.label||'').trim();
-      if(label) return label;
-    }catch(_e){}
-    return '名称未設定のマップ';
-  }
-  function patchStartupChoice(){
-    if(typeof window.showStartupChoice!=='function' || window.showStartupChoice.__v186Patched) return;
-    const original=window.showStartupChoice;
-    const wrapped=function(payload){
-      const result=original.apply(this,arguments);
-      try{
-        const modal=document.getElementById('startup-choice-modal');
-        if(!modal || modal.dataset.v186Meta==='1') return result;
-        modal.dataset.v186Meta='1';
-        const firstMeta=modal.querySelector('.startup-choice-meta');
-        if(firstMeta){
-          const titleRow=document.createElement('div');
-          titleRow.className='startup-choice-meta';
-          titleRow.innerHTML='マップ名: <strong>'+String(deriveAutosaveTitle(payload)).replace(/[&<>"]/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m];})+'</strong>';
-          firstMeta.insertAdjacentElement('afterend',titleRow);
-        }
-      }catch(err){ console.warn('startup choice patch failed',err); }
-      return result;
-    };
-    wrapped.__v186Patched=true;
-    window.showStartupChoice=wrapped;
-  }
-
-  function init(){
-    normalizeDedicatedLabels();
-    hideLegacyFocus();
-    patchOpenAliases();
-    patchQuickbarAction();
-    bindDedicatedRoutes();
-    patchStartupChoice();
-    setTimeout(function(){ normalizeDedicatedLabels(); patchOpenAliases(); patchQuickbarAction(); patchStartupChoice(); },60);
-    setTimeout(function(){ normalizeDedicatedLabels(); patchOpenAliases(); patchQuickbarAction(); patchStartupChoice(); },260);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
@@ -13584,7 +12522,7 @@ body.focusmap-modal-open #focus-chip{display:none !important}
 
 
 <style id="patch-v1-8-7-dedication-style">
-#focusdoc-backdrop{display:none !important;pointer-events:none !important;}
+#focusdoc-backdrop{display:none !important;pointer-events:none !important;visibility:hidden !important;}
 </style>
 <script id="patch-v1-8-7-dedication">
 (function(){
@@ -13643,12 +12581,24 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     legacy.style.pointerEvents='none';
   }
   function markDedicationLabels(){
-    const epBtn=document.getElementById('ep-focusdoc');
-    if(epBtn){ epBtn.textContent='専心'; epBtn.dataset.command='open-dedication-from-editor'; }
-    const qbBtn=document.getElementById('qb-focusdoc');
-    if(qbBtn){ qbBtn.textContent='専心'; qbBtn.dataset.command='open-dedication'; }
-    const ctxBtn=document.getElementById('c-work');
-    if(ctxBtn){ ctxBtn.textContent='専心を開く'; ctxBtn.dataset.command='open-dedication'; }
+    const epBtn=document.getElementById('ep-dedication') || document.getElementById('ep-focusdoc');
+    if(epBtn){
+      epBtn.id='ep-dedication';
+      epBtn.textContent='専心';
+      epBtn.dataset.command='open-dedication-from-editor';
+    }
+    const qbBtn=document.getElementById('qb-dedication') || document.getElementById('qb-focusdoc');
+    if(qbBtn){
+      qbBtn.id='qb-dedication';
+      qbBtn.textContent='専心';
+      qbBtn.dataset.command='open-dedication';
+    }
+    const ctxBtn=document.getElementById('c-dedication') || document.getElementById('c-work');
+    if(ctxBtn){
+      ctxBtn.id='c-dedication';
+      ctxBtn.textContent='専心を開く';
+      ctxBtn.dataset.command='open-dedication-context';
+    }
   }
   function convertLegacyFocusDocToDedicationMap(node){
     const doc=node && node.focusDoc && Array.isArray(node.focusDoc.items) ? node.focusDoc : null;
@@ -13719,8 +12669,8 @@ body.focusmap-modal-open #focus-chip{display:none !important}
             const map=syncNodeDedication(src);
             if(map){
               outNode.dedicationMap=clone(map);
-              outNode.focusMap=clone(map);
             }
+            if('focusMap' in outNode) delete outNode.focusMap;
             if('focusDoc' in outNode) delete outNode.focusDoc;
           });
         }
@@ -13778,7 +12728,7 @@ body.focusmap-modal-open #focus-chip{display:none !important}
       mapBackdrop.style.display='flex';
       mapBackdrop.style.pointerEvents='auto';
       document.body.classList.add('focusmap-modal-open');
-      document.body.classList.remove('focusdoc-modal-open');
+      document.body.classList.remove('dedication-modal-open');
     }
   }
   let lastDedicationOpen={nodeId:null,at:0};
@@ -13900,17 +12850,17 @@ body.focusmap-modal-open #focus-chip{display:none !important}
     document.documentElement.dataset.dedicationCommandBound='1';
 
     document.addEventListener('click',function(e){
-      const target=e.target && e.target.closest ? e.target.closest('[data-command],#qb-focusdoc,#ep-focusdoc') : null;
+      const target=e.target && e.target.closest ? e.target.closest('[data-command],#qb-dedication,#ep-dedication,#qb-focusdoc,#ep-focusdoc') : null;
       if(!target) return;
-      const command=target.dataset.command || (target.id==='ep-focusdoc' ? 'open-dedication-from-editor' : 'open-dedication');
+      const command=target.dataset.command || ((target.id==='ep-dedication' || target.id==='ep-focusdoc') ? 'open-dedication-from-editor' : 'open-dedication');
       if(command!=='open-dedication' && command!=='open-dedication-from-editor') return;
       e.preventDefault();
       e.stopPropagation();
-      dispatchMindmapCommand(command,{source:target.id==='qb-focusdoc'?'quickbar':'edit-button'});
+      dispatchMindmapCommand(command,{source:(target.id==='qb-dedication' || target.id==='qb-focusdoc')?'quickbar':'edit-button'});
     },true);
 
     document.addEventListener('mousedown',function(e){
-      const target=e.target && e.target.closest ? e.target.closest('#c-work,[data-command="open-dedication-context"]') : null;
+      const target=e.target && e.target.closest ? e.target.closest('#c-dedication,#c-work,[data-command="open-dedication-context"]') : null;
       if(!target) return;
       e.preventDefault();
       e.stopPropagation();
@@ -13981,6 +12931,355 @@ body.focusmap-modal-open #focus-chip{display:none !important}
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
+})();
+</script>
+
+
+
+<style id="patch-v1-8-10-dedication-ui-style">
+body.dedication-modal-open #quickbar{display:none !important;}
+#qb-dedication,#ep-dedication{white-space:nowrap;}
+</style>
+<script id="patch-v1-8-10-dedication-ui">
+(function(){
+  'use strict';
+
+  function ensureQuickbarDedicationButton(){
+    const qb=document.getElementById('quickbar');
+    if(!qb) return;
+    const legacy=document.getElementById('qb-focusdoc');
+    if(legacy){
+      legacy.id='qb-dedication';
+      legacy.textContent='専心';
+      legacy.dataset.command='open-dedication';
+      legacy.type='button';
+    }
+    if(document.getElementById('qb-dedication')) return;
+    const btn=document.createElement('button');
+    btn.id='qb-dedication';
+    btn.type='button';
+    btn.textContent='専心';
+    btn.dataset.command='open-dedication';
+    const danger=document.getElementById('qb-delete');
+    if(danger && danger.parentNode===qb) qb.insertBefore(btn, danger);
+    else qb.appendChild(btn);
+  }
+
+  function ensureContextDedicationEntry(){
+    const cm=document.getElementById('cm');
+    if(!cm) return;
+    const legacy=document.getElementById('c-work');
+    if(legacy){
+      legacy.id='c-dedication';
+      legacy.textContent='専心を開く';
+      legacy.dataset.command='open-dedication-context';
+    }
+    if(document.getElementById('c-dedication')) return;
+    const div=document.createElement('div');
+    div.id='c-dedication';
+    div.textContent='専心を開く';
+    div.dataset.command='open-dedication-context';
+    const hr=cm.querySelector('hr');
+    if(hr) cm.insertBefore(div, hr);
+    else cm.appendChild(div);
+  }
+
+  function ensureEditDedicationButton(){
+    const epft=document.querySelector('#ep .epft');
+    if(!epft) return;
+    const legacy=document.getElementById('ep-focusdoc');
+    if(legacy){
+      legacy.id='ep-dedication';
+      legacy.textContent='専心';
+      legacy.dataset.command='open-dedication-from-editor';
+      legacy.type='button';
+    }
+    if(document.getElementById('ep-dedication')) return;
+    const btn=document.createElement('button');
+    btn.id='ep-dedication';
+    btn.type='button';
+    btn.textContent='専心';
+    btn.dataset.command='open-dedication-from-editor';
+    const okBtn=document.getElementById('ep-ok');
+    if(okBtn && okBtn.parentNode===epft) epft.insertBefore(btn, okBtn);
+    else epft.appendChild(btn);
+  }
+
+  function runEnsure(){
+    ensureQuickbarDedicationButton();
+    ensureContextDedicationEntry();
+    ensureEditDedicationButton();
+  }
+
+  function patchLifecycleHook(name){
+    const fn=window[name];
+    if(typeof fn!=='function' || fn.__dedicationUiPatched) return;
+    const wrapped=function(){
+      const result=fn.apply(this, arguments);
+      setTimeout(runEnsure, 0);
+      return result;
+    };
+    wrapped.__dedicationUiPatched=true;
+    window[name]=wrapped;
+  }
+
+  function init(){
+    runEnsure();
+    patchLifecycleHook('openEp');
+    patchLifecycleHook('updateQuickbar');
+    patchLifecycleHook('renderNow');
+    if(window.MutationObserver && document.body){
+      const mo=new MutationObserver(function(){
+        runEnsure();
+      });
+      mo.observe(document.body,{childList:true,subtree:true});
+    }
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
+</script>
+
+
+<style id="patch-v1-8-9-dedication-log-style">
+#dedication-log-panel{
+  margin-top:10px;
+  border:1px solid rgba(255,107,120,.26);
+  border-radius:12px;
+  background:linear-gradient(180deg, rgba(48,17,24,.42), rgba(20,10,15,.48));
+  padding:10px 12px;
+}
+#dedication-log-panel[hidden]{display:none !important;}
+#dedication-log-panel .dl-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+#dedication-log-panel .dl-title{font-size:12px;font-weight:800;color:#ffe5e7;letter-spacing:.02em;}
+#dedication-log-panel .dl-sub{font-size:11px;line-height:1.5;color:#f5c7cf;}
+#dedication-log-panel .dl-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+#dedication-log-panel .dl-actions button{font-size:11px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,107,120,.24);background:rgba(255,255,255,.05);color:#ffe8ea;cursor:pointer;}
+#dedication-log-panel .dl-actions button:hover{background:rgba(255,255,255,.09);}
+#dedication-log-status{font-size:11px;line-height:1.5;color:#ffd7dd;margin-bottom:8px;}
+#dedication-log-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;padding-right:2px;}
+#dedication-log-list .dl-empty{font-size:11px;line-height:1.5;color:#f2b8c1;padding:2px 0;}
+#dedication-log-list .dl-item{border:1px solid rgba(255,107,120,.18);border-radius:10px;padding:8px 9px;background:rgba(0,0,0,.16);}
+#dedication-log-list .dl-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+#dedication-log-list .dl-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;line-height:1.2;border:1px solid rgba(255,107,120,.22);background:rgba(255,255,255,.06);color:#ffe8ea;}
+#dedication-log-list .dl-badge[data-level="info"]{border-color:rgba(18,198,255,.26);color:#dff8ff;}
+#dedication-log-list .dl-badge[data-level="warn"]{border-color:rgba(255,227,109,.28);color:#fff8cf;}
+#dedication-log-list .dl-badge[data-level="error"]{border-color:rgba(255,107,120,.34);color:#ffe5e7;}
+#dedication-log-list .dl-time{font-size:10px;color:#f0b8c3;}
+#dedication-log-list .dl-msg{font-size:12px;line-height:1.55;color:#fff0f2;margin-top:6px;white-space:pre-wrap;word-break:break-word;}
+#dedication-log-list .dl-meta{font-size:10px;line-height:1.45;color:#f3bcc7;margin-top:6px;white-space:pre-wrap;word-break:break-word;}
+</style>
+<script id="patch-v1-8-9-dedication-log">
+(function(){
+  'use strict';
+  const LOG_KEY='mindmap_dedication_error_log_v1';
+  const MAX_LOGS=80;
+  let panelReady=false;
+  function nowIso(){
+    const d=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  }
+  function safeJson(value){
+    try{return JSON.stringify(value,null,2);}catch(_e){return String(value);}
+  }
+  function readLogs(){
+    try{
+      const raw=localStorage.getItem(LOG_KEY);
+      if(!raw) return [];
+      const list=JSON.parse(raw);
+      return Array.isArray(list)?list:[];
+    }catch(_e){return [];}
+  }
+  function writeLogs(list){
+    try{ localStorage.setItem(LOG_KEY, JSON.stringify(list.slice(0,MAX_LOGS))); }catch(_e){}
+  }
+  function currentNodeId(){
+    try{
+      if(typeof window.epid!=='undefined' && window.epid) return window.epid;
+      if(typeof window.cid!=='undefined' && window.cid) return window.cid;
+      if(typeof window.activeNodeId!=='undefined' && window.activeNodeId) return window.activeNodeId;
+      if(window.selectedNodeIds && typeof window.selectedNodeIds.size==='number' && window.selectedNodeIds.size){
+        const first=window.selectedNodeIds.values().next();
+        if(first && !first.done) return first.value;
+      }
+    }catch(_e){}
+    return null;
+  }
+  function pushLog(entry){
+    const list=readLogs();
+    list.unshift(entry);
+    writeLogs(list);
+    renderLogPanel();
+  }
+  function logDedication(level,message,meta){
+    pushLog({
+      level: level||'error',
+      message: String(message||'専心関連の不明なエラー'),
+      time: nowIso(),
+      nodeId: (meta && meta.nodeId) || currentNodeId() || null,
+      source: (meta && meta.source) || null,
+      detail: meta && meta.detail!=null ? meta.detail : null,
+      stack: meta && meta.stack ? String(meta.stack) : null,
+      href: location.href.split('#')[0]
+    });
+  }
+  window.logDedicationError = logDedication;
+  window.getDedicationErrorLog = function(){ return readLogs(); };
+  function ensureLogPanel(){
+    const ioStatus=document.getElementById('io-status');
+    if(!ioStatus) return null;
+    let panel=document.getElementById('dedication-log-panel');
+    if(panel) return panel;
+    panel=document.createElement('div');
+    panel.id='dedication-log-panel';
+    panel.hidden=false;
+    panel.innerHTML=''
+      +'<div class="dl-head">'
+      +  '<div>'
+      +    '<div class="dl-title">専心エラーログ</div>'
+      +    '<div class="dl-sub">専心を開く・描画する・閉じるときの失敗を残します。新しいものが上です。</div>'
+      +  '</div>'
+      +  '<div class="dl-actions">'
+      +    '<button id="dedication-log-copy" type="button">ログをコピー</button>'
+      +    '<button id="dedication-log-clear" type="button">ログを消す</button>'
+      +  '</div>'
+      +'</div>'
+      +'<div id="dedication-log-status"></div>'
+      +'<div id="dedication-log-list"></div>';
+    ioStatus.insertAdjacentElement('afterend', panel);
+    panel.querySelector('#dedication-log-copy').addEventListener('click', async function(){
+      const logs=readLogs();
+      const text=logs.length ? safeJson(logs) : '[]';
+      try{
+        await navigator.clipboard.writeText(text);
+        if(typeof window.toast==='function') window.toast('専心エラーログをコピーしました');
+      }catch(err){
+        logDedication('warn','専心エラーログのコピーに失敗',{source:'dedication-log-copy',detail:String(err&&err.message||err)});
+        if(typeof window.toast==='function') window.toast('ログのコピーに失敗しました', 'warn');
+      }
+    });
+    panel.querySelector('#dedication-log-clear').addEventListener('click', function(){
+      try{ localStorage.removeItem(LOG_KEY); }catch(_e){}
+      renderLogPanel();
+      if(typeof window.toast==='function') window.toast('専心エラーログを消しました');
+    });
+    return panel;
+  }
+  function renderLogPanel(){
+    const panel=ensureLogPanel();
+    if(!panel) return;
+    const status=panel.querySelector('#dedication-log-status');
+    const listEl=panel.querySelector('#dedication-log-list');
+    const logs=readLogs();
+    status.textContent=logs.length ? ('保存件数: '+logs.length+'件') : 'まだ専心エラーは記録されていません。';
+    if(!logs.length){
+      listEl.innerHTML='<div class="dl-empty">専心を開く時の失敗や例外が起きたら、ここに残ります。</div>';
+      return;
+    }
+    listEl.innerHTML=logs.slice(0,20).map(function(entry){
+      const meta=[];
+      if(entry.source) meta.push('source: '+entry.source);
+      if(entry.nodeId) meta.push('nodeId: '+entry.nodeId);
+      if(entry.detail) meta.push('detail: '+(typeof entry.detail==='string'?entry.detail:safeJson(entry.detail)));
+      if(entry.stack) meta.push('stack: '+entry.stack);
+      return ''
+        +'<div class="dl-item">'
+        +  '<div class="dl-row">'
+        +    '<span class="dl-badge" data-level="'+escapeHtml(entry.level||'error')+'">'+escapeHtml((entry.level||'error').toUpperCase())+'</span>'
+        +    '<span class="dl-time">'+escapeHtml(entry.time||'')+'</span>'
+        +  '</div>'
+        +  '<div class="dl-msg">'+escapeHtml(entry.message||'')+'</div>'
+        +  (meta.length?'<div class="dl-meta">'+escapeHtml(meta.join('\n'))+'</div>':'')
+        +'</div>';
+    }).join('');
+  }
+  function wrapOpenDedication(){
+    if(typeof window.openDedication!=='function' || window.openDedication.__logged) return;
+    const original=window.openDedication;
+    const wrapped=function(nodeId,options){
+      const source=options&&options.source || 'unknown';
+      try{
+        const result=original.apply(this,arguments);
+        setTimeout(function(){
+          const backdrop=document.getElementById('focusmap-backdrop');
+          const open=!!(backdrop && backdrop.classList.contains('open') && window.getComputedStyle(backdrop).display!=='none');
+          if(!open){
+            logDedication('error','専心を開こうとしたがモーダルが開きませんでした',{source:source,nodeId:nodeId||currentNodeId(),detail:{reason:'modal_not_open_after_attempt'}});
+          }
+        }, 220);
+        return result;
+      }catch(err){
+        logDedication('error','専心を開く処理で例外が発生しました',{source:source,nodeId:nodeId||currentNodeId(),detail:String(err&&err.message||err),stack:err&&err.stack||null});
+        throw err;
+      }
+    };
+    wrapped.__logged=true;
+    window.openDedication=wrapped;
+  }
+  function wrapDispatch(){
+    if(typeof window.dispatchMindmapCommand!=='function' || window.dispatchMindmapCommand.__logged) return;
+    const original=window.dispatchMindmapCommand;
+    const wrapped=function(type,payload){
+      try{
+        return original.apply(this,arguments);
+      }catch(err){
+        const isDedication = type==='open-dedication' || type==='open-dedication-from-editor';
+        if(isDedication){
+          logDedication('error','専心コマンドの実行で例外が発生しました',{source:type,nodeId:payload&&payload.nodeId||currentNodeId(),detail:String(err&&err.message||err),stack:err&&err.stack||null});
+        }
+        throw err;
+      }
+    };
+    wrapped.__logged=true;
+    window.dispatchMindmapCommand=wrapped;
+  }
+  function patchAliases(){
+    ['openFocusDocModal','openFocusMapModal'].forEach(function(name){
+      const fn=window[name];
+      if(typeof fn!=='function' || fn.__loggedAlias) return;
+      const wrapped=function(){
+        try{ return fn.apply(this,arguments); }
+        catch(err){
+          logDedication('error','旧専心エイリアス経由で例外が発生しました',{source:name,nodeId:arguments[0]||currentNodeId(),detail:String(err&&err.message||err),stack:err&&err.stack||null});
+          throw err;
+        }
+      };
+      wrapped.__loggedAlias=true;
+      window[name]=wrapped;
+    });
+  }
+  window.addEventListener('error', function(e){
+    try{
+      const msg=String(e && (e.message || (e.error && e.error.message) || '') || '');
+      const stack=String(e && e.error && e.error.stack || '');
+      const hay=(msg+'\n'+stack).toLowerCase();
+      if(!/(dedication|focusmap|focusdoc|opendedication|dedicationmap)/.test(hay)) return;
+      logDedication('error','専心関連の未処理エラーを検知しました',{source:'window.error',detail:msg||String(e.filename||''),stack:stack||null});
+    }catch(_e){}
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    try{
+      const reason=e && e.reason;
+      const msg=String(reason && (reason.message || reason) || '');
+      const stack=String(reason && reason.stack || '');
+      const hay=(msg+'\n'+stack).toLowerCase();
+      if(!/(dedication|focusmap|focusdoc|opendedication|dedicationmap)/.test(hay)) return;
+      logDedication('error','専心関連の未処理Promiseエラーを検知しました',{source:'unhandledrejection',detail:msg,stack:stack||null});
+    }catch(_e){}
+  });
+  function init(){
+    ensureLogPanel();
+    renderLogPanel();
+    wrapOpenDedication();
+    wrapDispatch();
+    patchAliases();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+  setTimeout(init, 120);
+  setTimeout(init, 500);
 })();
 </script>
 
