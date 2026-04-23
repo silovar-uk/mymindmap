@@ -2231,8 +2231,7 @@ function openNodeRelatedUrl(nodeOrId,{source='ui'}={}){
 }
 function normalizeNode(n){
   const label=(n.label||'新規案件').trim() || '新規案件';
-  const subtext=(n.subtext||'').replace(/
-/g,'').trim();
+  const subtext=(n.subtext||'').replace(/\r?\n/g,'').trim();
   const status=STATUS_META[n.status] ? n.status : 'none';
   const collapsed=!!n.collapsed;
   const fitMode=n.fitMode==='wrap' ? 'wrap' : 'shrink';
@@ -5879,7 +5878,7 @@ function draw(){
     g.appendChild(doneGroup);
     }
 
-    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){
+    if(selected && selectedNodeIds.size>1 && !meta?.presentationMode){
       const tagBg=document.createElementNS('http://www.w3.org/2000/svg','rect');
       tagBg.setAttribute('x',-28);
       tagBg.setAttribute('y',n.h/2+4);
