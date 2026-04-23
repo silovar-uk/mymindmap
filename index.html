@@ -7795,21 +7795,53 @@ function getExportDateForFilename(){
 function getImageExportFilename(ext){
   return `mindmap_${getSafeMapTitleForFilename()}_${getExportDateForFilename()}.${ext}`;
 }
+function getSvgExportContentBounds(){
+  const boxes=[];
+  [EL,NL].forEach(group=>{
+    if(!group) return;
+    try{
+      const box=group.getBBox();
+      if(box && Number.isFinite(box.x) && Number.isFinite(box.y) && Number.isFinite(box.width) && Number.isFinite(box.height) && (box.width>0 || box.height>0)){
+        boxes.push(box);
+      }
+    }catch(_e){}
+  });
+  if(!boxes.length){
+    return {x:0,y:0,width:Math.max(1,sv.clientWidth||1),height:Math.max(1,sv.clientHeight||1)};
+  }
+  const left=Math.min(...boxes.map(box=>box.x));
+  const top=Math.min(...boxes.map(box=>box.y));
+  const right=Math.max(...boxes.map(box=>box.x+box.width));
+  const bottom=Math.max(...boxes.map(box=>box.y+box.height));
+  return {x:left,y:top,width:Math.max(1,right-left),height:Math.max(1,bottom-top)};
+}
 function getSvgExportString(){
   const clone=sv.cloneNode(true);
+  const bounds=getSvgExportContentBounds();
+  const padding=32;
+  const titleHeight=meta.title?34:0;
+  const exportWidth=Math.max(1,Math.ceil(bounds.width+padding*2));
+  const exportHeight=Math.max(1,Math.ceil(bounds.height+padding*2+titleHeight));
+  const offsetX=padding-bounds.x;
+  const offsetY=padding+titleHeight-bounds.y;
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  clone.setAttribute('width',sv.clientWidth);
-  clone.setAttribute('height',sv.clientHeight);
-  clone.setAttribute('viewBox',`0 0 ${sv.clientWidth} ${sv.clientHeight}`);
+  clone.setAttribute('width',exportWidth);
+  clone.setAttribute('height',exportHeight);
+  clone.setAttribute('viewBox',`0 0 ${exportWidth} ${exportHeight}`);
+  const cloneEL=clone.querySelector('#EL');
+  const cloneNL=clone.querySelector('#NL');
+  const exportTransform=`translate(${offsetX},${offsetY}) scale(1)`;
+  if(cloneEL) cloneEL.setAttribute('transform',exportTransform);
+  if(cloneNL) cloneNL.setAttribute('transform',exportTransform);
   const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
   bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',sv.clientWidth);
-  bg.setAttribute('height',sv.clientHeight);
+  bg.setAttribute('width',exportWidth);
+  bg.setAttribute('height',exportHeight);
   bg.setAttribute('fill','#fafafa');
   clone.insertBefore(bg, clone.firstChild);
   if(meta.title){
     const title=document.createElementNS('http://www.w3.org/2000/svg','text');
-    title.setAttribute('x','18'); title.setAttribute('y','28');
+    title.setAttribute('x',String(padding)); title.setAttribute('y','28');
     title.setAttribute('font-size','16'); title.setAttribute('font-weight','700');
     title.setAttribute('fill','#111827');
     title.textContent=meta.title;
@@ -7830,13 +7862,15 @@ document.getElementById('b-png').addEventListener('click',()=>{
   const url=URL.createObjectURL(svgBlob);
   img.onload=()=>{
     const canvas=document.createElement('canvas');
-    canvas.width=sv.clientWidth*2;
-    canvas.height=sv.clientHeight*2;
+    const width=Math.max(1,Math.round(img.naturalWidth||img.width||sv.clientWidth||1));
+    const height=Math.max(1,Math.round(img.naturalHeight||img.height||sv.clientHeight||1));
+    canvas.width=width*2;
+    canvas.height=height*2;
     const ctx=canvas.getContext('2d');
     ctx.scale(2,2);
     ctx.fillStyle='#fafafa';
-    ctx.fillRect(0,0,sv.clientWidth,sv.clientHeight);
-    ctx.drawImage(img,0,0,sv.clientWidth,sv.clientHeight);
+    ctx.fillRect(0,0,width,height);
+    ctx.drawImage(img,0,0,width,height);
     canvas.toBlob(blob=>{
       if(blob) downloadBlob(blob,getImageExportFilename('png'));
       URL.revokeObjectURL(url);
@@ -11682,7 +11716,7 @@ html,body{
       if(first && first.tagName && first.tagName.toLowerCase() === 'rect'){
         first.setAttribute('fill', '#05070b');
       }
-      const title = svg.querySelector('text[x="18"][y="28"]');
+      const title = svg.querySelector('text[y="28"]');
       if(title) title.setAttribute('fill', '#f6f3ed');
     }
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
@@ -11710,8 +11744,8 @@ html,body{
       const url = URL.createObjectURL(svgBlob);
       img.onload = ()=>{
         const canvas = document.createElement('canvas');
-        const width = (window.sv && sv.clientWidth) ? sv.clientWidth : img.width;
-        const height = (window.sv && sv.clientHeight) ? sv.clientHeight : img.height;
+        const width = Math.max(1, Math.round(img.naturalWidth || img.width || ((window.sv && sv.clientWidth) ? sv.clientWidth : 1)));
+        const height = Math.max(1, Math.round(img.naturalHeight || img.height || ((window.sv && sv.clientHeight) ? sv.clientHeight : 1)));
         canvas.width = width * 2;
         canvas.height = height * 2;
         const ctx = canvas.getContext('2d');
@@ -13305,6 +13339,116 @@ body.dedication-modal-open #quickbar{display:none !important;}
   else init();
   setTimeout(init, 120);
   setTimeout(init, 500);
+})();
+</script>
+
+
+<style id="patch-v1-8-17-dedication-selection-fix-style">
+#dedication-selection-debug{display:none;}
+</style>
+<script id="patch-v1-8-17-dedication-selection-fix">
+(function(){
+  'use strict';
+  function lex(name){
+    try{
+      return Function('return (typeof '+name+' !== "undefined") ? '+name+' : undefined;')();
+    }catch(_e){ return undefined; }
+  }
+  function realCurrentNodeId(explicitId){
+    if(explicitId && typeof explicitId==='string') return explicitId;
+    const epid=lex('epid');
+    if(epid) return epid;
+    const cid=lex('cid');
+    if(cid) return cid;
+    const active=lex('activeNodeId');
+    if(active) return active;
+    const selected=lex('selectedNodeIds');
+    try{
+      if(selected && typeof selected.size==='number' && selected.size){
+        const first=selected.values().next();
+        if(first && !first.done) return first.value;
+      }
+    }catch(_e){}
+    return null;
+  }
+  function realGetNodeById(id){
+    if(!id) return null;
+    try{
+      const nbFn=lex('nb');
+      if(typeof nbFn==='function') return nbFn(id);
+    }catch(_e){}
+    try{
+      const list=lex('nodes');
+      if(Array.isArray(list)) return list.find(function(n){ return n && n.id===id; }) || null;
+    }catch(_e){}
+    return null;
+  }
+  function ensureLegacyAliases(){
+    try{
+      const active=lex('activeNodeId'); if(active) window.activeNodeId=active;
+      const cid=lex('cid'); if(cid) window.cid=cid;
+      const epid=lex('epid'); if(epid) window.epid=epid;
+      const selected=lex('selectedNodeIds'); if(selected) window.selectedNodeIds=selected;
+      const list=lex('nodes'); if(Array.isArray(list)) window.nodes=list;
+      const nbFn=lex('nb'); if(typeof nbFn==='function') window.nb=nbFn;
+    }catch(_e){}
+  }
+  function resolveNodeId(payload){
+    if(payload && payload.nodeId && realGetNodeById(payload.nodeId)) return payload.nodeId;
+    const current=realCurrentNodeId();
+    if(current && realGetNodeById(current)) return current;
+    return null;
+  }
+  function installPatch(){
+    ensureLegacyAliases();
+    const originalOpen=typeof window.openDedication==='function' ? window.openDedication : null;
+    if(originalOpen && !originalOpen.__selectionFixed){
+      const wrapped=function(nodeId, options){
+        ensureLegacyAliases();
+        const resolved=(typeof nodeId==='string' && realGetNodeById(nodeId)) ? nodeId : resolveNodeId({nodeId:nodeId});
+        if(!resolved){
+          if(typeof window.showToast==='function') window.showToast('専心を開くノードが選択されていません','warn');
+          return false;
+        }
+        return originalOpen.call(this, resolved, options||{});
+      };
+      wrapped.__selectionFixed=true;
+      window.openDedication=wrapped;
+      try{ window.openFocusMapModal=wrapped; }catch(_e){}
+      try{ window.openFocusDocModal=wrapped; }catch(_e){}
+    }
+    const originalDispatch=typeof window.dispatchMindmapCommand==='function' ? window.dispatchMindmapCommand : null;
+    if(originalDispatch && !originalDispatch.__selectionFixed){
+      const wrappedDispatch=function(type,payload){
+        ensureLegacyAliases();
+        payload=payload||{};
+        if(type==='open-dedication' || type==='open-dedication-from-editor' || type==='open-dedication-context'){
+          const nodeId=resolveNodeId(payload);
+          if(type==='open-dedication-from-editor' && typeof window.tryCommitNodeEdit==='function'){
+            const editNodeId=resolveNodeId(payload);
+            const ok=window.tryCommitNodeEdit();
+            if(ok===false) return false;
+            payload.nodeId=editNodeId || resolveNodeId(payload);
+          } else {
+            payload.nodeId=nodeId;
+          }
+          if(!payload.nodeId){
+            if(typeof window.showToast==='function') window.showToast('専心を開くノードが選択されていません','warn');
+            return false;
+          }
+          return window.openDedication(payload.nodeId,{source:payload.source||type});
+        }
+        return originalDispatch.call(this,type,payload);
+      };
+      wrappedDispatch.__selectionFixed=true;
+      window.dispatchMindmapCommand=wrappedDispatch;
+    }
+  }
+  installPatch();
+  document.addEventListener('pointerdown', ensureLegacyAliases, true);
+  document.addEventListener('click', ensureLegacyAliases, true);
+  window.addEventListener('focus', ensureLegacyAliases);
+  setInterval(ensureLegacyAliases, 400);
 })();
 </script>
 
