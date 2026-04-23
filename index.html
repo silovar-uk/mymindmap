@@ -13837,3 +13837,201 @@ body.dedication-modal-open #quickbar{display:none !important;}
   }
 })();
 </script>
+
+
+<script id="patch-v1-8-20-dedication-attempt-log">
+(function(){
+  'use strict';
+
+  function coreNb(id){
+    try{
+      if(typeof nb === 'function') return nb(id);
+    }catch(_e){}
+    try{
+      if(Array.isArray(nodes)) return nodes.find(n=>n&&n.id===id)||null;
+    }catch(_e){}
+    try{
+      if(typeof window.nb === 'function') return window.nb(id);
+      if(Array.isArray(window.nodes)) return window.nodes.find(n=>n&&n.id===id)||null;
+    }catch(_e){}
+    return null;
+  }
+
+  function directValue(name){
+    try{
+      switch(name){
+        case 'epid': return (typeof epid !== 'undefined') ? epid : undefined;
+        case 'cid': return (typeof cid !== 'undefined') ? cid : undefined;
+        case 'activeNodeId': return (typeof activeNodeId !== 'undefined') ? activeNodeId : undefined;
+        case 'selectedNodeIds': return (typeof selectedNodeIds !== 'undefined') ? selectedNodeIds : undefined;
+        case 'nodes': return (typeof nodes !== 'undefined') ? nodes : undefined;
+        default: return undefined;
+      }
+    }catch(_e){ return undefined; }
+  }
+
+  function getSelectionSnapshot(){
+    const directSelected = directValue('selectedNodeIds');
+    const directActive = directValue('activeNodeId');
+    const directCid = directValue('cid');
+    const directEpid = directValue('epid');
+    let selectedIds = [];
+    try{
+      if(directSelected && typeof directSelected.size === 'number') selectedIds = Array.from(directSelected);
+      else if(window.selectedNodeIds && typeof window.selectedNodeIds.size === 'number') selectedIds = Array.from(window.selectedNodeIds);
+    }catch(_e){}
+    return {
+      activeNodeId: directActive || window.activeNodeId || null,
+      cid: directCid || window.cid || null,
+      epid: directEpid || window.epid || null,
+      selectedCount: selectedIds.length,
+      selectedNodeIds: selectedIds.slice(0,12),
+      hasNativeOpen: !!(typeof window.__nativeDedicationOpen === 'function' || typeof window.__realOpenFocusMapModal === 'function'),
+      focusmapBackdropExists: !!document.getElementById('focusmap-backdrop'),
+      isEditOpen: !!(document.getElementById('ep') && window.getComputedStyle(document.getElementById('ep')).display !== 'none' && document.getElementById('ep').style.display !== 'none')
+    };
+  }
+
+  function resolveNodeId(explicitId){
+    if(explicitId && typeof explicitId === 'string' && coreNb(explicitId)) return explicitId;
+    const epidVal = directValue('epid') || window.epid;
+    if(epidVal && coreNb(epidVal)) return epidVal;
+    const cidVal = directValue('cid') || window.cid;
+    if(cidVal && coreNb(cidVal)) return cidVal;
+    const activeVal = directValue('activeNodeId') || window.activeNodeId;
+    if(activeVal && coreNb(activeVal)) return activeVal;
+    const selected = directValue('selectedNodeIds') || window.selectedNodeIds;
+    try{
+      if(selected && typeof selected.size === 'number' && selected.size){
+        const first = selected.values().next();
+        if(first && !first.done && coreNb(first.value)) return first.value;
+      }
+    }catch(_e){}
+    return null;
+  }
+
+  function log(level,message,meta){
+    try{
+      if(typeof window.logDedicationError === 'function'){
+        window.logDedicationError(level,message,meta||{});
+      }
+    }catch(_e){}
+  }
+
+  function modalOpenState(){
+    const backdrop=document.getElementById('focusmap-backdrop');
+    if(!backdrop) return false;
+    try{
+      return backdrop.classList.contains('open') && window.getComputedStyle(backdrop).display !== 'none';
+    }catch(_e){
+      return backdrop.classList.contains('open');
+    }
+  }
+
+  function installAttemptAwareOpen(){
+    const baseOpen = window.openDedication;
+    if(typeof baseOpen !== 'function' || baseOpen.__attemptAware) return;
+    const wrapped = function(nodeId, options){
+      const source = options && options.source ? options.source : 'unknown';
+      const before = getSelectionSnapshot();
+      const resolvedNodeId = resolveNodeId(nodeId);
+      log('info','専心開始を試行しました',{
+        source,
+        nodeId: resolvedNodeId || nodeId || null,
+        detail: { phase:'attempt', requestedNodeId: nodeId || null, resolvedNodeId, selection: before }
+      });
+      if(!resolvedNodeId){
+        log('warn','専心開始前に対象ノードを解決できませんでした',{
+          source,
+          nodeId: null,
+          detail: { phase:'resolve-failed', requestedNodeId: nodeId || null, selection: before, reason:'no-node' }
+        });
+        if(typeof window.showToast === 'function') window.showToast('専心を開くノードが選択されていません','warn');
+        return false;
+      }
+      let result;
+      try{
+        result = baseOpen.call(this, resolvedNodeId, options || {});
+      }catch(err){
+        log('error','専心開始処理で例外が発生しました',{
+          source,
+          nodeId: resolvedNodeId,
+          detail: { phase:'exception', message: String(err && err.message || err), selection: before },
+          stack: err && err.stack || null
+        });
+        throw err;
+      }
+      if(result === false){
+        log('warn','専心開始処理が false を返しました',{
+          source,
+          nodeId: resolvedNodeId,
+          detail: { phase:'return-false', selection: before }
+        });
+        return result;
+      }
+      setTimeout(function(){
+        const opened = modalOpenState();
+        log(opened ? 'info' : 'error', opened ? '専心モーダルが開きました' : '専心モーダルが開きませんでした', {
+          source,
+          nodeId: resolvedNodeId,
+          detail: { phase: opened ? 'opened' : 'not-opened', selection: before, modalOpen: opened }
+        });
+      }, 260);
+      return result;
+    };
+    wrapped.__attemptAware = true;
+    window.openDedication = wrapped;
+    try{ window.openFocusMapModal = wrapped; }catch(_e){}
+    try{ window.openFocusDocModal = wrapped; }catch(_e){}
+  }
+
+  function installAttemptAwareDispatch(){
+    const baseDispatch = window.dispatchMindmapCommand;
+    if(typeof baseDispatch !== 'function' || baseDispatch.__attemptAware) return;
+    const wrapped = function(type,payload){
+      payload = payload || {};
+      if(type === 'open-dedication' || type === 'open-dedication-from-editor' || type === 'open-dedication-context'){
+        const source = payload.source || type;
+        const before = getSelectionSnapshot();
+        let nodeId = resolveNodeId(payload.nodeId);
+        if(type === 'open-dedication-from-editor' && typeof window.tryCommitNodeEdit === 'function'){
+          const preNodeId = nodeId;
+          const ok = window.tryCommitNodeEdit();
+          if(ok === false){
+            log('warn','専心開始前に編集内容を確定できませんでした',{
+              source,
+              nodeId: preNodeId || null,
+              detail: { phase:'commit-failed', selection: before }
+            });
+            return false;
+          }
+          nodeId = preNodeId || resolveNodeId(payload.nodeId);
+        }
+        if(!nodeId){
+          log('warn','専心コマンド実行前に対象ノードを解決できませんでした',{
+            source,
+            nodeId: null,
+            detail: { phase:'dispatch-no-node', selection: before, command: type }
+          });
+          if(typeof window.showToast === 'function') window.showToast('専心を開くノードが選択されていません','warn');
+          return false;
+        }
+        return window.openDedication(nodeId, {source});
+      }
+      return baseDispatch.apply(this, arguments);
+    };
+    wrapped.__attemptAware = true;
+    window.dispatchMindmapCommand = wrapped;
+  }
+
+  function install(){
+    installAttemptAwareOpen();
+    installAttemptAwareDispatch();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, {once:true});
+  else install();
+  setTimeout(install, 120);
+  setTimeout(install, 500);
+})();
+</script>
