@@ -14867,7 +14867,6 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     }
   }
 
-  // 既存ボタンの表記と挙動を、圧縮URL版に上書き。
   function setupCompressedShareUi(){
     const btn=document.getElementById('b-share-url-hi');
     if(btn){
@@ -14890,12 +14889,556 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
 
   setupCompressedShareUi();
 
-  // 既存の mm パラメータはそのまま後方互換。新しい mmz だけ非同期で追加ロードする。
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',()=>{ setupCompressedShareUi(); loadCompressedShareMapFromUrl(); },{once:true});
   }else{
-    // 元の初期化が終わった直後でも置き換えられるよう、少しだけ後ろに回す。
     setTimeout(()=>{ setupCompressedShareUi(); loadCompressedShareMapFromUrl(); },0);
+  }
+})();
+</script>
+
+
+<style id="patch-v1-8-37-child-branch-layout-style">
+#quickbar .child-branch-layout{
+  border-color:rgba(18,198,255,.34)!important;
+}
+#cm .child-branch-layout-item{
+  color:var(--sf-text-1,#d6dee8);
+}
+#cm .child-branch-layout-item::before{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:16px;
+  margin-right:6px;
+  color:#12c6ff;
+  font-weight:900;
+}
+#c-arrange-children-radial::before{content:"◎"}
+#c-arrange-children-right::before{content:"→"}
+#c-arrange-children-left::before{content:"←"}
+</style>
+
+
+<script id="patch-v1-8-37-child-branch-layouts">
+(function(){
+  'use strict';
+  if(window.__CHILD_BRANCH_LAYOUTS_PATCH_APPLIED__) return;
+  window.__CHILD_BRANCH_LAYOUTS_PATCH_APPLIED__=true;
+
+  const ROW_GAP=20;
+  const SIDE_GAP=86;
+  const RADIAL_BASE_RADIUS=210;
+
+  function getNode(id){
+    try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function getChildMap(){
+    try{ return typeof getChildrenMap==='function' ? getChildrenMap() : {}; }catch(_e){ return {}; }
+  }
+  function getSortedChildren(parentId){
+    const map=getChildMap();
+    let ids=(map[parentId]||[]).filter(id=>getNode(id));
+    try{
+      if(typeof getHierarchyMaps==='function'){
+        const h=getHierarchyMaps();
+        ids=ids.sort(h.compareIds);
+      }else{
+        ids=ids.sort((a,b)=>{
+          const na=getNode(a), nbv=getNode(b);
+          return (na?.order||1)-(nbv?.order||1) || String(a).localeCompare(String(b));
+        });
+      }
+    }catch(_e){}
+    return ids;
+  }
+  function getSubtreeIds(rootId){
+    try{
+      const map=getChildMap();
+      const ids=[rootId];
+      if(typeof getDescendantIds==='function') ids.push(...getDescendantIds(rootId,map));
+      return ids.filter(id=>getNode(id));
+    }catch(_e){
+      return [rootId].filter(id=>getNode(id));
+    }
+  }
+  function updateMetricsForIds(ids){
+    let numberMap={};
+    try{ if(typeof getOutlineNumberMap==='function') numberMap=getOutlineNumberMap(); }catch(_e){}
+    ids.forEach(id=>{
+      const node=getNode(id);
+      try{ if(node && typeof updateNodeMetrics==='function') updateNodeMetrics(node,numberMap); }catch(_e){}
+    });
+  }
+  function rectForNode(node){
+    if(!node) return null;
+    try{
+      if(typeof getNodeWorldRect==='function') return getNodeWorldRect(node);
+    }catch(_e){}
+    const w=node.w||180, h=node.h||60;
+    return {
+      left:node.x-w/2,
+      right:node.x+w/2,
+      top:node.y-h/2,
+      bottom:node.y+h/2,
+      width:w,
+      height:h,
+      cx:node.x,
+      cy:node.y
+    };
+  }
+  function boundsForIds(ids){
+    const rects=ids.map(id=>rectForNode(getNode(id))).filter(Boolean);
+    if(!rects.length) return null;
+    const left=Math.min(...rects.map(r=>r.left));
+    const right=Math.max(...rects.map(r=>r.right));
+    const top=Math.min(...rects.map(r=>r.top));
+    const bottom=Math.max(...rects.map(r=>r.bottom));
+    return {
+      left,right,top,bottom,
+      width:right-left,
+      height:bottom-top,
+      cx:(left+right)/2,
+      cy:(top+bottom)/2
+    };
+  }
+  function moveIds(ids,dx,dy){
+    ids.forEach(id=>{
+      const node=getNode(id);
+      if(!node) return;
+      node.x+=dx;
+      node.y+=dy;
+    });
+  }
+  function getActiveParentId(){
+    try{
+      if(typeof cid!=='undefined' && cid && getNode(cid)) return cid;
+    }catch(_e){}
+    try{
+      if(activeNodeId && getNode(activeNodeId)) return activeNodeId;
+    }catch(_e){}
+    try{
+      if(selectedNodeIds && selectedNodeIds.size===1){
+        const id=[...selectedNodeIds][0];
+        if(getNode(id)) return id;
+      }
+    }catch(_e){}
+    return null;
+  }
+  function canArrangeChildren(parentId){
+    return !!(parentId && getNode(parentId) && getSortedChildren(parentId).length);
+  }
+  function applyChildBranchLayout(parentId,mode='right'){
+    const parent=getNode(parentId);
+    if(!parent){
+      toast('親ノードが見つかりません','warn');
+      return false;
+    }
+    const childIds=getSortedChildren(parentId);
+    if(!childIds.length){
+      toast('子ノードがありません','warn');
+      return false;
+    }
+    const allIds=[parentId];
+    childIds.forEach(id=>allIds.push(...getSubtreeIds(id)));
+    updateMetricsForIds([...new Set(allIds)]);
+
+    const parentRect=rectForNode(parent);
+    const branches=childIds.map(id=>{
+      const ids=getSubtreeIds(id);
+      updateMetricsForIds(ids);
+      return {id, ids, bounds:boundsForIds(ids)};
+    }).filter(b=>b.bounds);
+
+    if(!branches.length){
+      toast('整列対象が足りません','warn');
+      return false;
+    }
+
+    if(typeof snapshot==='function') snapshot();
+
+    if(mode==='right' || mode==='left'){
+      const totalHeight=branches.reduce((sum,b)=>sum+b.bounds.height,0)+Math.max(0,branches.length-1)*ROW_GAP;
+      let cursorTop=parent.y-totalHeight/2;
+      branches.forEach(branch=>{
+        const b=branch.bounds;
+        let desiredLeft;
+        if(mode==='right'){
+          desiredLeft=parentRect.right+SIDE_GAP;
+        }else{
+          desiredLeft=parentRect.left-SIDE_GAP-b.width;
+        }
+        const dx=desiredLeft-b.left;
+        const dy=cursorTop-b.top;
+        moveIds(branch.ids,dx,dy);
+        cursorTop+=b.height+ROW_GAP;
+      });
+    }else if(mode==='radial'){
+      const count=branches.length;
+      const maxBranch=Math.max(...branches.map(b=>Math.max(b.bounds.width,b.bounds.height)));
+      const radius=RADIAL_BASE_RADIUS + Math.min(260,maxBranch*.45) + Math.max(0,count-4)*18;
+      const angleStart=count===1 ? 0 : -Math.PI/2;
+      branches.forEach((branch,index)=>{
+        const angle=count===1 ? 0 : angleStart + (Math.PI*2*index/count);
+        const targetCx=parent.x + Math.cos(angle)*radius;
+        const targetCy=parent.y + Math.sin(angle)*radius*.78;
+        const dx=targetCx-branch.bounds.cx;
+        const dy=targetCy-branch.bounds.cy;
+        moveIds(branch.ids,dx,dy);
+      });
+    }else{
+      toast('未対応の整列方法です','warn');
+      return false;
+    }
+
+    if(typeof renderNow==='function') renderNow();
+    else if(typeof draw==='function') draw();
+    if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts();
+    const label=mode==='radial'?'放射で整えました':mode==='left'?'左に整えました':'右に整えました';
+    toast('子階層を'+label);
+    return true;
+  }
+
+  window.applyChildBranchLayout=applyChildBranchLayout;
+
+  const originalRunQuickbarAction=typeof runQuickbarAction==='function' ? runQuickbarAction : null;
+  if(originalRunQuickbarAction && !originalRunQuickbarAction.__childBranchLayoutsPatched){
+    const wrapped=function(action){
+      if(action==='children-radial' || action==='children-right' || action==='children-left'){
+        const parentId=getActiveParentId();
+        const mode=action==='children-radial' ? 'radial' : (action==='children-left' ? 'left' : 'right');
+        return applyChildBranchLayout(parentId,mode);
+      }
+      return originalRunQuickbarAction.apply(this,arguments);
+    };
+    wrapped.__childBranchLayoutsPatched=true;
+    runQuickbarAction=wrapped;
+  }
+
+  function patchQuickbarButtons(){
+    const quickbar=document.getElementById('quickbar');
+    if(!quickbar || quickbar.style.display==='none') return;
+    const parentId=getActiveParentId();
+    if(!canArrangeChildren(parentId)) return;
+
+    const radial=document.getElementById('qb-stack-right');
+    const right=document.getElementById('qb-grid-right');
+    const left=document.getElementById('qb-align-left');
+    if(radial){
+      radial.style.display='';
+      radial.textContent='子を放射';
+      radial.dataset.action='children-radial';
+      radial.classList.add('primary','child-branch-layout');
+    }
+    if(right){
+      right.style.display='';
+      right.textContent='子を右';
+      right.dataset.action='children-right';
+      right.classList.add('child-branch-layout');
+    }
+    if(left){
+      left.style.display='';
+      left.textContent='子を左';
+      left.dataset.action='children-left';
+      left.classList.add('child-branch-layout');
+      left.classList.remove('danger');
+    }
+  }
+
+  const originalUpdateQuickbar=typeof updateQuickbar==='function' ? updateQuickbar : null;
+  if(originalUpdateQuickbar && !originalUpdateQuickbar.__childBranchLayoutsPatched){
+    const wrapped=function(){
+      const result=originalUpdateQuickbar.apply(this,arguments);
+      try{ patchQuickbarButtons(); }catch(_e){}
+      return result;
+    };
+    wrapped.__childBranchLayoutsPatched=true;
+    updateQuickbar=wrapped;
+  }
+
+  function ensureContextItems(){
+    const cm=document.getElementById('cm');
+    if(!cm) return {};
+    const old1=document.getElementById('c-arrange-children');
+    const old2=document.getElementById('c-arrange-children-grid');
+    if(old1) old1.style.display='none';
+    if(old2) old2.style.display='none';
+
+    const specs=[
+      ['c-arrange-children-radial','この子階層を放射で整える','radial'],
+      ['c-arrange-children-right','この子階層を右に整える','right'],
+      ['c-arrange-children-left','この子階層を左に整える','left']
+    ];
+    let anchor=document.getElementById('c-immersive') || document.getElementById('c-focus') || cm.querySelector('hr');
+    const created={};
+    specs.forEach(([id,label,mode])=>{
+      let el=document.getElementById(id);
+      if(!el){
+        el=document.createElement('div');
+        el.id=id;
+        el.className='child-branch-layout-item';
+        el.textContent=label;
+        if(anchor && anchor.parentNode===cm){
+          anchor.insertAdjacentElement('afterend',el);
+          anchor=el;
+        }else{
+          cm.insertBefore(el,cm.querySelector('hr'));
+        }
+        const handler=(e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          const parentId=(typeof cid!=='undefined' && cid) ? cid : getActiveParentId();
+          cm.style.display='none';
+          applyChildBranchLayout(parentId,mode);
+        };
+        el.addEventListener('mousedown',handler);
+        el.addEventListener('click',handler);
+      }
+      created[id]=el;
+    });
+    return created;
+  }
+
+  function syncContextItems(){
+    const items=ensureContextItems();
+    const parentId=(typeof cid!=='undefined' && cid) ? cid : getActiveParentId();
+    const show=canArrangeChildren(parentId);
+    Object.values(items).forEach(el=>{ if(el) el.style.display=show?'block':'none'; });
+    const old1=document.getElementById('c-arrange-children');
+    const old2=document.getElementById('c-arrange-children-grid');
+    if(old1) old1.style.display='none';
+    if(old2) old2.style.display='none';
+  }
+
+  const nl=document.getElementById('NL');
+  if(nl && !nl.__childBranchContextPatched){
+    nl.__childBranchContextPatched=true;
+    nl.addEventListener('contextmenu',()=>setTimeout(syncContextItems,0),true);
+  }
+  document.addEventListener('mousedown',()=>setTimeout(syncContextItems,0),true);
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>{ ensureContextItems(); },{once:true});
+  }else{
+    ensureContextItems();
+  }
+})();
+</script>
+
+
+<style id="patch-v1-8-38-immersive-entry-emphasis-style">
+/* 編集モーダル内の専心ボタン */
+#ep-immersive{
+  border-color:rgba(18,198,255,.46)!important;
+  background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98))!important;
+  color:#effcff!important;
+  font-weight:900!important;
+}
+#ep-immersive::before{
+  background:linear-gradient(90deg, rgba(18,198,255,.18), rgba(18,198,255,.85) 28%, rgba(255,111,44,.24) 100%)!important;
+}
+#ep-immersive:hover{
+  border-color:rgba(18,198,255,.62)!important;
+  box-shadow:0 8px 18px rgba(18,198,255,.10), inset 0 1px 0 rgba(255,255,255,.05)!important;
+}
+
+/* 右クリック内の専心導線を目立たせる */
+#cm #c-immersive{
+  margin:4px 6px!important;
+  padding:9px 12px!important;
+  border:1px solid rgba(18,198,255,.42)!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg, rgba(11,43,55,.94), rgba(10,18,26,.98))!important;
+  color:#effcff!important;
+  font-weight:900!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.16)!important;
+}
+#cm #c-immersive:hover{
+  border-color:rgba(18,198,255,.62)!important;
+  background:linear-gradient(180deg, rgba(14,57,72,.96), rgba(10,18,26,.98))!important;
+}
+#cm #c-immersive::before{
+  content:"◎";
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  margin-right:7px;
+  color:#12c6ff;
+  font-weight:900;
+}
+#cm #c-immersive.immersive-active{
+  border-color:rgba(255,227,109,.42)!important;
+  background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98))!important;
+  color:#fff5c7!important;
+}
+#cm #c-immersive.immersive-active::before{
+  content:"←";
+  color:#ffe36d;
+}
+</style>
+
+
+<script id="patch-v1-8-38-immersive-entry-emphasis">
+(function(){
+  'use strict';
+  if(window.__IMMERSIVE_ENTRY_EMPHASIS_PATCH_APPLIED__) return;
+  window.__IMMERSIVE_ENTRY_EMPHASIS_PATCH_APPLIED__=true;
+
+  function getNode(id){
+    try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function immersiveActive(){
+    try{ return typeof isImmersiveModeActive==='function' && isImmersiveModeActive(); }catch(_e){ return false; }
+  }
+  function immersiveRootId(){
+    try{ return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null; }catch(_e){ return null; }
+  }
+  function updateImmersiveEntryLabels(){
+    const cmItem=document.getElementById('c-immersive');
+    if(cmItem){
+      const active=immersiveActive();
+      cmItem.classList.toggle('immersive-active',active);
+      cmItem.textContent=active ? '親マップに戻る' : '専心に入る';
+      cmItem.title=active ? '専心を解除して親マップに戻ります' : 'このノードの内側だけを編集する専心モードに入ります';
+    }
+    const btn=document.getElementById('ep-immersive');
+    if(btn){
+      const id=(typeof epid!=='undefined' && epid) ? epid : null;
+      const active=immersiveActive();
+      const root=immersiveRootId();
+      btn.textContent=(active && root===id) ? '専心を解く' : '専心';
+      btn.title=(active && root===id)
+        ? '保存して専心を解除します'
+        : '保存して、このノードで専心に入ります';
+      btn.disabled=!(id && getNode(id) && typeof enterImmersiveMode==='function');
+    }
+  }
+
+  function ensureEditorImmersiveButton(){
+    const footer=document.querySelector('#ep .epft');
+    if(!footer) return null;
+    let btn=document.getElementById('ep-immersive');
+    if(btn) return btn;
+    btn=document.createElement('button');
+    btn.id='ep-immersive';
+    btn.type='button';
+    btn.textContent='専心';
+    const cancel=document.getElementById('ep-cn');
+    if(cancel && cancel.parentNode===footer){
+      footer.insertBefore(btn,cancel);
+    }else{
+      footer.insertBefore(btn,footer.firstChild);
+    }
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const id=(typeof epid!=='undefined' && epid) ? epid : null;
+      if(!id || !getNode(id)) return;
+
+      const active=immersiveActive();
+      const root=immersiveRootId();
+
+      if(typeof tryCommitNodeEdit==='function'){
+        if(!tryCommitNodeEdit()) return;
+      }else if(typeof commitNodeEdit==='function'){
+        if(commitNodeEdit()===false) return;
+      }
+
+      if(active && root===id){
+        if(typeof exitImmersiveMode==='function') exitImmersiveMode({reason:'editor'});
+        return;
+      }
+
+      if(active && root!==id && typeof exitImmersiveMode==='function'){
+        exitImmersiveMode({reason:'editor-switch'});
+        setTimeout(()=>{
+          if(getNode(id) && typeof enterImmersiveMode==='function') enterImmersiveMode(id,{reason:'editor'});
+        },0);
+        return;
+      }
+
+      if(typeof enterImmersiveMode==='function') enterImmersiveMode(id,{reason:'editor'});
+    });
+    return btn;
+  }
+
+  function emphasizeContextImmersive(){
+    const item=document.getElementById('c-immersive');
+    if(!item) return;
+    item.classList.toggle('immersive-active',immersiveActive());
+    updateImmersiveEntryLabels();
+  }
+
+  const originalOpenEp=typeof openEp==='function' ? openEp : null;
+  if(originalOpenEp && !originalOpenEp.__immersiveEntryEmphasisPatched){
+    const wrapped=function(){
+      const res=originalOpenEp.apply(this,arguments);
+      try{
+        ensureEditorImmersiveButton();
+        updateImmersiveEntryLabels();
+      }catch(_e){}
+      return res;
+    };
+    wrapped.__immersiveEntryEmphasisPatched=true;
+    openEp=wrapped;
+  }
+
+  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
+  if(originalRenderNow && !originalRenderNow.__immersiveEntryEmphasisPatched){
+    const wrapped=function(){
+      const res=originalRenderNow.apply(this,arguments);
+      try{ emphasizeContextImmersive(); }catch(_e){}
+      return res;
+    };
+    wrapped.__immersiveEntryEmphasisPatched=true;
+    renderNow=wrapped;
+  }
+
+  const originalDraw=typeof draw==='function' ? draw : null;
+  if(originalDraw && !originalDraw.__immersiveEntryEmphasisPatched){
+    const wrapped=function(){
+      const res=originalDraw.apply(this,arguments);
+      try{ emphasizeContextImmersive(); }catch(_e){}
+      return res;
+    };
+    wrapped.__immersiveEntryEmphasisPatched=true;
+    draw=wrapped;
+  }
+
+  const originalEnter=window.enterImmersiveMode;
+  if(typeof originalEnter==='function' && !originalEnter.__immersiveEntryEmphasisPatched){
+    const wrapped=function(){
+      const res=originalEnter.apply(this,arguments);
+      try{ updateImmersiveEntryLabels(); }catch(_e){}
+      return res;
+    };
+    wrapped.__immersiveEntryEmphasisPatched=true;
+    window.enterImmersiveMode=wrapped;
+  }
+
+  const originalExit=window.exitImmersiveMode;
+  if(typeof originalExit==='function' && !originalExit.__immersiveEntryEmphasisPatched){
+    const wrapped=function(){
+      const res=originalExit.apply(this,arguments);
+      try{ updateImmersiveEntryLabels(); }catch(_e){}
+      return res;
+    };
+    wrapped.__immersiveEntryEmphasisPatched=true;
+    window.exitImmersiveMode=wrapped;
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>{
+      ensureEditorImmersiveButton();
+      emphasizeContextImmersive();
+    },{once:true});
+  }else{
+    ensureEditorImmersiveButton();
+    emphasizeContextImmersive();
   }
 })();
 </script>
