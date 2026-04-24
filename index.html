@@ -15442,3 +15442,342 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   }
 })();
 </script>
+
+
+<style id="patch-v1-8-39-mobile-modal-fit-style">
+/* iPhone SE / small mobile modal fitting */
+@media (max-width: 720px){
+  :root{
+    --mobile-modal-top: calc(var(--mobile-topbar-h, 52px) + 6px + env(safe-area-inset-top, 0px));
+    --mobile-modal-bottom: calc(var(--mobile-actionbar-h, 78px) + 8px + env(safe-area-inset-bottom, 0px));
+    --mobile-modal-max-h: calc(100dvh - var(--mobile-modal-top) - var(--mobile-modal-bottom));
+  }
+
+  #app.mobile-mode #ep,
+  #app.mobile-mode #eep{
+    position:fixed !important;
+    left:8px !important;
+    right:8px !important;
+    top:var(--mobile-modal-top) !important;
+    bottom:var(--mobile-modal-bottom) !important;
+    width:auto !important;
+    max-width:none !important;
+    max-height:none !important;
+    height:auto !important;
+    min-height:0 !important;
+    display:none;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior:contain !important;
+    -webkit-overflow-scrolling:touch !important;
+    padding:10px 10px calc(58px + env(safe-area-inset-bottom,0px)) !important;
+    border-radius:14px !important;
+    z-index:140 !important;
+    touch-action:pan-y !important;
+  }
+
+  #app.mobile-mode #ep[style*="display: block"],
+  #app.mobile-mode #eep[style*="display: block"]{
+    display:block !important;
+  }
+
+  #app.mobile-mode #ep label,
+  #app.mobile-mode #eep label{
+    font-size:10px !important;
+    margin-bottom:3px !important;
+    line-height:1.2 !important;
+  }
+
+  #app.mobile-mode #ep input[type="text"],
+  #app.mobile-mode #ep input[type="url"],
+  #app.mobile-mode #ep textarea,
+  #app.mobile-mode #ep select,
+  #app.mobile-mode #eep input[type="text"],
+  #app.mobile-mode #eep input[type="url"],
+  #app.mobile-mode #eep textarea,
+  #app.mobile-mode #eep select{
+    font-size:16px !important;
+    padding:7px 9px !important;
+    margin-bottom:8px !important;
+    min-height:36px !important;
+    border-radius:9px !important;
+  }
+
+  #app.mobile-mode #ep textarea,
+  #app.mobile-mode #eep textarea{
+    min-height:72px !important;
+    max-height:112px !important;
+    resize:vertical !important;
+  }
+
+  #app.mobile-mode #ep .ep-url-row{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:6px !important;
+    margin:2px 0 8px !important;
+    padding:6px !important;
+    border-radius:10px !important;
+  }
+
+  #app.mobile-mode #ep #ep-url-open{
+    min-height:36px !important;
+    padding:0 10px !important;
+    font-size:11px !important;
+  }
+
+  #app.mobile-mode #ep .swr{
+    display:grid !important;
+    grid-template-columns:repeat(8, minmax(0, 1fr)) !important;
+    gap:5px !important;
+    margin-bottom:8px !important;
+  }
+
+  #app.mobile-mode #ep .sw{
+    width:100% !important;
+    height:24px !important;
+    min-width:0 !important;
+    border-radius:6px !important;
+  }
+
+  #app.mobile-mode #ep .cr{
+    display:grid !important;
+    grid-template-columns:auto 42px minmax(0, 1fr) !important;
+    gap:6px !important;
+    align-items:center !important;
+    margin-bottom:8px !important;
+  }
+
+  #app.mobile-mode #ep-pick{
+    width:42px !important;
+    height:30px !important;
+  }
+
+  #app.mobile-mode #ep-hex{
+    min-width:0 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+    font-size:10px !important;
+  }
+
+  #app.mobile-mode #ep .mini-note,
+  #app.mobile-mode #eep .mini-note{
+    font-size:10px !important;
+    line-height:1.35 !important;
+    margin:-2px 0 8px !important;
+  }
+
+  #app.mobile-mode #ep .epft,
+  #app.mobile-mode #eep .epft{
+    position:sticky !important;
+    bottom:calc(-58px - env(safe-area-inset-bottom,0px)) !important;
+    margin:8px -10px calc(-58px - env(safe-area-inset-bottom,0px)) !important;
+    padding:8px 10px calc(10px + env(safe-area-inset-bottom,0px)) !important;
+    display:grid !important;
+    grid-template-columns:repeat(3, minmax(0,1fr)) !important;
+    gap:6px !important;
+    justify-content:stretch !important;
+    background:linear-gradient(180deg, rgba(18,23,32,0), rgba(18,23,32,.96) 30%, rgba(18,23,32,.98)) !important;
+    border-top:1px solid rgba(132,145,164,.16) !important;
+    z-index:3 !important;
+  }
+
+  #app.mobile-mode #eep .epft{
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  }
+
+  #app.mobile-mode #ep .epft button,
+  #app.mobile-mode #eep .epft button{
+    min-width:0 !important;
+    min-height:36px !important;
+    padding:7px 6px !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    white-space:nowrap !important;
+  }
+
+  #app.mobile-mode #eep #eep-rev,
+  #app.mobile-mode #eep #eep-clear{
+    grid-column:auto !important;
+  }
+
+  /* Help / history / start modal also fit inside small screens */
+  #app.mobile-mode #help-backdrop,
+  #app.mobile-mode #history-backdrop,
+  #app.mobile-mode #empty-state{
+    align-items:flex-start !important;
+    justify-content:center !important;
+    padding:calc(var(--mobile-topbar-h,52px) + 8px + env(safe-area-inset-top,0px)) 8px calc(var(--mobile-actionbar-h,78px) + 8px + env(safe-area-inset-bottom,0px)) !important;
+    overflow:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+
+  #app.mobile-mode #help-panel,
+  #app.mobile-mode #history-panel,
+  #app.mobile-mode #empty-state .es-card{
+    width:100% !important;
+    max-width:none !important;
+    max-height:calc(100dvh - var(--mobile-topbar-h,52px) - var(--mobile-actionbar-h,78px) - 28px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) !important;
+    overflow:auto !important;
+    padding:14px !important;
+    border-radius:16px !important;
+  }
+
+  #app.mobile-mode #empty-state .es-card{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:12px !important;
+  }
+
+  #app.mobile-mode #empty-state h2{
+    font-size:21px !important;
+  }
+
+  #app.mobile-mode #empty-state p,
+  #app.mobile-mode #help-panel p,
+  #app.mobile-mode #history-panel p{
+    font-size:12px !important;
+    line-height:1.55 !important;
+  }
+
+  #app.mobile-mode .help-grid,
+  #app.mobile-mode .help-shortcuts{
+    grid-template-columns:1fr !important;
+  }
+
+  /* Context menu should not overflow on iPhone SE */
+  #app.mobile-mode #cm{
+    position:fixed !important;
+    left:8px !important;
+    right:8px !important;
+    top:auto !important;
+    bottom:calc(var(--mobile-actionbar-h,78px) + 8px + env(safe-area-inset-bottom,0px)) !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-height:calc(100dvh - var(--mobile-topbar-h,52px) - var(--mobile-actionbar-h,78px) - 28px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) !important;
+    overflow:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    border-radius:14px !important;
+    z-index:150 !important;
+  }
+
+  #app.mobile-mode #cm div{
+    padding:10px 12px !important;
+    font-size:13px !important;
+  }
+}
+
+/* Extra compact mode for iPhone SE width */
+@media (max-width: 380px){
+  #app.mobile-mode #ep,
+  #app.mobile-mode #eep{
+    left:6px !important;
+    right:6px !important;
+    padding-left:9px !important;
+    padding-right:9px !important;
+  }
+
+  #app.mobile-mode #ep .swr{
+    grid-template-columns:repeat(6, minmax(0, 1fr)) !important;
+  }
+
+  #app.mobile-mode #ep .sw{
+    height:22px !important;
+  }
+
+  #app.mobile-mode #ep .epft{
+    grid-template-columns:repeat(3, minmax(0,1fr)) !important;
+  }
+
+  #app.mobile-mode #ep .epft button,
+  #app.mobile-mode #eep .epft button{
+    font-size:10.5px !important;
+    padding-left:4px !important;
+    padding-right:4px !important;
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-39-mobile-modal-fit">
+(function(){
+  'use strict';
+  if(window.__MOBILE_MODAL_FIT_PATCH_APPLIED__) return;
+  window.__MOBILE_MODAL_FIT_PATCH_APPLIED__=true;
+
+  function updateMobileModalVars(){
+    const app=document.getElementById('app');
+    if(!app) return;
+    const topbar=document.getElementById('mobile-topbar');
+    const actionbar=document.getElementById('mobile-actionbar');
+    const topH=topbar ? Math.ceil(topbar.getBoundingClientRect().height) : 52;
+    const actionH=actionbar ? Math.ceil(actionbar.getBoundingClientRect().height) : 78;
+    app.style.setProperty('--mobile-topbar-h', topH+'px');
+    app.style.setProperty('--mobile-actionbar-h', actionH+'px');
+    app.style.setProperty('--mobile-vh', (window.innerHeight || document.documentElement.clientHeight || 568)+'px');
+  }
+
+  function fitPanel(panel){
+    const app=document.getElementById('app');
+    if(!panel || !app || !app.classList.contains('mobile-mode')) return;
+    updateMobileModalVars();
+    panel.style.left='8px';
+    panel.style.right='8px';
+    panel.style.top='var(--mobile-modal-top)';
+    panel.style.bottom='var(--mobile-modal-bottom)';
+    panel.style.width='auto';
+    panel.style.maxWidth='none';
+    panel.style.maxHeight='none';
+    panel.style.height='auto';
+    panel.style.overflowY='auto';
+  }
+
+  const originalOpenEp=typeof openEp==='function' ? openEp : null;
+  if(originalOpenEp && !originalOpenEp.__mobileModalFitPatched){
+    const wrapped=function(){
+      updateMobileModalVars();
+      const res=originalOpenEp.apply(this,arguments);
+      setTimeout(()=>fitPanel(document.getElementById('ep')),0);
+      setTimeout(()=>fitPanel(document.getElementById('ep')),120);
+      return res;
+    };
+    wrapped.__mobileModalFitPatched=true;
+    openEp=wrapped;
+  }
+
+  const originalOpenEep=typeof openEep==='function' ? openEep : null;
+  if(originalOpenEep && !originalOpenEep.__mobileModalFitPatched){
+    const wrapped=function(){
+      updateMobileModalVars();
+      const res=originalOpenEep.apply(this,arguments);
+      setTimeout(()=>fitPanel(document.getElementById('eep')),0);
+      setTimeout(()=>fitPanel(document.getElementById('eep')),120);
+      return res;
+    };
+    wrapped.__mobileModalFitPatched=true;
+    openEep=wrapped;
+  }
+
+  ['resize','orientationchange'].forEach(evt=>{
+    window.addEventListener(evt,()=>{
+      updateMobileModalVars();
+      fitPanel(document.getElementById('ep'));
+      fitPanel(document.getElementById('eep'));
+    },{passive:true});
+  });
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',()=>{
+      updateMobileModalVars();
+      fitPanel(document.getElementById('ep'));
+      fitPanel(document.getElementById('eep'));
+    },{passive:true});
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',updateMobileModalVars,{once:true});
+  }else{
+    updateMobileModalVars();
+  }
+})();
+</script>
