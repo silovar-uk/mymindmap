@@ -14582,3 +14582,320 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   }
 })();
 </script>
+
+
+<style id="patch-v1-8-36-compressed-share-style">
+#b-share-url-hi.compressed-share-active{
+  border-color:rgba(18,198,255,.48)!important;
+  background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98))!important;
+  color:#effcff!important;
+}
+#b-share-url-hi.compressed-share-active::after{
+  content:"GZIP";
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:6px;
+  padding:2px 5px;
+  border-radius:999px;
+  border:1px solid rgba(18,198,255,.32);
+  color:#aeeeff;
+  font-size:9px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+</style>
+
+
+<script id="patch-v1-8-36-compressed-share-url">
+(function(){
+  'use strict';
+  if(window.__COMPRESSED_SHARE_URL_PATCH_APPLIED__) return;
+  window.__COMPRESSED_SHARE_URL_PATCH_APPLIED__=true;
+
+  const COMPRESSED_SHARE_PARAM='mmz';
+  const LEGACY_SHARE_PARAM=(typeof SHARE_URL_PARAM==='string' ? SHARE_URL_PARAM : 'mm');
+  const COMPRESSED_URL_SAFE_LIMIT=6000;
+  const COMPRESSED_URL_HARD_LIMIT=8000;
+
+  function getNode(id){
+    try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function show(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function setStatus(msg,type='ok'){
+    try{ if(typeof setIoStatus==='function') setIoStatus(msg,type); }catch(_e){ console.log(msg); }
+  }
+  function stripUndefined(value){
+    if(Array.isArray(value)) return value.map(stripUndefined);
+    if(value && typeof value==='object'){
+      const out={};
+      Object.entries(value).forEach(([k,v])=>{
+        if(v===undefined || v===null || v==='') return;
+        out[k]=stripUndefined(v);
+      });
+      return out;
+    }
+    return value;
+  }
+  function bytesToBase64UrlLocal(bytes){
+    if(typeof bytesToBase64Url==='function') return bytesToBase64Url(bytes);
+    let binary='';
+    const chunkSize=0x8000;
+    for(let i=0;i<bytes.length;i+=chunkSize){
+      binary+=String.fromCharCode(...bytes.subarray(i,i+chunkSize));
+    }
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function base64UrlToBytesLocal(value){
+    if(typeof base64UrlToBytes==='function') return base64UrlToBytes(value);
+    const normalized=String(value||'').replace(/-/g,'+').replace(/_/g,'/');
+    const padding=normalized.length%4===0 ? '' : '='.repeat(4-(normalized.length%4));
+    const binary=atob(normalized+padding);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    return bytes;
+  }
+  async function gzipBytes(bytes){
+    if(typeof CompressionStream!=='function'){
+      throw new Error('このブラウザは CompressionStream による gzip 圧縮に対応していません');
+    }
+    const cs=new CompressionStream('gzip');
+    const writer=cs.writable.getWriter();
+    await writer.write(bytes);
+    await writer.close();
+    const ab=await new Response(cs.readable).arrayBuffer();
+    return new Uint8Array(ab);
+  }
+  async function gunzipBytes(bytes){
+    if(typeof DecompressionStream!=='function'){
+      throw new Error('このブラウザは DecompressionStream による gzip 展開に対応していません');
+    }
+    const ds=new DecompressionStream('gzip');
+    const writer=ds.writable.getWriter();
+    await writer.write(bytes);
+    await writer.close();
+    const ab=await new Response(ds.readable).arrayBuffer();
+    return new Uint8Array(ab);
+  }
+
+  function buildCompressedShareObject(){
+    const focusSeedId=typeof getFocusSeedNodeId==='function' ? getFocusSeedNodeId() : (meta?.focusNodeId || null);
+    const nodeIds=new Set((nodes||[]).filter(Boolean).map(n=>n.id));
+    const focusEnabled=!!meta?.focusMode && focusSeedId && nodeIds.has(focusSeedId);
+
+    return stripUndefined({
+      v:4,
+      z:'gzip',
+      slim:1,
+      m:{
+        t:meta?.title && meta.title!=='案件マインドマップ' ? meta.title : undefined,
+        l:meta?.layoutMode && meta.layoutMode!=='radial' ? meta.layoutMode : undefined,
+        h:meta?.hideDone ? 1 : undefined,
+        p:meta?.presentationMode ? 1 : undefined,
+        cm:(typeof getNodeColoringMode==='function' && getNodeColoringMode()!=='manual') ? getNodeColoringMode() : undefined,
+        fm:focusEnabled ? 1 : undefined,
+        fi:focusEnabled ? focusSeedId : undefined
+      },
+      n:(nodes||[]).filter(Boolean).map(n=>stripUndefined({
+        i:n.id,
+        l:n.label,
+        s:n.subtext||undefined,
+        u:(typeof getNodeRelatedUrl==='function' ? getNodeRelatedUrl(n) : (n.relatedUrl||n.url||'')) || undefined,
+        r:n.status && n.status!=='none' ? n.status : undefined,
+        o:n.order!==1 ? n.order : undefined,
+        k:n.collapsed ? 1 : undefined,
+        w:n.fitMode==='wrap' ? 1 : undefined,
+        f:n.favorite ? 1 : undefined
+      })),
+      e:(edges||[])
+        .filter(e=>e && nodeIds.has(e.from) && nodeIds.has(e.to))
+        .map(e=>e.label ? [e.from,e.to,e.label] : [e.from,e.to])
+    });
+  }
+
+  function expandCompressedShareObject(obj){
+    if(!obj || !Array.isArray(obj.n) || obj.v!==4) return null;
+    const focusSeedId=obj.m?.fi;
+    const hasFocus=!!obj.m?.fm && typeof focusSeedId==='string' && obj.n.some(n=>String(n?.i||'')===focusSeedId);
+    const layoutMode=obj.m?.l || 'horizontal';
+    return {
+      schemaVersion:'1.0',
+      meta:{
+        title:obj.m?.t || '案件マインドマップ',
+        layoutMode,
+        hideDone:!!obj.m?.h,
+        focusMode:hasFocus,
+        focusNodeId:hasFocus ? focusSeedId : null,
+        presentationMode:!!obj.m?.p,
+        coloringMode:(obj.m?.cm==='depth' || obj.m?.cm==='branch') ? obj.m.cm : 'manual'
+      },
+      nodes:obj.n.map((n,idx)=>({
+        id:n.i || `n${idx+1}`,
+        label:n.l || '新規案件',
+        subtext:n.s || '',
+        relatedUrl:n.u || '',
+        status:n.r || 'none',
+        collapsed:!!n.k,
+        fitMode:n.w ? 'wrap' : 'shrink',
+        order:Number.isFinite(n.o) ? n.o : 1,
+        favorite:!!n.f,
+        createdAt:null,
+        x:0,
+        y:0,
+        color:(typeof PRESETS!=='undefined' && PRESETS[idx % PRESETS.length]) ? PRESETS[idx % PRESETS.length] : undefined
+      })),
+      edges:(obj.e||[]).map((e,idx)=>({
+        id:`e${idx+1}`,
+        from:Array.isArray(e) ? e[0] : e?.from,
+        to:Array.isArray(e) ? e[1] : e?.to,
+        label:Array.isArray(e) ? (e[2]||'') : (e?.label||'')
+      }))
+    };
+  }
+
+  async function buildCompressedShareUrl(){
+    const shareObject=buildCompressedShareObject();
+    const payload=JSON.stringify(shareObject);
+    const rawBytes=new TextEncoder().encode(payload);
+    const gzBytes=await gzipBytes(rawBytes);
+    const encoded=bytesToBase64UrlLocal(gzBytes);
+    const url=new URL(window.location.href);
+    url.searchParams.delete(LEGACY_SHARE_PARAM);
+    url.searchParams.set(COMPRESSED_SHARE_PARAM,encoded);
+    return {
+      url:url.toString(),
+      encodedLength:encoded.length,
+      urlLength:url.toString().length,
+      payloadLength:payload.length,
+      rawBytes:rawBytes.length,
+      gzipBytes:gzBytes.length,
+      nodeCount:shareObject.n.length,
+      edgeCount:shareObject.e.length,
+      compression:'gzip+base64url',
+      shareObject
+    };
+  }
+
+  function formatShareStats(result){
+    return [
+      '圧縮URLを生成しました。',
+      `ノード数: ${result.nodeCount}`,
+      `矢印数: ${result.edgeCount}`,
+      `URL文字数: ${result.urlLength}`,
+      `payload文字数: ${result.payloadLength}`,
+      `圧縮方式: ${result.compression}`,
+      '除外: x / y / color',
+      result.urlLength>COMPRESSED_URL_SAFE_LIMIT ? `注意: 安全目安 ${COMPRESSED_URL_SAFE_LIMIT} 文字を超えています。` : ''
+    ].filter(Boolean).join('\n');
+  }
+
+  async function copyCompressedShareUrl(){
+    const btn=document.getElementById('b-share-url-hi');
+    const oldText=btn ? btn.textContent : '';
+    try{
+      if(btn) btn.textContent='圧縮中…';
+      const result=await buildCompressedShareUrl();
+      const stats=formatShareStats(result);
+
+      if(result.urlLength>COMPRESSED_URL_HARD_LIMIT){
+        setStatus(
+          stats+'\n\nURLが長すぎるため、コピーを停止しました。情報を落とさず共有する場合は「JSONをコピー」またはJSONファイル保存を使ってください。',
+          'warn'
+        );
+        show('URLが長すぎるため、JSON共有を使ってください','warn');
+        return false;
+      }
+
+      const extra=result.urlLength>COMPRESSED_URL_SAFE_LIMIT
+        ? ' URLが長めです。開けない環境ではJSON共有を使ってください。'
+        : '';
+      setStatus(stats,result.urlLength>COMPRESSED_URL_SAFE_LIMIT?'warn':'ok');
+
+      if(typeof copyTextToClipboard==='function'){
+        return await copyTextToClipboard(result.url,{
+          successMessage:'圧縮URLでコピーしました。'+extra,
+          buttonId:'b-share-url-hi'
+        });
+      }
+      await navigator.clipboard.writeText(result.url);
+      show('圧縮URLでコピーしました');
+      return true;
+    }catch(err){
+      console.error('[compressed-share-url]',err);
+      setStatus('圧縮URLの生成に失敗しました: '+err.message+'\nJSONコピーを使ってください。','err');
+      show('圧縮URLの生成に失敗しました','warn');
+      return false;
+    }finally{
+      if(btn) setTimeout(()=>{ if(btn.textContent==='圧縮中…') btn.textContent=oldText || '圧縮URLでコピー'; },500);
+    }
+  }
+
+  async function loadCompressedShareMapFromUrl(){
+    const params=new URLSearchParams(window.location.search);
+    const encoded=params.get(COMPRESSED_SHARE_PARAM);
+    if(!encoded) return false;
+    try{
+      const gzBytes=base64UrlToBytesLocal(encoded);
+      const rawBytes=await gunzipBytes(gzBytes);
+      const raw=new TextDecoder().decode(rawBytes);
+      const parsed=expandCompressedShareObject(JSON.parse(raw));
+      if(!parsed || !parsed.nodes?.length) throw new Error('圧縮共有URLの内容が空です');
+
+      try{ if(typeof closeEp==='function') closeEp(); if(typeof closeEep==='function') closeEep(); }catch(_e){}
+      if(typeof replaceMapData==='function'){
+        replaceMapData(parsed,{toastMessage:'圧縮共有URLから読み込みました',skipHistory:true});
+      }else{
+        throw new Error('replaceMapData が見つかりません');
+      }
+      try{
+        if(typeof applyAutoLayout==='function') applyAutoLayout(parsed.meta?.layoutMode || 'horizontal');
+        if(typeof placeGraphAtViewportCenter==='function') placeGraphAtViewportCenter({resetViewport:true});
+        if(typeof renderNow==='function') renderNow();
+      }catch(_e){}
+
+      try{ if(typeof setSharedUrlBanner==='function') setSharedUrlBanner(true); }catch(_e){}
+      setStatus('圧縮共有URLから読み込みました。\n座標・色はURLから除外されているため、自動レイアウトと現行配色で再構成しました。','ok');
+      return true;
+    }catch(err){
+      console.error('[compressed-share-url-load]',err);
+      setStatus('圧縮共有URLの読み込みに失敗しました: '+err.message,'err');
+      show('圧縮共有URLの読み込みに失敗しました','warn');
+      return false;
+    }
+  }
+
+  // 既存ボタンの表記と挙動を、圧縮URL版に上書き。
+  function setupCompressedShareUi(){
+    const btn=document.getElementById('b-share-url-hi');
+    if(btn){
+      btn.textContent='圧縮URLでコピー';
+      btn.classList.add('compressed-share-active');
+      btn.title='gzip圧縮＋base64url化した共有URLをコピーします。座標・色はURLから除外します。';
+      btn.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+        copyCompressedShareUrl();
+      },true);
+    }
+  }
+
+  window.buildCompressedShareObject=buildCompressedShareObject;
+  window.buildCompressedShareUrl=buildCompressedShareUrl;
+  window.copyCompressedShareUrl=copyCompressedShareUrl;
+  window.loadCompressedShareMapFromUrl=loadCompressedShareMapFromUrl;
+
+  setupCompressedShareUi();
+
+  // 既存の mm パラメータはそのまま後方互換。新しい mmz だけ非同期で追加ロードする。
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>{ setupCompressedShareUi(); loadCompressedShareMapFromUrl(); },{once:true});
+  }else{
+    // 元の初期化が終わった直後でも置き換えられるよう、少しだけ後ろに回す。
+    setTimeout(()=>{ setupCompressedShareUi(); loadCompressedShareMapFromUrl(); },0);
+  }
+})();
+</script>
