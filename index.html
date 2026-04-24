@@ -14584,328 +14584,14 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
 </script>
 
 
-<style id="patch-v1-8-36-compressed-share-style">
-#b-share-url-hi.compressed-share-active{
-  border-color:rgba(18,198,255,.48)!important;
-  background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98))!important;
-  color:#effcff!important;
-}
-#b-share-url-hi.compressed-share-active::after{
-  content:"GZIP";
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  margin-left:6px;
-  padding:2px 5px;
-  border-radius:999px;
-  border:1px solid rgba(18,198,255,.32);
-  color:#aeeeff;
-  font-size:9px;
-  line-height:1;
-  font-weight:900;
-  letter-spacing:.04em;
-}
-</style>
-
-
-<script id="patch-v1-8-36-compressed-share-url">
-(function(){
-  'use strict';
-  if(window.__COMPRESSED_SHARE_URL_PATCH_APPLIED__) return;
-  window.__COMPRESSED_SHARE_URL_PATCH_APPLIED__=true;
-
-  const COMPRESSED_SHARE_PARAM='mmz';
-  const LEGACY_SHARE_PARAM=(typeof SHARE_URL_PARAM==='string' ? SHARE_URL_PARAM : 'mm');
-  const COMPRESSED_URL_SAFE_LIMIT=6000;
-  const COMPRESSED_URL_HARD_LIMIT=8000;
-
-  function getNode(id){
-    try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
-  }
-  function show(msg,type){
-    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
-  }
-  function setStatus(msg,type='ok'){
-    try{ if(typeof setIoStatus==='function') setIoStatus(msg,type); }catch(_e){ console.log(msg); }
-  }
-  function stripUndefined(value){
-    if(Array.isArray(value)) return value.map(stripUndefined);
-    if(value && typeof value==='object'){
-      const out={};
-      Object.entries(value).forEach(([k,v])=>{
-        if(v===undefined || v===null || v==='') return;
-        out[k]=stripUndefined(v);
-      });
-      return out;
-    }
-    return value;
-  }
-  function bytesToBase64UrlLocal(bytes){
-    if(typeof bytesToBase64Url==='function') return bytesToBase64Url(bytes);
-    let binary='';
-    const chunkSize=0x8000;
-    for(let i=0;i<bytes.length;i+=chunkSize){
-      binary+=String.fromCharCode(...bytes.subarray(i,i+chunkSize));
-    }
-    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  }
-  function base64UrlToBytesLocal(value){
-    if(typeof base64UrlToBytes==='function') return base64UrlToBytes(value);
-    const normalized=String(value||'').replace(/-/g,'+').replace(/_/g,'/');
-    const padding=normalized.length%4===0 ? '' : '='.repeat(4-(normalized.length%4));
-    const binary=atob(normalized+padding);
-    const bytes=new Uint8Array(binary.length);
-    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-    return bytes;
-  }
-  async function gzipBytes(bytes){
-    if(typeof CompressionStream!=='function'){
-      throw new Error('このブラウザは CompressionStream による gzip 圧縮に対応していません');
-    }
-    const cs=new CompressionStream('gzip');
-    const writer=cs.writable.getWriter();
-    await writer.write(bytes);
-    await writer.close();
-    const ab=await new Response(cs.readable).arrayBuffer();
-    return new Uint8Array(ab);
-  }
-  async function gunzipBytes(bytes){
-    if(typeof DecompressionStream!=='function'){
-      throw new Error('このブラウザは DecompressionStream による gzip 展開に対応していません');
-    }
-    const ds=new DecompressionStream('gzip');
-    const writer=ds.writable.getWriter();
-    await writer.write(bytes);
-    await writer.close();
-    const ab=await new Response(ds.readable).arrayBuffer();
-    return new Uint8Array(ab);
-  }
-
-  function buildCompressedShareObject(){
-    const focusSeedId=typeof getFocusSeedNodeId==='function' ? getFocusSeedNodeId() : (meta?.focusNodeId || null);
-    const nodeIds=new Set((nodes||[]).filter(Boolean).map(n=>n.id));
-    const focusEnabled=!!meta?.focusMode && focusSeedId && nodeIds.has(focusSeedId);
-
-    return stripUndefined({
-      v:4,
-      z:'gzip',
-      slim:1,
-      m:{
-        t:meta?.title && meta.title!=='案件マインドマップ' ? meta.title : undefined,
-        l:meta?.layoutMode && meta.layoutMode!=='radial' ? meta.layoutMode : undefined,
-        h:meta?.hideDone ? 1 : undefined,
-        p:meta?.presentationMode ? 1 : undefined,
-        cm:(typeof getNodeColoringMode==='function' && getNodeColoringMode()!=='manual') ? getNodeColoringMode() : undefined,
-        fm:focusEnabled ? 1 : undefined,
-        fi:focusEnabled ? focusSeedId : undefined
-      },
-      n:(nodes||[]).filter(Boolean).map(n=>stripUndefined({
-        i:n.id,
-        l:n.label,
-        s:n.subtext||undefined,
-        u:(typeof getNodeRelatedUrl==='function' ? getNodeRelatedUrl(n) : (n.relatedUrl||n.url||'')) || undefined,
-        r:n.status && n.status!=='none' ? n.status : undefined,
-        o:n.order!==1 ? n.order : undefined,
-        k:n.collapsed ? 1 : undefined,
-        w:n.fitMode==='wrap' ? 1 : undefined,
-        f:n.favorite ? 1 : undefined
-      })),
-      e:(edges||[])
-        .filter(e=>e && nodeIds.has(e.from) && nodeIds.has(e.to))
-        .map(e=>e.label ? [e.from,e.to,e.label] : [e.from,e.to])
-    });
-  }
-
-  function expandCompressedShareObject(obj){
-    if(!obj || !Array.isArray(obj.n) || obj.v!==4) return null;
-    const focusSeedId=obj.m?.fi;
-    const hasFocus=!!obj.m?.fm && typeof focusSeedId==='string' && obj.n.some(n=>String(n?.i||'')===focusSeedId);
-    const layoutMode=obj.m?.l || 'horizontal';
-    return {
-      schemaVersion:'1.0',
-      meta:{
-        title:obj.m?.t || '案件マインドマップ',
-        layoutMode,
-        hideDone:!!obj.m?.h,
-        focusMode:hasFocus,
-        focusNodeId:hasFocus ? focusSeedId : null,
-        presentationMode:!!obj.m?.p,
-        coloringMode:(obj.m?.cm==='depth' || obj.m?.cm==='branch') ? obj.m.cm : 'manual'
-      },
-      nodes:obj.n.map((n,idx)=>({
-        id:n.i || `n${idx+1}`,
-        label:n.l || '新規案件',
-        subtext:n.s || '',
-        relatedUrl:n.u || '',
-        status:n.r || 'none',
-        collapsed:!!n.k,
-        fitMode:n.w ? 'wrap' : 'shrink',
-        order:Number.isFinite(n.o) ? n.o : 1,
-        favorite:!!n.f,
-        createdAt:null,
-        x:0,
-        y:0,
-        color:(typeof PRESETS!=='undefined' && PRESETS[idx % PRESETS.length]) ? PRESETS[idx % PRESETS.length] : undefined
-      })),
-      edges:(obj.e||[]).map((e,idx)=>({
-        id:`e${idx+1}`,
-        from:Array.isArray(e) ? e[0] : e?.from,
-        to:Array.isArray(e) ? e[1] : e?.to,
-        label:Array.isArray(e) ? (e[2]||'') : (e?.label||'')
-      }))
-    };
-  }
-
-  async function buildCompressedShareUrl(){
-    const shareObject=buildCompressedShareObject();
-    const payload=JSON.stringify(shareObject);
-    const rawBytes=new TextEncoder().encode(payload);
-    const gzBytes=await gzipBytes(rawBytes);
-    const encoded=bytesToBase64UrlLocal(gzBytes);
-    const url=new URL(window.location.href);
-    url.searchParams.delete(LEGACY_SHARE_PARAM);
-    url.searchParams.set(COMPRESSED_SHARE_PARAM,encoded);
-    return {
-      url:url.toString(),
-      encodedLength:encoded.length,
-      urlLength:url.toString().length,
-      payloadLength:payload.length,
-      rawBytes:rawBytes.length,
-      gzipBytes:gzBytes.length,
-      nodeCount:shareObject.n.length,
-      edgeCount:shareObject.e.length,
-      compression:'gzip+base64url',
-      shareObject
-    };
-  }
-
-  function formatShareStats(result){
-    return [
-      '圧縮URLを生成しました。',
-      `ノード数: ${result.nodeCount}`,
-      `矢印数: ${result.edgeCount}`,
-      `URL文字数: ${result.urlLength}`,
-      `payload文字数: ${result.payloadLength}`,
-      `圧縮方式: ${result.compression}`,
-      '除外: x / y / color',
-      result.urlLength>COMPRESSED_URL_SAFE_LIMIT ? `注意: 安全目安 ${COMPRESSED_URL_SAFE_LIMIT} 文字を超えています。` : ''
-    ].filter(Boolean).join('\n');
-  }
-
-  async function copyCompressedShareUrl(){
-    const btn=document.getElementById('b-share-url-hi');
-    const oldText=btn ? btn.textContent : '';
-    try{
-      if(btn) btn.textContent='圧縮中…';
-      const result=await buildCompressedShareUrl();
-      const stats=formatShareStats(result);
-
-      if(result.urlLength>COMPRESSED_URL_HARD_LIMIT){
-        setStatus(
-          stats+'\n\nURLが長すぎるため、コピーを停止しました。情報を落とさず共有する場合は「JSONをコピー」またはJSONファイル保存を使ってください。',
-          'warn'
-        );
-        show('URLが長すぎるため、JSON共有を使ってください','warn');
-        return false;
-      }
-
-      const extra=result.urlLength>COMPRESSED_URL_SAFE_LIMIT
-        ? ' URLが長めです。開けない環境ではJSON共有を使ってください。'
-        : '';
-      setStatus(stats,result.urlLength>COMPRESSED_URL_SAFE_LIMIT?'warn':'ok');
-
-      if(typeof copyTextToClipboard==='function'){
-        return await copyTextToClipboard(result.url,{
-          successMessage:'圧縮URLでコピーしました。'+extra,
-          buttonId:'b-share-url-hi'
-        });
-      }
-      await navigator.clipboard.writeText(result.url);
-      show('圧縮URLでコピーしました');
-      return true;
-    }catch(err){
-      console.error('[compressed-share-url]',err);
-      setStatus('圧縮URLの生成に失敗しました: '+err.message+'\nJSONコピーを使ってください。','err');
-      show('圧縮URLの生成に失敗しました','warn');
-      return false;
-    }finally{
-      if(btn) setTimeout(()=>{ if(btn.textContent==='圧縮中…') btn.textContent=oldText || '圧縮URLでコピー'; },500);
-    }
-  }
-
-  async function loadCompressedShareMapFromUrl(){
-    const params=new URLSearchParams(window.location.search);
-    const encoded=params.get(COMPRESSED_SHARE_PARAM);
-    if(!encoded) return false;
-    try{
-      const gzBytes=base64UrlToBytesLocal(encoded);
-      const rawBytes=await gunzipBytes(gzBytes);
-      const raw=new TextDecoder().decode(rawBytes);
-      const parsed=expandCompressedShareObject(JSON.parse(raw));
-      if(!parsed || !parsed.nodes?.length) throw new Error('圧縮共有URLの内容が空です');
-
-      try{ if(typeof closeEp==='function') closeEp(); if(typeof closeEep==='function') closeEep(); }catch(_e){}
-      if(typeof replaceMapData==='function'){
-        replaceMapData(parsed,{toastMessage:'圧縮共有URLから読み込みました',skipHistory:true});
-      }else{
-        throw new Error('replaceMapData が見つかりません');
-      }
-      try{
-        if(typeof applyAutoLayout==='function') applyAutoLayout(parsed.meta?.layoutMode || 'horizontal');
-        if(typeof placeGraphAtViewportCenter==='function') placeGraphAtViewportCenter({resetViewport:true});
-        if(typeof renderNow==='function') renderNow();
-      }catch(_e){}
-
-      try{ if(typeof setSharedUrlBanner==='function') setSharedUrlBanner(true); }catch(_e){}
-      setStatus('圧縮共有URLから読み込みました。\n座標・色はURLから除外されているため、自動レイアウトと現行配色で再構成しました。','ok');
-      return true;
-    }catch(err){
-      console.error('[compressed-share-url-load]',err);
-      setStatus('圧縮共有URLの読み込みに失敗しました: '+err.message,'err');
-      show('圧縮共有URLの読み込みに失敗しました','warn');
-      return false;
-    }
-  }
-
-  function setupCompressedShareUi(){
-    const btn=document.getElementById('b-share-url-hi');
-    if(btn){
-      btn.textContent='圧縮URLでコピー';
-      btn.classList.add('compressed-share-active');
-      btn.title='gzip圧縮＋base64url化した共有URLをコピーします。座標・色はURLから除外します。';
-      btn.addEventListener('click',e=>{
-        e.preventDefault();
-        e.stopPropagation();
-        if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
-        copyCompressedShareUrl();
-      },true);
-    }
-  }
-
-  window.buildCompressedShareObject=buildCompressedShareObject;
-  window.buildCompressedShareUrl=buildCompressedShareUrl;
-  window.copyCompressedShareUrl=copyCompressedShareUrl;
-  window.loadCompressedShareMapFromUrl=loadCompressedShareMapFromUrl;
-
-  setupCompressedShareUi();
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>{ setupCompressedShareUi(); loadCompressedShareMapFromUrl(); },{once:true});
-  }else{
-    setTimeout(()=>{ setupCompressedShareUi(); loadCompressedShareMapFromUrl(); },0);
-  }
-})();
-</script>
-
-
-<style id="patch-v1-8-37-child-branch-layout-style">
-#quickbar .child-branch-layout{
+<style id="patch-v1-8-41-depth-aware-radial-style">
+#quickbar .depth-aware-child-layout{
   border-color:rgba(18,198,255,.34)!important;
 }
-#cm .child-branch-layout-item{
+#cm .depth-aware-child-layout-item{
   color:var(--sf-text-1,#d6dee8);
 }
-#cm .child-branch-layout-item::before{
+#cm .depth-aware-child-layout-item::before{
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -14914,21 +14600,29 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   color:#12c6ff;
   font-weight:900;
 }
-#c-arrange-children-radial::before{content:"◎"}
-#c-arrange-children-right::before{content:"→"}
-#c-arrange-children-left::before{content:"←"}
+#c-arrange-children-radial-depth::before{content:"◎"}
+#c-arrange-children-right-branch::before{content:"→"}
+#c-arrange-children-left-branch::before{content:"←"}
 </style>
 
 
-<script id="patch-v1-8-37-child-branch-layouts">
+<script id="patch-v1-8-41-depth-aware-radial">
 (function(){
   'use strict';
-  if(window.__CHILD_BRANCH_LAYOUTS_PATCH_APPLIED__) return;
-  window.__CHILD_BRANCH_LAYOUTS_PATCH_APPLIED__=true;
+  if(window.__DEPTH_AWARE_RADIAL_PATCH_APPLIED__) return;
+  window.__DEPTH_AWARE_RADIAL_PATCH_APPLIED__=true;
 
-  const ROW_GAP=20;
-  const SIDE_GAP=86;
-  const RADIAL_BASE_RADIUS=210;
+  const DIRECT_BRANCH_MIN_RADIUS = 310;
+  const DIRECT_BRANCH_MAX_RADIUS = 560;
+  const DIRECT_BRANCH_GAP = 38;
+  const DESCENDANT_RADIUS_1 = 142;
+  const DESCENDANT_RADIUS_MIN = 72;
+  const DESCENDANT_DECAY = 0.62;
+  const CHILD_WEDGE_RATIO = 0.52;
+  const CHILD_WEDGE_MIN = 0.42;
+  const CHILD_WEDGE_MAX = 1.08;
+  const SIDE_GAP = 86;
+  const SIDE_ROW_GAP = 20;
 
   function getNode(id){
     try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
@@ -14936,90 +14630,67 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   function toast(msg,type){
     try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
   }
-  function getChildMap(){
+  function safeChildMap(){
     try{ return typeof getChildrenMap==='function' ? getChildrenMap() : {}; }catch(_e){ return {}; }
   }
-  function getSortedChildren(parentId){
-    const map=getChildMap();
-    let ids=(map[parentId]||[]).filter(id=>getNode(id));
+  function hierarchyComparator(){
     try{
-      if(typeof getHierarchyMaps==='function'){
-        const h=getHierarchyMaps();
-        ids=ids.sort(h.compareIds);
-      }else{
-        ids=ids.sort((a,b)=>{
-          const na=getNode(a), nbv=getNode(b);
-          return (na?.order||1)-(nbv?.order||1) || String(a).localeCompare(String(b));
-        });
-      }
+      if(typeof getHierarchyMaps==='function') return getHierarchyMaps().compareIds;
     }catch(_e){}
+    return (a,b)=>{
+      const na=getNode(a), nbv=getNode(b);
+      return (Number(na?.order)||1) - (Number(nbv?.order)||1) || String(a).localeCompare(String(b));
+    };
+  }
+  function sortedChildren(parentId, childMap=safeChildMap()){
+    return (childMap[parentId]||[]).filter(id=>getNode(id)).sort(hierarchyComparator());
+  }
+  function subtreeIds(rootId, childMap=safeChildMap()){
+    const ids=[rootId];
+    function walk(id){
+      (childMap[id]||[]).forEach(ch=>{
+        if(!getNode(ch)) return;
+        ids.push(ch);
+        walk(ch);
+      });
+    }
+    walk(rootId);
     return ids;
   }
-  function getSubtreeIds(rootId){
-    try{
-      const map=getChildMap();
-      const ids=[rootId];
-      if(typeof getDescendantIds==='function') ids.push(...getDescendantIds(rootId,map));
-      return ids.filter(id=>getNode(id));
-    }catch(_e){
-      return [rootId].filter(id=>getNode(id));
-    }
-  }
-  function updateMetricsForIds(ids){
+  function updateMetrics(ids){
     let numberMap={};
     try{ if(typeof getOutlineNumberMap==='function') numberMap=getOutlineNumberMap(); }catch(_e){}
-    ids.forEach(id=>{
+    [...new Set(ids)].forEach(id=>{
       const node=getNode(id);
       try{ if(node && typeof updateNodeMetrics==='function') updateNodeMetrics(node,numberMap); }catch(_e){}
     });
   }
-  function rectForNode(node){
+  function nodeRect(node){
     if(!node) return null;
-    try{
-      if(typeof getNodeWorldRect==='function') return getNodeWorldRect(node);
-    }catch(_e){}
+    try{ if(typeof getNodeWorldRect==='function') return getNodeWorldRect(node); }catch(_e){}
     const w=node.w||180, h=node.h||60;
-    return {
-      left:node.x-w/2,
-      right:node.x+w/2,
-      top:node.y-h/2,
-      bottom:node.y+h/2,
-      width:w,
-      height:h,
-      cx:node.x,
-      cy:node.y
-    };
+    return {left:node.x-w/2,right:node.x+w/2,top:node.y-h/2,bottom:node.y+h/2,width:w,height:h,cx:node.x,cy:node.y};
   }
   function boundsForIds(ids){
-    const rects=ids.map(id=>rectForNode(getNode(id))).filter(Boolean);
+    const rects=ids.map(id=>nodeRect(getNode(id))).filter(Boolean);
     if(!rects.length) return null;
     const left=Math.min(...rects.map(r=>r.left));
     const right=Math.max(...rects.map(r=>r.right));
     const top=Math.min(...rects.map(r=>r.top));
     const bottom=Math.max(...rects.map(r=>r.bottom));
-    return {
-      left,right,top,bottom,
-      width:right-left,
-      height:bottom-top,
-      cx:(left+right)/2,
-      cy:(top+bottom)/2
-    };
+    return {left,right,top,bottom,width:right-left,height:bottom-top,cx:(left+right)/2,cy:(top+bottom)/2};
   }
   function moveIds(ids,dx,dy){
     ids.forEach(id=>{
-      const node=getNode(id);
-      if(!node) return;
-      node.x+=dx;
-      node.y+=dy;
+      const n=getNode(id);
+      if(!n) return;
+      n.x+=dx;
+      n.y+=dy;
     });
   }
-  function getActiveParentId(){
-    try{
-      if(typeof cid!=='undefined' && cid && getNode(cid)) return cid;
-    }catch(_e){}
-    try{
-      if(activeNodeId && getNode(activeNodeId)) return activeNodeId;
-    }catch(_e){}
+  function activeParentId(){
+    try{ if(typeof cid!=='undefined' && cid && getNode(cid)) return cid; }catch(_e){}
+    try{ if(activeNodeId && getNode(activeNodeId)) return activeNodeId; }catch(_e){}
     try{
       if(selectedNodeIds && selectedNodeIds.size===1){
         const id=[...selectedNodeIds][0];
@@ -15028,158 +14699,259 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     }catch(_e){}
     return null;
   }
-  function canArrangeChildren(parentId){
-    return !!(parentId && getNode(parentId) && getSortedChildren(parentId).length);
+  function canLayoutChildren(parentId){
+    return !!(parentId && getNode(parentId) && sortedChildren(parentId).length);
   }
-  function applyChildBranchLayout(parentId,mode='right'){
+  function existingAngle(parent, child){
+    const dx=(child.x||0)-(parent.x||0);
+    const dy=(child.y||0)-(parent.y||0);
+    if(Math.abs(dx)+Math.abs(dy)<12) return null;
+    return Math.atan2(dy,dx);
+  }
+  function normalizeAngle(a){
+    const two=Math.PI*2;
+    let v=a%two;
+    if(v<0) v+=two;
+    return v;
+  }
+  function circularMean(angles){
+    if(!angles.length) return 0;
+    const x=angles.reduce((s,a)=>s+Math.cos(a),0);
+    const y=angles.reduce((s,a)=>s+Math.sin(a),0);
+    return Math.atan2(y,x);
+  }
+  function spreadAngles(count, center, spread){
+    if(count<=1) return [center];
+    const start=center-spread/2;
+    const step=spread/(count-1);
+    return Array.from({length:count},(_,i)=>start+step*i);
+  }
+  function directAngles(parent, childIds){
+    const existing=childIds.map(id=>({id,angle:existingAngle(parent,getNode(id))})).filter(x=>Number.isFinite(x.angle));
+    if(existing.length>=Math.max(2, Math.ceil(childIds.length*.6))){
+      const byId=Object.fromEntries(existing.map(x=>[x.id, x.angle]));
+      return childIds
+        .map((id,idx)=>({id, angle:Number.isFinite(byId[id]) ? byId[id] : ((Math.PI*2)*idx/childIds.length)}))
+        .sort((a,b)=>normalizeAngle(a.angle)-normalizeAngle(b.angle));
+    }
+    return childIds.map((id,idx)=>({
+      id,
+      angle:-Math.PI/2 + Math.PI*2*idx/Math.max(1,childIds.length)
+    }));
+  }
+  function maxDirectRadius(parent, branches){
+    const parentRect=nodeRect(parent);
+    const biggest=Math.max(0,...branches.map(b=>Math.max(b.bounds?.width||0,b.bounds?.height||0)));
+    const byCount=Math.max(0, branches.length-3)*24;
+    const byParent=Math.max(parentRect?.width||0,parentRect?.height||0)*.55;
+    return Math.min(DIRECT_BRANCH_MAX_RADIUS, Math.max(DIRECT_BRANCH_MIN_RADIUS, 260+biggest*.16+byParent+byCount));
+  }
+  function layoutDescendantsRadially(parentId, baseAngle, depth, childMap){
+    const parent=getNode(parentId);
+    if(!parent) return;
+    const kids=sortedChildren(parentId, childMap);
+    if(!kids.length) return;
+
+    updateMetrics([parentId,...kids]);
+    const radius=Math.max(DESCENDANT_RADIUS_MIN, DESCENDANT_RADIUS_1*Math.pow(DESCENDANT_DECAY, Math.max(0,depth-1)));
+    const spread=Math.max(
+      CHILD_WEDGE_MIN,
+      Math.min(CHILD_WEDGE_MAX, (Math.PI*2/Math.max(3,kids.length+2))*CHILD_WEDGE_RATIO + kids.length*.06)
+    );
+    const angles=spreadAngles(kids.length, baseAngle, spread);
+
+    kids.forEach((kidId,idx)=>{
+      const kid=getNode(kidId);
+      if(!kid) return;
+      const a=angles[idx];
+      // 下位階層は親に寄せる。横だけでなく縦も少し圧縮して、枝周辺にまとまる見た目にする。
+      kid.x=parent.x + Math.cos(a)*radius;
+      kid.y=parent.y + Math.sin(a)*radius*.82;
+      layoutDescendantsRadially(kidId, a, depth+1, childMap);
+    });
+  }
+  function applyDepthAwareRadial(parentId){
     const parent=getNode(parentId);
     if(!parent){
       toast('親ノードが見つかりません','warn');
       return false;
     }
-    const childIds=getSortedChildren(parentId);
+    const childMap=safeChildMap();
+    const childIds=sortedChildren(parentId, childMap);
     if(!childIds.length){
       toast('子ノードがありません','warn');
       return false;
     }
-    const allIds=[parentId];
-    childIds.forEach(id=>allIds.push(...getSubtreeIds(id)));
-    updateMetricsForIds([...new Set(allIds)]);
 
-    const parentRect=rectForNode(parent);
+    const allIds=[parentId];
+    childIds.forEach(id=>allIds.push(...subtreeIds(id, childMap)));
+    updateMetrics(allIds);
+
     const branches=childIds.map(id=>{
-      const ids=getSubtreeIds(id);
-      updateMetricsForIds(ids);
+      const ids=subtreeIds(id, childMap);
       return {id, ids, bounds:boundsForIds(ids)};
     }).filter(b=>b.bounds);
 
     if(!branches.length){
-      toast('整列対象が足りません','warn');
+      toast('整列対象がありません','warn');
       return false;
     }
 
     if(typeof snapshot==='function') snapshot();
 
-    if(mode==='right' || mode==='left'){
-      const totalHeight=branches.reduce((sum,b)=>sum+b.bounds.height,0)+Math.max(0,branches.length-1)*ROW_GAP;
-      let cursorTop=parent.y-totalHeight/2;
-      branches.forEach(branch=>{
-        const b=branch.bounds;
-        let desiredLeft;
-        if(mode==='right'){
-          desiredLeft=parentRect.right+SIDE_GAP;
-        }else{
-          desiredLeft=parentRect.left-SIDE_GAP-b.width;
-        }
-        const dx=desiredLeft-b.left;
-        const dy=cursorTop-b.top;
-        moveIds(branch.ids,dx,dy);
-        cursorTop+=b.height+ROW_GAP;
-      });
-    }else if(mode==='radial'){
-      const count=branches.length;
-      const maxBranch=Math.max(...branches.map(b=>Math.max(b.bounds.width,b.bounds.height)));
-      const radius=RADIAL_BASE_RADIUS + Math.min(260,maxBranch*.45) + Math.max(0,count-4)*18;
-      const angleStart=count===1 ? 0 : -Math.PI/2;
-      branches.forEach((branch,index)=>{
-        const angle=count===1 ? 0 : angleStart + (Math.PI*2*index/count);
-        const targetCx=parent.x + Math.cos(angle)*radius;
-        const targetCy=parent.y + Math.sin(angle)*radius*.78;
-        const dx=targetCx-branch.bounds.cx;
-        const dy=targetCy-branch.bounds.cy;
-        moveIds(branch.ids,dx,dy);
-      });
-    }else{
-      toast('未対応の整列方法です','warn');
-      return false;
-    }
+    const angleEntries=directAngles(parent, childIds);
+    const byId=Object.fromEntries(angleEntries.map(x=>[x.id,x.angle]));
+    const radius=maxDirectRadius(parent, branches);
+
+    // 直下の子＝上位階層は親から大きく離す。
+    branches.forEach(branch=>{
+      const child=getNode(branch.id);
+      if(!child) return;
+      const angle=Number.isFinite(byId[branch.id]) ? byId[branch.id] : 0;
+      child.x=parent.x + Math.cos(angle)*radius;
+      child.y=parent.y + Math.sin(angle)*radius*.82;
+    });
+
+    // 孫以下＝下位階層は、各枝の方向を保ちながら親へ近づける。
+    branches.forEach(branch=>{
+      const angle=Number.isFinite(byId[branch.id]) ? byId[branch.id] : existingAngle(parent,getNode(branch.id)) || 0;
+      layoutDescendantsRadially(branch.id, angle, 1, childMap);
+    });
 
     if(typeof renderNow==='function') renderNow();
     else if(typeof draw==='function') draw();
-    if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts();
-    const label=mode==='radial'?'放射で整えました':mode==='left'?'左に整えました':'右に整えました';
-    toast('子階層を'+label);
+    try{ if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts(); }catch(_e){}
+    toast('子階層を放射で整えました（上位は遠く、下位は近く）');
     return true;
   }
+  function applySideBranchLayout(parentId, side='right'){
+    const parent=getNode(parentId);
+    if(!parent){
+      toast('親ノードが見つかりません','warn');
+      return false;
+    }
+    const childMap=safeChildMap();
+    const childIds=sortedChildren(parentId, childMap);
+    if(!childIds.length){
+      toast('子ノードがありません','warn');
+      return false;
+    }
+    const allIds=[parentId];
+    childIds.forEach(id=>allIds.push(...subtreeIds(id, childMap)));
+    updateMetrics(allIds);
+    const parentRect=nodeRect(parent);
+    const branches=childIds.map(id=>{
+      const ids=subtreeIds(id, childMap);
+      return {id,ids,bounds:boundsForIds(ids)};
+    }).filter(b=>b.bounds);
+    if(!branches.length) return false;
 
-  window.applyChildBranchLayout=applyChildBranchLayout;
+    if(typeof snapshot==='function') snapshot();
+
+    const totalHeight=branches.reduce((sum,b)=>sum+b.bounds.height,0)+Math.max(0,branches.length-1)*SIDE_ROW_GAP;
+    let cursorTop=parent.y-totalHeight/2;
+    branches.forEach(branch=>{
+      const desiredLeft=side==='left'
+        ? parentRect.left-SIDE_GAP-branch.bounds.width
+        : parentRect.right+SIDE_GAP;
+      const dx=desiredLeft-branch.bounds.left;
+      const dy=cursorTop-branch.bounds.top;
+      moveIds(branch.ids,dx,dy);
+      cursorTop+=branch.bounds.height+SIDE_ROW_GAP;
+    });
+
+    if(typeof renderNow==='function') renderNow();
+    else if(typeof draw==='function') draw();
+    try{ if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts(); }catch(_e){}
+    toast(side==='left'?'子階層を左に整えました':'子階層を右に整えました');
+    return true;
+  }
+  function applyChildDepthAwareLayout(parentId, mode='radial'){
+    if(mode==='radial') return applyDepthAwareRadial(parentId);
+    if(mode==='left') return applySideBranchLayout(parentId,'left');
+    return applySideBranchLayout(parentId,'right');
+  }
+
+  window.applyChildDepthAwareLayout=applyChildDepthAwareLayout;
 
   const originalRunQuickbarAction=typeof runQuickbarAction==='function' ? runQuickbarAction : null;
-  if(originalRunQuickbarAction && !originalRunQuickbarAction.__childBranchLayoutsPatched){
+  if(originalRunQuickbarAction && !originalRunQuickbarAction.__depthAwareRadialPatched){
     const wrapped=function(action){
-      if(action==='children-radial' || action==='children-right' || action==='children-left'){
-        const parentId=getActiveParentId();
-        const mode=action==='children-radial' ? 'radial' : (action==='children-left' ? 'left' : 'right');
-        return applyChildBranchLayout(parentId,mode);
+      if(action==='children-radial' || action==='children-radial-depth' || action==='children-right' || action==='children-left'){
+        const parentId=activeParentId();
+        const mode=(action==='children-left')?'left':(action==='children-right')?'right':'radial';
+        return applyChildDepthAwareLayout(parentId,mode);
       }
       return originalRunQuickbarAction.apply(this,arguments);
     };
-    wrapped.__childBranchLayoutsPatched=true;
+    wrapped.__depthAwareRadialPatched=true;
     runQuickbarAction=wrapped;
   }
 
-  function patchQuickbarButtons(){
+  function patchQuickbar(){
     const quickbar=document.getElementById('quickbar');
     if(!quickbar || quickbar.style.display==='none') return;
-    const parentId=getActiveParentId();
-    if(!canArrangeChildren(parentId)) return;
+    const parentId=activeParentId();
+    if(!canLayoutChildren(parentId)) return;
 
     const radial=document.getElementById('qb-stack-right');
     const right=document.getElementById('qb-grid-right');
     const left=document.getElementById('qb-align-left');
+
     if(radial){
       radial.style.display='';
       radial.textContent='子を放射';
-      radial.dataset.action='children-radial';
-      radial.classList.add('primary','child-branch-layout');
+      radial.dataset.action='children-radial-depth';
+      radial.classList.add('primary','depth-aware-child-layout');
     }
     if(right){
       right.style.display='';
       right.textContent='子を右';
       right.dataset.action='children-right';
-      right.classList.add('child-branch-layout');
+      right.classList.add('depth-aware-child-layout');
     }
     if(left){
       left.style.display='';
       left.textContent='子を左';
       left.dataset.action='children-left';
-      left.classList.add('child-branch-layout');
+      left.classList.add('depth-aware-child-layout');
       left.classList.remove('danger');
     }
   }
 
   const originalUpdateQuickbar=typeof updateQuickbar==='function' ? updateQuickbar : null;
-  if(originalUpdateQuickbar && !originalUpdateQuickbar.__childBranchLayoutsPatched){
+  if(originalUpdateQuickbar && !originalUpdateQuickbar.__depthAwareRadialPatched){
     const wrapped=function(){
       const result=originalUpdateQuickbar.apply(this,arguments);
-      try{ patchQuickbarButtons(); }catch(_e){}
+      try{ patchQuickbar(); }catch(_e){}
       return result;
     };
-    wrapped.__childBranchLayoutsPatched=true;
+    wrapped.__depthAwareRadialPatched=true;
     updateQuickbar=wrapped;
   }
 
   function ensureContextItems(){
     const cm=document.getElementById('cm');
     if(!cm) return {};
-    const old1=document.getElementById('c-arrange-children');
-    const old2=document.getElementById('c-arrange-children-grid');
-    if(old1) old1.style.display='none';
-    if(old2) old2.style.display='none';
+    // 旧UIがある場合は隠し、新しい3項目を使う
+    ['c-arrange-children','c-arrange-children-grid','c-arrange-children-radial','c-arrange-children-right','c-arrange-children-left'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
 
     const specs=[
-      ['c-arrange-children-radial','この子階層を放射で整える','radial'],
-      ['c-arrange-children-right','この子階層を右に整える','right'],
-      ['c-arrange-children-left','この子階層を左に整える','left']
+      ['c-arrange-children-radial-depth','この子階層を放射で整える','radial'],
+      ['c-arrange-children-right-branch','この子階層を右に整える','right'],
+      ['c-arrange-children-left-branch','この子階層を左に整える','left']
     ];
     let anchor=document.getElementById('c-immersive') || document.getElementById('c-focus') || cm.querySelector('hr');
-    const created={};
+    const items={};
     specs.forEach(([id,label,mode])=>{
       let el=document.getElementById(id);
       if(!el){
         el=document.createElement('div');
         el.id=id;
-        el.className='child-branch-layout-item';
+        el.className='depth-aware-child-layout-item';
         el.textContent=label;
         if(anchor && anchor.parentNode===cm){
           anchor.insertAdjacentElement('afterend',el);
@@ -15190,33 +14962,28 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
         const handler=(e)=>{
           e.preventDefault();
           e.stopPropagation();
-          const parentId=(typeof cid!=='undefined' && cid) ? cid : getActiveParentId();
+          const parentId=(typeof cid!=='undefined' && cid) ? cid : activeParentId();
           cm.style.display='none';
-          applyChildBranchLayout(parentId,mode);
+          applyChildDepthAwareLayout(parentId,mode);
         };
         el.addEventListener('mousedown',handler);
         el.addEventListener('click',handler);
       }
-      created[id]=el;
+      items[id]=el;
     });
-    return created;
+    return items;
   }
-
   function syncContextItems(){
     const items=ensureContextItems();
-    const parentId=(typeof cid!=='undefined' && cid) ? cid : getActiveParentId();
-    const show=canArrangeChildren(parentId);
+    const parentId=(typeof cid!=='undefined' && cid) ? cid : activeParentId();
+    const show=canLayoutChildren(parentId);
     Object.values(items).forEach(el=>{ if(el) el.style.display=show?'block':'none'; });
-    const old1=document.getElementById('c-arrange-children');
-    const old2=document.getElementById('c-arrange-children-grid');
-    if(old1) old1.style.display='none';
-    if(old2) old2.style.display='none';
   }
 
   const nl=document.getElementById('NL');
-  if(nl && !nl.__childBranchContextPatched){
-    nl.__childBranchContextPatched=true;
-    nl.addEventListener('contextmenu',()=>setTimeout(syncContextItems,0),true);
+  if(nl && !nl.__depthAwareRadialContextPatched){
+    nl.__depthAwareRadialContextPatched=true;
+    nl.addEventListener('contextmenu',()=>{ setTimeout(syncContextItems,0); setTimeout(syncContextItems,30); },true);
   }
   document.addEventListener('mousedown',()=>setTimeout(syncContextItems,0),true);
 
@@ -15228,25 +14995,9 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
 })();
 </script>
 
-
-<style id="patch-v1-8-38-immersive-entry-emphasis-style">
-/* 編集モーダル内の専心ボタン */
-#ep-immersive{
-  border-color:rgba(18,198,255,.46)!important;
-  background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98))!important;
-  color:#effcff!important;
-  font-weight:900!important;
-}
-#ep-immersive::before{
-  background:linear-gradient(90deg, rgba(18,198,255,.18), rgba(18,198,255,.85) 28%, rgba(255,111,44,.24) 100%)!important;
-}
-#ep-immersive:hover{
-  border-color:rgba(18,198,255,.62)!important;
-  box-shadow:0 8px 18px rgba(18,198,255,.10), inset 0 1px 0 rgba(255,255,255,.05)!important;
-}
-
-/* 右クリック内の専心導線を目立たせる */
-#cm #c-immersive{
+<style id="patch-v1-8-40-connect-two-selected-style">
+#cm #c-connect-selected{
+  display:none;
   margin:4px 6px!important;
   padding:9px 12px!important;
   border:1px solid rgba(18,198,255,.42)!important;
@@ -15256,12 +15007,12 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   font-weight:900!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 8px 18px rgba(0,0,0,.16)!important;
 }
-#cm #c-immersive:hover{
+#cm #c-connect-selected:hover{
   border-color:rgba(18,198,255,.62)!important;
   background:linear-gradient(180deg, rgba(14,57,72,.96), rgba(10,18,26,.98))!important;
 }
-#cm #c-immersive::before{
-  content:"◎";
+#cm #c-connect-selected::before{
+  content:"↔";
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -15270,514 +15021,144 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   color:#12c6ff;
   font-weight:900;
 }
-#cm #c-immersive.immersive-active{
-  border-color:rgba(255,227,109,.42)!important;
-  background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98))!important;
-  color:#fff5c7!important;
-}
-#cm #c-immersive.immersive-active::before{
-  content:"←";
-  color:#ffe36d;
-}
 </style>
-
-
-<script id="patch-v1-8-38-immersive-entry-emphasis">
+<script id="patch-v1-8-40-connect-two-selected">
 (function(){
   'use strict';
-  if(window.__IMMERSIVE_ENTRY_EMPHASIS_PATCH_APPLIED__) return;
-  window.__IMMERSIVE_ENTRY_EMPHASIS_PATCH_APPLIED__=true;
+  if(window.__CONNECT_TWO_SELECTED_PATCH_APPLIED__) return;
+  window.__CONNECT_TWO_SELECTED_PATCH_APPLIED__=true;
 
   function getNode(id){
     try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
   }
-  function immersiveActive(){
-    try{ return typeof isImmersiveModeActive==='function' && isImmersiveModeActive(); }catch(_e){ return false; }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
   }
-  function immersiveRootId(){
-    try{ return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null; }catch(_e){ return null; }
+  function selectedIds(){
+    try{ return [...selectedNodeIds].filter(id=>getNode(id)); }catch(_e){ return []; }
   }
-  function updateImmersiveEntryLabels(){
-    const cmItem=document.getElementById('c-immersive');
-    if(cmItem){
-      const active=immersiveActive();
-      cmItem.classList.toggle('immersive-active',active);
-      cmItem.textContent=active ? '親マップに戻る' : '専心に入る';
-      cmItem.title=active ? '専心を解除して親マップに戻ります' : 'このノードの内側だけを編集する専心モードに入ります';
-    }
-    const btn=document.getElementById('ep-immersive');
-    if(btn){
-      const id=(typeof epid!=='undefined' && epid) ? epid : null;
-      const active=immersiveActive();
-      const root=immersiveRootId();
-      btn.textContent=(active && root===id) ? '専心を解く' : '専心';
-      btn.title=(active && root===id)
-        ? '保存して専心を解除します'
-        : '保存して、このノードで専心に入ります';
-      btn.disabled=!(id && getNode(id) && typeof enterImmersiveMode==='function');
-    }
+  function getRightClickedId(){
+    try{
+      if(typeof cid!=='undefined' && cid && getNode(cid)) return cid;
+    }catch(_e){}
+    try{
+      if(activeNodeId && getNode(activeNodeId)) return activeNodeId;
+    }catch(_e){}
+    return null;
   }
-
-  function ensureEditorImmersiveButton(){
-    const footer=document.querySelector('#ep .epft');
-    if(!footer) return null;
-    let btn=document.getElementById('ep-immersive');
-    if(btn) return btn;
-    btn=document.createElement('button');
-    btn.id='ep-immersive';
-    btn.type='button';
-    btn.textContent='専心';
-    const cancel=document.getElementById('ep-cn');
-    if(cancel && cancel.parentNode===footer){
-      footer.insertBefore(btn,cancel);
-    }else{
-      footer.insertBefore(btn,footer.firstChild);
-    }
-    btn.addEventListener('click',e=>{
+  function isSelectMode(){
+    try{ return !mode || mode==='select'; }catch(_e){ return true; }
+  }
+  function getConnectPair(){
+    if(!isSelectMode()) return null;
+    const ids=selectedIds();
+    if(ids.length!==2) return null;
+    const clicked=getRightClickedId();
+    if(!clicked || !ids.includes(clicked)) return null;
+    const other=ids.find(id=>id!==clicked);
+    if(!other || !getNode(other)) return null;
+    return {from:clicked,to:other,fromNode:getNode(clicked),toNode:getNode(other)};
+  }
+  function ensureContextItem(){
+    const cm=document.getElementById('cm');
+    if(!cm) return null;
+    let item=document.getElementById('c-connect-selected');
+    if(item) return item;
+    item=document.createElement('div');
+    item.id='c-connect-selected';
+    item.textContent='線でつなぐ';
+    const hr=cm.querySelector('hr');
+    if(hr && hr.parentNode===cm) cm.insertBefore(item,hr);
+    else cm.appendChild(item);
+    item.addEventListener('mousedown',e=>{
       e.preventDefault();
       e.stopPropagation();
-      const id=(typeof epid!=='undefined' && epid) ? epid : null;
-      if(!id || !getNode(id)) return;
-
-      const active=immersiveActive();
-      const root=immersiveRootId();
-
-      if(typeof tryCommitNodeEdit==='function'){
-        if(!tryCommitNodeEdit()) return;
-      }else if(typeof commitNodeEdit==='function'){
-        if(commitNodeEdit()===false) return;
-      }
-
-      if(active && root===id){
-        if(typeof exitImmersiveMode==='function') exitImmersiveMode({reason:'editor'});
-        return;
-      }
-
-      if(active && root!==id && typeof exitImmersiveMode==='function'){
-        exitImmersiveMode({reason:'editor-switch'});
-        setTimeout(()=>{
-          if(getNode(id) && typeof enterImmersiveMode==='function') enterImmersiveMode(id,{reason:'editor'});
-        },0);
-        return;
-      }
-
-      if(typeof enterImmersiveMode==='function') enterImmersiveMode(id,{reason:'editor'});
+      connectSelectedPairFromContext();
     });
-    return btn;
+    item.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    return item;
   }
-
-  function emphasizeContextImmersive(){
-    const item=document.getElementById('c-immersive');
+  function syncContextItem(){
+    const item=ensureContextItem();
     if(!item) return;
-    item.classList.toggle('immersive-active',immersiveActive());
-    updateImmersiveEntryLabels();
+    const pair=getConnectPair();
+    if(!pair){
+      item.style.display='none';
+      return;
+    }
+    const fromLabel=pair.fromNode?.label || '選択ノード';
+    const toLabel=pair.toNode?.label || 'もう片方';
+    item.style.display='block';
+    item.textContent='線でつなぐ';
+    item.title=`${fromLabel} → ${toLabel} の向きで線をつなぎます`;
+  }
+  function connectSelectedPairFromContext(){
+    const item=ensureContextItem();
+    const pair=getConnectPair();
+    const cm=document.getElementById('cm');
+    if(cm) cm.style.display='none';
+    if(item) item.style.display='none';
+
+    if(!pair){
+      toast('2つのノードを選択してから右クリックしてください','warn');
+      return false;
+    }
+
+    const existsSame=(edges||[]).some(e=>e.from===pair.from && e.to===pair.to);
+    if(existsSame){
+      toast('同じ向きの線はすでにあります','warn');
+      return false;
+    }
+
+    if(typeof snapshot==='function') snapshot();
+    const edgeId='e'+(nid++);
+    const edge=typeof normalizeEdge==='function'
+      ? normalizeEdge({id:edgeId,from:pair.from,to:pair.to,label:''})
+      : {id:edgeId,from:pair.from,to:pair.to,label:''};
+    edges.push(edge);
+
+    try{
+      selectedEdgeId=edge.id;
+      activeNodeId=null;
+      selectedNodeIds.clear();
+    }catch(_e){}
+
+    if(typeof draw==='function') draw();
+    else if(typeof renderNow==='function') renderNow();
+
+    toast('選択した2つのノードを線でつなぎました');
+    return true;
   }
 
-  const originalOpenEp=typeof openEp==='function' ? openEp : null;
-  if(originalOpenEp && !originalOpenEp.__immersiveEntryEmphasisPatched){
-    const wrapped=function(){
-      const res=originalOpenEp.apply(this,arguments);
-      try{
-        ensureEditorImmersiveButton();
-        updateImmersiveEntryLabels();
-      }catch(_e){}
-      return res;
-    };
-    wrapped.__immersiveEntryEmphasisPatched=true;
-    openEp=wrapped;
+  // 既存の右クリック処理がメニュー表示を作った直後に、2選択なら項目を差し込む
+  const nl=document.getElementById('NL');
+  if(nl && !nl.__connectTwoSelectedContextPatched){
+    nl.__connectTwoSelectedContextPatched=true;
+    nl.addEventListener('contextmenu',()=>{
+      setTimeout(syncContextItem,0);
+      setTimeout(syncContextItem,30);
+    },true);
   }
 
-  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
-  if(originalRenderNow && !originalRenderNow.__immersiveEntryEmphasisPatched){
-    const wrapped=function(){
-      const res=originalRenderNow.apply(this,arguments);
-      try{ emphasizeContextImmersive(); }catch(_e){}
-      return res;
-    };
-    wrapped.__immersiveEntryEmphasisPatched=true;
-    renderNow=wrapped;
-  }
-
-  const originalDraw=typeof draw==='function' ? draw : null;
-  if(originalDraw && !originalDraw.__immersiveEntryEmphasisPatched){
-    const wrapped=function(){
-      const res=originalDraw.apply(this,arguments);
-      try{ emphasizeContextImmersive(); }catch(_e){}
-      return res;
-    };
-    wrapped.__immersiveEntryEmphasisPatched=true;
-    draw=wrapped;
-  }
-
-  const originalEnter=window.enterImmersiveMode;
-  if(typeof originalEnter==='function' && !originalEnter.__immersiveEntryEmphasisPatched){
-    const wrapped=function(){
-      const res=originalEnter.apply(this,arguments);
-      try{ updateImmersiveEntryLabels(); }catch(_e){}
-      return res;
-    };
-    wrapped.__immersiveEntryEmphasisPatched=true;
-    window.enterImmersiveMode=wrapped;
-  }
-
-  const originalExit=window.exitImmersiveMode;
-  if(typeof originalExit==='function' && !originalExit.__immersiveEntryEmphasisPatched){
-    const wrapped=function(){
-      const res=originalExit.apply(this,arguments);
-      try{ updateImmersiveEntryLabels(); }catch(_e){}
-      return res;
-    };
-    wrapped.__immersiveEntryEmphasisPatched=true;
-    window.exitImmersiveMode=wrapped;
-  }
+  // メニュー外クリック後などで残らないようにする
+  document.addEventListener('mousedown',e=>{
+    const cm=document.getElementById('cm');
+    if(!cm) return;
+    if(!cm.contains(e.target)){
+      const item=document.getElementById('c-connect-selected');
+      if(item) item.style.display='none';
+    }
+  },true);
 
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>{
-      ensureEditorImmersiveButton();
-      emphasizeContextImmersive();
-    },{once:true});
+    document.addEventListener('DOMContentLoaded',()=>{ ensureContextItem(); },{once:true});
   }else{
-    ensureEditorImmersiveButton();
-    emphasizeContextImmersive();
-  }
-})();
-</script>
-
-
-<style id="patch-v1-8-39-mobile-modal-fit-style">
-/* iPhone SE / small mobile modal fitting */
-@media (max-width: 720px){
-  :root{
-    --mobile-modal-top: calc(var(--mobile-topbar-h, 52px) + 6px + env(safe-area-inset-top, 0px));
-    --mobile-modal-bottom: calc(var(--mobile-actionbar-h, 78px) + 8px + env(safe-area-inset-bottom, 0px));
-    --mobile-modal-max-h: calc(100dvh - var(--mobile-modal-top) - var(--mobile-modal-bottom));
+    ensureContextItem();
   }
 
-  #app.mobile-mode #ep,
-  #app.mobile-mode #eep{
-    position:fixed !important;
-    left:8px !important;
-    right:8px !important;
-    top:var(--mobile-modal-top) !important;
-    bottom:var(--mobile-modal-bottom) !important;
-    width:auto !important;
-    max-width:none !important;
-    max-height:none !important;
-    height:auto !important;
-    min-height:0 !important;
-    display:none;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-    overscroll-behavior:contain !important;
-    -webkit-overflow-scrolling:touch !important;
-    padding:10px 10px calc(58px + env(safe-area-inset-bottom,0px)) !important;
-    border-radius:14px !important;
-    z-index:140 !important;
-    touch-action:pan-y !important;
-  }
-
-  #app.mobile-mode #ep[style*="display: block"],
-  #app.mobile-mode #eep[style*="display: block"]{
-    display:block !important;
-  }
-
-  #app.mobile-mode #ep label,
-  #app.mobile-mode #eep label{
-    font-size:10px !important;
-    margin-bottom:3px !important;
-    line-height:1.2 !important;
-  }
-
-  #app.mobile-mode #ep input[type="text"],
-  #app.mobile-mode #ep input[type="url"],
-  #app.mobile-mode #ep textarea,
-  #app.mobile-mode #ep select,
-  #app.mobile-mode #eep input[type="text"],
-  #app.mobile-mode #eep input[type="url"],
-  #app.mobile-mode #eep textarea,
-  #app.mobile-mode #eep select{
-    font-size:16px !important;
-    padding:7px 9px !important;
-    margin-bottom:8px !important;
-    min-height:36px !important;
-    border-radius:9px !important;
-  }
-
-  #app.mobile-mode #ep textarea,
-  #app.mobile-mode #eep textarea{
-    min-height:72px !important;
-    max-height:112px !important;
-    resize:vertical !important;
-  }
-
-  #app.mobile-mode #ep .ep-url-row{
-    display:grid !important;
-    grid-template-columns:minmax(0,1fr) auto !important;
-    gap:6px !important;
-    margin:2px 0 8px !important;
-    padding:6px !important;
-    border-radius:10px !important;
-  }
-
-  #app.mobile-mode #ep #ep-url-open{
-    min-height:36px !important;
-    padding:0 10px !important;
-    font-size:11px !important;
-  }
-
-  #app.mobile-mode #ep .swr{
-    display:grid !important;
-    grid-template-columns:repeat(8, minmax(0, 1fr)) !important;
-    gap:5px !important;
-    margin-bottom:8px !important;
-  }
-
-  #app.mobile-mode #ep .sw{
-    width:100% !important;
-    height:24px !important;
-    min-width:0 !important;
-    border-radius:6px !important;
-  }
-
-  #app.mobile-mode #ep .cr{
-    display:grid !important;
-    grid-template-columns:auto 42px minmax(0, 1fr) !important;
-    gap:6px !important;
-    align-items:center !important;
-    margin-bottom:8px !important;
-  }
-
-  #app.mobile-mode #ep-pick{
-    width:42px !important;
-    height:30px !important;
-  }
-
-  #app.mobile-mode #ep-hex{
-    min-width:0 !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    white-space:nowrap !important;
-    font-size:10px !important;
-  }
-
-  #app.mobile-mode #ep .mini-note,
-  #app.mobile-mode #eep .mini-note{
-    font-size:10px !important;
-    line-height:1.35 !important;
-    margin:-2px 0 8px !important;
-  }
-
-  #app.mobile-mode #ep .epft,
-  #app.mobile-mode #eep .epft{
-    position:sticky !important;
-    bottom:calc(-58px - env(safe-area-inset-bottom,0px)) !important;
-    margin:8px -10px calc(-58px - env(safe-area-inset-bottom,0px)) !important;
-    padding:8px 10px calc(10px + env(safe-area-inset-bottom,0px)) !important;
-    display:grid !important;
-    grid-template-columns:repeat(3, minmax(0,1fr)) !important;
-    gap:6px !important;
-    justify-content:stretch !important;
-    background:linear-gradient(180deg, rgba(18,23,32,0), rgba(18,23,32,.96) 30%, rgba(18,23,32,.98)) !important;
-    border-top:1px solid rgba(132,145,164,.16) !important;
-    z-index:3 !important;
-  }
-
-  #app.mobile-mode #eep .epft{
-    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
-  }
-
-  #app.mobile-mode #ep .epft button,
-  #app.mobile-mode #eep .epft button{
-    min-width:0 !important;
-    min-height:36px !important;
-    padding:7px 6px !important;
-    font-size:11px !important;
-    line-height:1.15 !important;
-    white-space:nowrap !important;
-  }
-
-  #app.mobile-mode #eep #eep-rev,
-  #app.mobile-mode #eep #eep-clear{
-    grid-column:auto !important;
-  }
-
-  /* Help / history / start modal also fit inside small screens */
-  #app.mobile-mode #help-backdrop,
-  #app.mobile-mode #history-backdrop,
-  #app.mobile-mode #empty-state{
-    align-items:flex-start !important;
-    justify-content:center !important;
-    padding:calc(var(--mobile-topbar-h,52px) + 8px + env(safe-area-inset-top,0px)) 8px calc(var(--mobile-actionbar-h,78px) + 8px + env(safe-area-inset-bottom,0px)) !important;
-    overflow:auto !important;
-    -webkit-overflow-scrolling:touch !important;
-  }
-
-  #app.mobile-mode #help-panel,
-  #app.mobile-mode #history-panel,
-  #app.mobile-mode #empty-state .es-card{
-    width:100% !important;
-    max-width:none !important;
-    max-height:calc(100dvh - var(--mobile-topbar-h,52px) - var(--mobile-actionbar-h,78px) - 28px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) !important;
-    overflow:auto !important;
-    padding:14px !important;
-    border-radius:16px !important;
-  }
-
-  #app.mobile-mode #empty-state .es-card{
-    display:flex !important;
-    flex-direction:column !important;
-    gap:12px !important;
-  }
-
-  #app.mobile-mode #empty-state h2{
-    font-size:21px !important;
-  }
-
-  #app.mobile-mode #empty-state p,
-  #app.mobile-mode #help-panel p,
-  #app.mobile-mode #history-panel p{
-    font-size:12px !important;
-    line-height:1.55 !important;
-  }
-
-  #app.mobile-mode .help-grid,
-  #app.mobile-mode .help-shortcuts{
-    grid-template-columns:1fr !important;
-  }
-
-  /* Context menu should not overflow on iPhone SE */
-  #app.mobile-mode #cm{
-    position:fixed !important;
-    left:8px !important;
-    right:8px !important;
-    top:auto !important;
-    bottom:calc(var(--mobile-actionbar-h,78px) + 8px + env(safe-area-inset-bottom,0px)) !important;
-    width:auto !important;
-    min-width:0 !important;
-    max-height:calc(100dvh - var(--mobile-topbar-h,52px) - var(--mobile-actionbar-h,78px) - 28px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) !important;
-    overflow:auto !important;
-    -webkit-overflow-scrolling:touch !important;
-    border-radius:14px !important;
-    z-index:150 !important;
-  }
-
-  #app.mobile-mode #cm div{
-    padding:10px 12px !important;
-    font-size:13px !important;
-  }
-}
-
-/* Extra compact mode for iPhone SE width */
-@media (max-width: 380px){
-  #app.mobile-mode #ep,
-  #app.mobile-mode #eep{
-    left:6px !important;
-    right:6px !important;
-    padding-left:9px !important;
-    padding-right:9px !important;
-  }
-
-  #app.mobile-mode #ep .swr{
-    grid-template-columns:repeat(6, minmax(0, 1fr)) !important;
-  }
-
-  #app.mobile-mode #ep .sw{
-    height:22px !important;
-  }
-
-  #app.mobile-mode #ep .epft{
-    grid-template-columns:repeat(3, minmax(0,1fr)) !important;
-  }
-
-  #app.mobile-mode #ep .epft button,
-  #app.mobile-mode #eep .epft button{
-    font-size:10.5px !important;
-    padding-left:4px !important;
-    padding-right:4px !important;
-  }
-}
-</style>
-
-
-<script id="patch-v1-8-39-mobile-modal-fit">
-(function(){
-  'use strict';
-  if(window.__MOBILE_MODAL_FIT_PATCH_APPLIED__) return;
-  window.__MOBILE_MODAL_FIT_PATCH_APPLIED__=true;
-
-  function updateMobileModalVars(){
-    const app=document.getElementById('app');
-    if(!app) return;
-    const topbar=document.getElementById('mobile-topbar');
-    const actionbar=document.getElementById('mobile-actionbar');
-    const topH=topbar ? Math.ceil(topbar.getBoundingClientRect().height) : 52;
-    const actionH=actionbar ? Math.ceil(actionbar.getBoundingClientRect().height) : 78;
-    app.style.setProperty('--mobile-topbar-h', topH+'px');
-    app.style.setProperty('--mobile-actionbar-h', actionH+'px');
-    app.style.setProperty('--mobile-vh', (window.innerHeight || document.documentElement.clientHeight || 568)+'px');
-  }
-
-  function fitPanel(panel){
-    const app=document.getElementById('app');
-    if(!panel || !app || !app.classList.contains('mobile-mode')) return;
-    updateMobileModalVars();
-    panel.style.left='8px';
-    panel.style.right='8px';
-    panel.style.top='var(--mobile-modal-top)';
-    panel.style.bottom='var(--mobile-modal-bottom)';
-    panel.style.width='auto';
-    panel.style.maxWidth='none';
-    panel.style.maxHeight='none';
-    panel.style.height='auto';
-    panel.style.overflowY='auto';
-  }
-
-  const originalOpenEp=typeof openEp==='function' ? openEp : null;
-  if(originalOpenEp && !originalOpenEp.__mobileModalFitPatched){
-    const wrapped=function(){
-      updateMobileModalVars();
-      const res=originalOpenEp.apply(this,arguments);
-      setTimeout(()=>fitPanel(document.getElementById('ep')),0);
-      setTimeout(()=>fitPanel(document.getElementById('ep')),120);
-      return res;
-    };
-    wrapped.__mobileModalFitPatched=true;
-    openEp=wrapped;
-  }
-
-  const originalOpenEep=typeof openEep==='function' ? openEep : null;
-  if(originalOpenEep && !originalOpenEep.__mobileModalFitPatched){
-    const wrapped=function(){
-      updateMobileModalVars();
-      const res=originalOpenEep.apply(this,arguments);
-      setTimeout(()=>fitPanel(document.getElementById('eep')),0);
-      setTimeout(()=>fitPanel(document.getElementById('eep')),120);
-      return res;
-    };
-    wrapped.__mobileModalFitPatched=true;
-    openEep=wrapped;
-  }
-
-  ['resize','orientationchange'].forEach(evt=>{
-    window.addEventListener(evt,()=>{
-      updateMobileModalVars();
-      fitPanel(document.getElementById('ep'));
-      fitPanel(document.getElementById('eep'));
-    },{passive:true});
-  });
-
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',()=>{
-      updateMobileModalVars();
-      fitPanel(document.getElementById('ep'));
-      fitPanel(document.getElementById('eep'));
-    },{passive:true});
-  }
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',updateMobileModalVars,{once:true});
-  }else{
-    updateMobileModalVars();
-  }
+  window.connectSelectedPairFromContext=connectSelectedPairFromContext;
 })();
 </script>
