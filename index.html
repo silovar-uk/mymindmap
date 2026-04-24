@@ -2289,12 +2289,13 @@ let initialTitleNodeSyncArmed=true;
 let lastNodeClick={id:null,time:0};
 let lastEdgeClick={id:null,time:0};
 let currentExportKind='json';
-const APP_VERSION='1.8.23';
-const APP_UPDATED_AT='2026-04-24 00:24 JST';
+const APP_VERSION='1.8.24';
+const APP_UPDATED_AT='2026-04-24 22:30 JST';
 // AIメンテナンス指示:
 // このHTMLを修正したら、必ず APP_VERSION / APP_UPDATED_AT / APP_CHANGELOG の先頭エントリを更新すること。
 // APP_CHANGELOG の date は「YYYY-MM-DD HH:mm JST」形式にし、summary は1文、items は3〜6項目で簡潔に記録すること。
 const APP_CHANGELOG=[
+{version:'1.8.24',date:'2026-04-24 22:30 JST',summary:'共有URLを圧縮方式へ更新し、座標・色を共有データから外したうえでURL長を制御する安全導線を追加。',items:['共有URLコピーは gzip 圧縮 + base64url 形式を優先し、従来URLより短く生成する方式へ変更','共有URL用データから座標 x/y と color 情報を除外し、読み込み時は現在のレイアウト規則と配色で再配置・再描画する方式へ変更','ノード本文・補足・関連URL・状態・折りたたみ・表示モード・お気に入り・エッジは保持し、情報として不要な見た目情報だけを削減','URL長が安全上限を超える場合はコピーを止め、JSON保存・JSONコピーへ誘導する制御を追加','旧形式の共有URLも読み込める後方互換を維持']} ,
 {version:'1.8.23',date:'2026-04-24 00:24 JST',summary:'専心機能の残存コードを実行時HTMLから外し、保存・復元時は専心系データを読み捨てる最終削除フェーズを適用。',items:['専心モーダル本体・専心UI導線・専心ログ・選択補助など dedication / focusMap 系の style / script ブロックを実行時HTMLから削除','クイックバー・右クリック・編集モーダル・F2 から専心へ流れる経路を物理的に断ち、通常の編集導線だけが残る状態へ整理','Phase 3 のデータ読み捨て処理は維持し、 dedicationMap / focusMap / focusDoc は import・autosave・export で保持しないまま自然消滅させるよう継続','専心関連の backdrop / class / 補助UI 依存を外し、通常マップ・補足・関連URL・集中・局所整列だけで完結する構成へ整理']} ,
 {version:'1.8.15',date:'2026-04-22 15:57 JST',summary:'マップ名と初期ノード名を連動させ、色分けモード中に追加した新規ノードも現在の配色ルールを引き継ぐよう改善。',items:['マップ名入力時は先頭ノードのラベルへ、先頭ノード編集時はマップ名へ反映する双方向同期を追加','初期ノード編集欄では入力中にもマップ名表示へ反映されるようにし、起点ノードとタイトルのズレを減らした','meta.coloringMode を追加し、「ノードを色分け」「線を色分け」を押した時点の配色モードを保持するよう変更','新規の子ノード・同階層ノード・単独ノードは、現在の配色モードに応じて深さ配色または枝配色の色で生成されるよう修正','JSON / 共有URL / 取込時にも coloringMode を保持し、再読込後も新規ノードの色付けルールが維持されるようにした']} ,
 {version:'1.8.11',date:'2026-04-22 15:42 JST',summary:'ノードごとに関連URLを保持できるようにし、編集画面・クイックバー・ノード上バッジからリンクを開けるよう改善。',items:['ノード編集モーダルに関連URL入力欄と「開く」ボタンを追加し、URLをノード単位で保存できるようにした','関連URLは normalizeRelatedUrl で整形し、http(s) / mailto / tel を安全に開ける openNodeRelatedUrl を追加','単一選択時のクイックバーに「リンク」を追加し、関連URLがあるノードだけワンタップで開けるようにした','ノード右上に↗の小バッジを描画し、SVG上から直接リンクを開けるようにした','JSON / 共有URL / コピー用サブツリーでも relatedUrl を保持するようにし、読み書き時のデータ欠落を防いだ','ノードの右クリックメニューにも「リンクを開く」を追加し、関連URLがある時だけ表示するようにした']},
@@ -12561,2024 +12562,306 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
 </script>
 
 
-<style id="patch-v1-8-32-usability-style">
-#cm #c-add-here{
-  display:none;
-  color:var(--sf-text-0,#f6f3ed);
-  font-weight:800;
-}
-#cm.blank-context #c-add-here{display:block}
-#cm.blank-context #c-add-here::before{
-  content:"＋";
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:18px;
-  height:18px;
-  margin-right:8px;
-  border-radius:999px;
-  background:rgba(255,111,44,.20);
-  color:#ffd8c9;
-  font-weight:900;
-}
-#cm.blank-context #c-edit,
-#cm.blank-context #c-child,
-#cm.blank-context #c-toggle,
-#cm.blank-context #c-link,
-#cm.blank-context #c-del,
-#cm.blank-context #c-focus{
-  display:none !important;
-}
-#delete-undo-toast{
-  position:absolute;
-  left:50%;
-  bottom:78px;
-  z-index:95;
-  display:none;
-  align-items:center;
-  gap:12px;
-  max-width:min(560px,calc(100% - 28px));
-  padding:11px 12px 11px 14px;
-  transform:translateX(-50%) translateY(8px);
-  border:1px solid rgba(255,227,109,.30);
-  border-radius:0;
-  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
-  background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98));
-  color:#fff5c7;
-  box-shadow:0 16px 34px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
-  font-size:12px;
-  line-height:1.45;
-  backdrop-filter:blur(8px);
-}
-#delete-undo-toast.show{
-  display:flex;
-  animation:delete-undo-toast-in .18s cubic-bezier(.16,1,.3,1) both;
-}
-#delete-undo-toast .du-message{
-  min-width:0;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-#delete-undo-toast .du-message strong{
-  color:#fff;
-  font-weight:900;
-}
-#delete-undo-toast .du-actions{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex:0 0 auto;
-}
-#delete-undo-toast button{
-  min-height:30px;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.20);
-  background:rgba(255,255,255,.11);
-  color:#fff;
-  font-size:12px;
-  font-weight:900;
-  cursor:pointer;
-}
-#delete-undo-toast button:hover{
-  background:rgba(255,255,255,.18);
-}
-#delete-undo-toast .du-close{
-  width:30px;
-  padding:0;
-}
-#quickbar.quickbar-compact button{
-  max-width:130px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-@keyframes delete-undo-toast-in{
-  0%{opacity:0;transform:translateX(-50%) translateY(12px) scale(.98)}
-  100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
-}
-@media (max-width:720px){
-  #delete-undo-toast{
-    left:10px;
-    right:10px;
-    bottom:88px;
-    transform:translateY(8px);
-    max-width:none;
-    flex-wrap:wrap;
-    justify-content:space-between;
-  }
-  #delete-undo-toast.show{animation:delete-undo-toast-mobile-in .18s cubic-bezier(.16,1,.3,1) both}
-  #delete-undo-toast .du-message{white-space:normal;flex:1 1 220px}
-  #delete-undo-toast .du-actions{margin-left:auto}
-}
-@keyframes delete-undo-toast-mobile-in{
-  0%{opacity:0;transform:translateY(12px) scale(.98)}
-  100%{opacity:1;transform:translateY(0) scale(1)}
-}
-</style>
-
-
-<script id="patch-v1-8-32-usability-script">
-(function(){
-  'use strict';
-  if(window.__USABILITY_CORE_PATCH_APPLIED__) return;
-  window.__USABILITY_CORE_PATCH_APPLIED__=true;
-
-  const cwEl=document.getElementById('cw');
-  const svgEl=document.getElementById('sv');
-  const cmEl=document.getElementById('cm');
-  const quickbarEl=document.getElementById('quickbar');
-
-  let blankContextWorldPoint=null;
-  let deleteUndoState=null;
-  let deleteUndoTimer=null;
-
-  function getNode(id){ return (typeof nb==='function') ? nb(id) : null; }
-  function getEdge(id){ return (typeof eb==='function') ? eb(id) : null; }
-  function toast(msg,type){ try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){} }
-  function safeRender(){ try{ if(typeof renderNow==='function') renderNow(); else if(typeof draw==='function') draw(); }catch(_e){} }
-  function deepCopy(value){ return JSON.parse(JSON.stringify(value)); }
-
-  function restoreContextMenu(){
-    if(!cmEl) return;
-    cmEl.classList.remove('blank-context');
-    const addHere=document.getElementById('c-add-here');
-    if(addHere) addHere.style.display='none';
-    ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.style.display='block';
-    });
-    const hr=cmEl.querySelector('hr');
-    if(hr) hr.style.display='block';
-  }
-
-  function ensureAddHereItem(){
-    if(!cmEl) return null;
-    let item=document.getElementById('c-add-here');
-    if(item) return item;
-    item=document.createElement('div');
-    item.id='c-add-here';
-    item.textContent='ここにノードを追加';
-    cmEl.insertBefore(item, cmEl.firstChild);
-    item.addEventListener('mousedown',e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      addNodeAtBlankContext();
-    });
-    return item;
-  }
-
-  function showBlankContextMenu(ev){
-    if(!cmEl || !cwEl) return;
-    const item=ensureAddHereItem();
-    if(!item) return;
-    try{ if(typeof closePanels==='function') closePanels(); }catch(_e){}
-    try{ if(typeof clearSelection==='function') clearSelection(); }catch(_e){}
-    try{ if(typeof draw==='function') draw(); }catch(_e){}
-    const wr=cwEl.getBoundingClientRect();
-    blankContextWorldPoint=(typeof toS==='function')
-      ? toS(ev.clientX-wr.left, ev.clientY-wr.top)
-      : {x:0,y:0};
-    try{ lastCanvasBlankWorldPoint=blankContextWorldPoint; }catch(_e){}
-
-    cmEl.classList.add('blank-context');
-    ['c-edit','c-child','c-toggle','c-link','c-del','c-focus'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.style.display='none';
-    });
-    const hr=cmEl.querySelector('hr');
-    if(hr) hr.style.display='none';
-    item.style.display='block';
-
-    cmEl.style.display='block';
-    cmEl.style.left=Math.min(ev.clientX, window.innerWidth-220)+'px';
-    cmEl.style.top=Math.min(ev.clientY, window.innerHeight-160)+'px';
-  }
-
-  function addNodeAtBlankContext(){
-    if(!blankContextWorldPoint){
-      try{ blankContextWorldPoint=typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0}; }catch(_e){ blankContextWorldPoint={x:0,y:0}; }
-    }
-    if(typeof ensureMapTitle==='function' && !ensureMapTitle({toast:true,focus:true})) return;
-    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
-    const node=(typeof createStandaloneNode==='function')
-      ? createStandaloneNode({label:'',subtext:'',status:'none',fitMode:'shrink',anchor:blankContextWorldPoint})
-      : null;
-    if(cmEl) cmEl.style.display='none';
-    restoreContextMenu();
-    safeRender();
-    if(node){
-      try{ if(typeof setSingleSelection==='function') setSingleSelection(node.id); }catch(_e){}
-      try{ if(typeof armCanvasShortcutNode==='function') armCanvasShortcutNode(node.id); }catch(_e){}
-      try{ if(typeof openEp==='function') openEp(node.id); }catch(_e){}
-      toast('この位置にノードを追加しました');
-    }
-  }
-
-  if(svgEl){
-    svgEl.addEventListener('contextmenu',e=>{
-      const onNode=e.target.closest && e.target.closest('[data-id]');
-      const onEdge=e.target.closest && e.target.closest('[data-eid]');
-      if(onNode || onEdge) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
-      showBlankContextMenu(e);
-    }, true);
-  }
-
-  document.addEventListener('mousedown',e=>{
-    if(!cmEl) return;
-    if(!cmEl.contains(e.target)) restoreContextMenu();
-  }, true);
-
-  function ensureDeleteUndoToast(){
-    let box=document.getElementById('delete-undo-toast');
-    if(box) return box;
-    const host=cwEl || document.getElementById('app') || document.body;
-    box=document.createElement('div');
-    box.id='delete-undo-toast';
-    box.innerHTML='<div class="du-message"></div><div class="du-actions"><button class="du-undo" type="button">元に戻す</button><button class="du-close" type="button" aria-label="閉じる">×</button></div>';
-    host.appendChild(box);
-    const undoBtn=box.querySelector('.du-undo');
-    const closeBtn=box.querySelector('.du-close');
-    if(undoBtn) undoBtn.addEventListener('click',()=>{
-      restoreDeletedSnapshot();
-    });
-    if(closeBtn) closeBtn.addEventListener('click',()=>hideDeleteUndoToast());
-    return box;
-  }
-
-  function hideDeleteUndoToast(){
-    const box=document.getElementById('delete-undo-toast');
-    if(box) box.classList.remove('show');
-    if(deleteUndoTimer){
-      clearTimeout(deleteUndoTimer);
-      deleteUndoTimer=null;
-    }
-  }
-
-  function collectDeleteIds(ids){
-    const set=new Set();
-    try{
-      const childMap=typeof getChildrenMap==='function' ? getChildrenMap() : {};
-      (ids||[]).forEach(id=>{
-        if(!id || set.has(id)) return;
-        set.add(id);
-        if(typeof getDescendantIds==='function'){
-          getDescendantIds(id,childMap).forEach(desc=>set.add(desc));
-        }
-      });
-    }catch(_e){
-      (ids||[]).forEach(id=>{ if(id) set.add(id); });
-    }
-    return set;
-  }
-
-  function captureDeleteSnapshot(ids){
-    const idSet=collectDeleteIds(ids);
-    if(!idSet.size) return null;
-    let label='';
-    try{
-      const first=[...idSet].map(id=>getNode(id)).find(Boolean);
-      label=first ? String(first.label||'無題') : '';
-    }catch(_e){}
-    return {
-      nodes:deepCopy(nodes),
-      edges:deepCopy(edges),
-      nid:typeof nid!=='undefined' ? nid : null,
-      selectedNodeIds:[...selectedNodeIds],
-      activeNodeId:activeNodeId||null,
-      selectedEdgeId:selectedEdgeId||null,
-      count:idSet.size,
-      label
-    };
-  }
-
-  function showDeleteUndoToast(snapshot){
-    if(!snapshot || !snapshot.count) return;
-    deleteUndoState=snapshot;
-    const box=ensureDeleteUndoToast();
-    const msg=box.querySelector('.du-message');
-    const label=snapshot.label ? '「'+snapshot.label+'」' : 'ノード';
-    if(msg) msg.innerHTML='<strong>'+snapshot.count+'件</strong>を削除しました。'+label+'を元に戻せます。';
-    hideDeleteUndoToast();
-    box.classList.add('show');
-    deleteUndoTimer=setTimeout(()=>{ hideDeleteUndoToast(); deleteUndoState=null; }, 9000);
-  }
-
-  function restoreDeletedSnapshot(){
-    if(!deleteUndoState) return;
-    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
-    nodes=deepCopy(deleteUndoState.nodes);
-    edges=deepCopy(deleteUndoState.edges);
-    if(deleteUndoState.nid!=null) nid=deleteUndoState.nid;
-    try{
-      selectedNodeIds=new Set(deleteUndoState.selectedNodeIds||[]);
-      activeNodeId=deleteUndoState.activeNodeId||null;
-      selectedEdgeId=deleteUndoState.selectedEdgeId||null;
-    }catch(_e){}
-    hideDeleteUndoToast();
-    deleteUndoState=null;
-    safeRender();
-    toast('削除を元に戻しました');
-  }
-
-  const originalDeleteNodes=typeof deleteNodes==='function' ? deleteNodes : null;
-  if(originalDeleteNodes && !originalDeleteNodes.__usabilityUndoPatched){
-    const wrapped=function(ids){
-      const snap=captureDeleteSnapshot(ids);
-      const res=originalDeleteNodes.apply(this,arguments);
-      if(snap) showDeleteUndoToast(snap);
-      return res;
-    };
-    wrapped.__usabilityUndoPatched=true;
-    deleteNodes=wrapped;
-  }
-
-  const originalGetQuickbarConfig=typeof getQuickbarConfig==='function' ? getQuickbarConfig : null;
-  if(originalGetQuickbarConfig && !originalGetQuickbarConfig.__usabilityCompactPatched){
-    const wrapped=function(){
-      if(selectedEdgeId && getEdge(selectedEdgeId)){
-        return [
-          {id:'qb-edit',label:'線を編集',action:'edit',tone:'primary'},
-          {id:'qb-reverse',label:'向きを反転',action:'reverse-edge'},
-          {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
-        ];
-      }
-      if(selectedNodeIds && selectedNodeIds.size>1){
-        return [
-          {id:'qb-stack-right',label:'選択だけ整える',action:'selection-stack-right',tone:'primary'},
-          {id:'qb-grid-right',label:'2列で整える',action:'selection-grid-right'},
-          {id:'qb-delete',label:'消す',action:'delete',tone:'danger'}
-        ];
-      }
-      if(activeNodeId && getNode(activeNodeId)){
-        const activeNode=getNode(activeNodeId);
-        const items=[
-          {id:'qb-edit',label:'編集',action:'edit',tone:'primary'},
-          {id:'qb-child',label:'子を追加',action:'add-child'},
-          {id:'qb-sibling',label:'同階層を追加',action:'add-sibling'},
-          {id:'qb-connect',label:'つなぐ',action:'connect'}
-        ];
-        if(typeof getNodeRelatedUrl==='function' && getNodeRelatedUrl(activeNode)){
-          items.splice(3,0,{id:'qb-link',label:'リンク',action:'open-related-url'});
-        }
-        items.push({id:'qb-delete',label:'消す',action:'delete',tone:'danger'});
-        return items.slice(0,6);
-      }
-      return [
-        {id:'qb-add-here',label:'ここに追加',action:'add-here',tone:'primary'},
-        {id:'qb-fit',label:'全体表示',action:'fit'}
-      ];
-    };
-    wrapped.__usabilityCompactPatched=true;
-    getQuickbarConfig=wrapped;
-  }
-
-  const originalUpdateQuickbar=typeof updateQuickbar==='function' ? updateQuickbar : null;
-  if(originalUpdateQuickbar && !originalUpdateQuickbar.__usabilityCompactPatched){
-    const wrapped=function(){
-      const res=originalUpdateQuickbar.apply(this,arguments);
-      if(quickbarEl) quickbarEl.classList.add('quickbar-compact');
-      return res;
-    };
-    wrapped.__usabilityCompactPatched=true;
-    updateQuickbar=wrapped;
-  }
-
-  const originalRunQuickbarAction=typeof runQuickbarAction==='function' ? runQuickbarAction : null;
-  if(originalRunQuickbarAction && !originalRunQuickbarAction.__usabilityActionPatched){
-    const wrapped=function(action){
-      if(action==='add-here'){
-        try{
-          blankContextWorldPoint=(typeof lastCanvasBlankWorldPoint!=='undefined' && lastCanvasBlankWorldPoint)
-            ? lastCanvasBlankWorldPoint
-            : (typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0});
-        }catch(_e){
-          blankContextWorldPoint={x:0,y:0};
-        }
-        return addNodeAtBlankContext();
-      }
-      if(action==='add-sibling'){
-        if(activeNodeId && getNode(activeNodeId)){
-          if(typeof addSiblingFromCanvasSelection==='function') return addSiblingFromCanvasSelection(activeNodeId);
-        }
-        return;
-      }
-      return originalRunQuickbarAction.apply(this,arguments);
-    };
-    wrapped.__usabilityActionPatched=true;
-    runQuickbarAction=wrapped;
-  }
-
-  const bAdd=document.getElementById('b-add');
-  if(bAdd && !bAdd.__usabilityAddAtViewCenterPatched){
-    bAdd.__usabilityAddAtViewCenterPatched=true;
-    bAdd.title='ノードを追加します。空白を右クリックすると、その位置に追加できます。';
-  }
-})();
-</script>
-
-
-<style id="patch-v1-8-33-immersive-on-usability-style">
-#immersive-bar{
-  position:absolute;
-  z-index:78;
-  top:12px;
-  left:12px;
-  right:12px;
-  display:none;
-  align-items:flex-start;
-  gap:12px;
-  max-width:min(980px, calc(100% - 24px));
-  padding:13px 14px 16px;
-  background:
-    radial-gradient(900px 220px at -8% -42%, rgba(255,255,255,.15), transparent 55%),
-    linear-gradient(180deg, rgba(118,16,18,.98) 0%, rgba(84,11,13,.98) 100%);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:18px;
-  color:#fff7f1;
-  box-shadow:0 18px 48px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.08);
-  overflow:hidden;
-  backdrop-filter:blur(12px);
-}
-#immersive-bar::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  background-image:
-    linear-gradient(180deg, rgba(255,255,255,.045) 0, rgba(255,255,255,0) 32%),
-    repeating-linear-gradient(180deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px);
-  opacity:.28;
-}
-#immersive-bar::after{
-  content:"";
-  position:absolute;
-  inset:auto 0 0 0;
-  height:34px;
-  pointer-events:none;
-  background:linear-gradient(180deg, rgba(255,255,255,0), rgba(0,0,0,.11));
-}
-#immersive-bar > *{position:relative;z-index:1}
-#immersive-bar button{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:34px;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.10);
-  color:#fff8f3;
-  font-size:12px;
-  font-weight:800;
-  cursor:pointer;
-  transition:transform .16s cubic-bezier(.4,0,.2,1), background .16s cubic-bezier(.4,0,.2,1), border-color .16s cubic-bezier(.4,0,.2,1);
-}
-#immersive-bar button:hover{transform:translateY(-1px);background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
-#immersive-bar .immersive-room-badge{
-  flex:0 0 auto;
-  align-self:flex-start;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:7px 11px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.04em;
-  color:#fff8f3;
-  background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
-}
-#immersive-bar .immersive-room-badge::before{
-  content:"";
-  width:8px;height:8px;border-radius:999px;
-  background:#ffd7c6;
-  box-shadow:0 0 0 4px rgba(255,255,255,.08);
-}
-#immersive-bar .immersive-copy{
-  flex:1 1 360px;
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  align-items:flex-start;
-  padding:2px 0 0;
-}
-#immersive-bar .immersive-kicker{
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.14em;
-  color:#ffd8c9;
-  text-transform:uppercase;
-}
-#immersive-bar .immersive-title{
-  max-width:100%;
-  font-size:15px;
-  font-weight:900;
-  color:#fff7f1;
-  line-height:1.35;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-#immersive-bar .immersive-sub{
-  font-size:11px;
-  line-height:1.45;
-  color:#ffe7dc;
-  opacity:.96;
-  margin-top:1px;
-}
-#immersive-bar .immersive-root-note{
-  display:none;
-  max-width:100%;
-  margin-top:5px;
-  padding:7px 9px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.06);
-  color:rgba(255,244,238,.78);
-  font-size:11px;
-  line-height:1.45;
-}
-#immersive-bar .immersive-root-note strong{
-  flex:0 0 auto;
-  margin-right:6px;
-  color:rgba(255,255,255,.88);
-  font-weight:900;
-}
-#immersive-bar .immersive-breadcrumbs{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:6px;
+<style id="patch-v1-8-24-compressed-share-url-style">
+#share-url-size-note{
   margin-top:8px;
-}
-#immersive-bar .immersive-crumb,
-#immersive-bar .immersive-crumb-current{
-  display:inline-flex;
-  align-items:center;
-  max-width:min(240px, 42vw);
-  min-width:0;
-  padding:5px 9px;
-  border-radius:999px;
-  font-size:11px;
-  line-height:1.2;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  border:1px solid rgba(255,255,255,.12);
-}
-#immersive-bar .immersive-crumb{
-  background:rgba(255,255,255,.08);
-  color:#ffece4;
-  cursor:pointer;
-  transition:transform .16s cubic-bezier(.4,0,.2,1), background .16s cubic-bezier(.4,0,.2,1), border-color .16s cubic-bezier(.4,0,.2,1);
-}
-#immersive-bar .immersive-crumb:hover{
-  transform:translateY(-1px);
-  background:rgba(255,255,255,.17);
-  border-color:rgba(255,255,255,.26);
-}
-#immersive-bar .immersive-crumb-current{
-  background:rgba(255,255,255,.18);
-  color:#ffffff;
-  font-weight:900;
-}
-#immersive-bar .immersive-crumb-sep{
-  color:#ffd8ca;
-  opacity:.9;
-  font-size:12px;
-}
-#immersive-bar .immersive-room-note{
-  margin-top:8px;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  font-size:11px;
-  line-height:1.35;
-  color:#ffe7dc;
-  background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.08);
+  padding:9px 10px;
+  border:1px solid rgba(18,198,255,.18);
   border-radius:12px;
-  padding:8px 10px;
-}
-#immersive-bar .immersive-room-note::before{
-  content:"部屋";
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.08em;
-  color:#fff8f4;
-  background:rgba(255,255,255,.12);
-  padding:4px 6px;
-  border-radius:999px;
-}
-#immersive-bar .immersive-actions{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex:0 0 auto;
-  align-self:flex-start;
-}
-#immersive-bar .immersive-action-btn.secondary{
-  background:rgba(0,0,0,.12);
-}
-#immersive-bar .immersive-guide{
-  order:4;
-  width:100%;
-  height:24px;
-  margin-top:-1px;
-  position:relative;
-  pointer-events:none;
-  opacity:.9;
-}
-#immersive-bar .immersive-guide::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:0;
-  width:2px;
-  height:14px;
-  transform:translateX(-50%);
-  background:rgba(255,255,255,.17);
-  border-radius:999px;
-}
-#immersive-bar .immersive-guide::after{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:13px;
-  width:min(420px,46vw);
-  height:16px;
-  transform:translateX(-50%);
-  border-radius:0 0 999px 999px;
-  border:1px solid rgba(255,255,255,.12);
-  border-top:none;
-  background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.03));
-}
-
-#immersive-empty-cta{
-  position:absolute;
-  z-index:74;
-  top:calc(50% + 36px);
-  left:50%;
-  width:min(440px, calc(100% - 32px));
-  transform:translate(-50%,-50%);
-  display:none;
-  padding:20px 18px 18px;
-  border-radius:22px;
-  border:1px solid rgba(255,255,255,.12);
-  background:
-    radial-gradient(circle at 18% 0%, rgba(255,255,255,.11), transparent 42%),
-    linear-gradient(180deg, rgba(22,28,38,.94), rgba(8,12,18,.97));
-  color:#f6f3ed;
-  box-shadow:0 22px 58px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05);
-  text-align:center;
-  backdrop-filter:blur(12px);
-}
-#immersive-empty-cta .ie-kicker{
+  background:rgba(18,198,255,.06);
+  color:var(--sf-text-2,#9aa8ba);
   font-size:11px;
-  font-weight:900;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-  color:#ffcbb8;
+  line-height:1.55;
 }
-#immersive-empty-cta .ie-title{
-  margin-top:6px;
-  font-size:20px;
-  line-height:1.35;
-  font-weight:900;
-}
-#immersive-empty-cta .ie-sub{
-  margin:7px auto 0;
-  max-width:32em;
-  font-size:12px;
-  line-height:1.7;
-  color:#d6dee8;
-}
-#immersive-empty-cta .ie-actions{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  margin-top:14px;
-}
-#immersive-empty-cta .ie-btn{
-  min-height:40px;
-  padding:9px 18px;
-  border-radius:999px;
-  border:1px solid rgba(255,122,57,.58);
-  background:linear-gradient(180deg, rgba(255,111,44,.92), rgba(154,34,22,.98));
-  color:#fff;
-  font-size:13px;
-  font-weight:900;
-  cursor:pointer;
-  box-shadow:0 12px 26px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.12);
-}
-#immersive-empty-cta .ie-btn:hover{transform:translateY(-1px)}
-#immersive-empty-cta .ie-note{
-  margin-top:10px;
-  font-size:11px;
-  line-height:1.5;
-  color:#9aa8ba;
-}
-
-/* Room transition FX */
-#cw.immersive-entering::after,
-#cw.immersive-exiting::after,
-#cw.immersive-switching::after{
-  animation: immersive-room-shift .44s cubic-bezier(.16,1,.3,1);
-}
-#cw.immersive-entering::before,
-#cw.immersive-exiting::before,
-#cw.immersive-switching::before{
-  animation: immersive-room-bloom .44s cubic-bezier(.16,1,.3,1);
-}
-#immersive-bar.room-entering{animation: immersive-bar-enter .42s cubic-bezier(.16,1,.3,1)}
-#immersive-bar.room-exiting{animation: immersive-bar-exit .42s cubic-bezier(.16,1,.3,1)}
-#immersive-bar.room-switching{animation: immersive-bar-switch .38s cubic-bezier(.16,1,.3,1)}
-#cw.immersive-entering #immersive-empty-cta,
-#cw.immersive-switching #immersive-empty-cta{
-  animation: immersive-cta-enter .44s cubic-bezier(.16,1,.3,1) both;
-}
-#cw.immersive-exiting #immersive-empty-cta{
-  animation: immersive-cta-exit .34s cubic-bezier(.16,1,.3,1) both;
-}
-#cw.immersive-entering #NL > g[data-id],
-#cw.immersive-switching #NL > g[data-id]{
-  animation: immersive-node-follow-in .46s cubic-bezier(.16,1,.3,1) both;
-}
-#cw.immersive-exiting #NL > g[data-id]{
-  animation: immersive-node-follow-out .30s cubic-bezier(.4,0,.2,1) both;
-}
-#cw.immersive-entering #NL > g[data-id]:nth-child(2n),
-#cw.immersive-switching #NL > g[data-id]:nth-child(2n){animation-delay:.026s}
-#cw.immersive-entering #NL > g[data-id]:nth-child(3n),
-#cw.immersive-switching #NL > g[data-id]:nth-child(3n){animation-delay:.052s}
-#cw.immersive-entering #NL > g[data-id]:nth-child(4n),
-#cw.immersive-switching #NL > g[data-id]:nth-child(4n){animation-delay:.078s}
-#cw.immersive-layout-pulse #NL > g[data-id]{
-  animation: immersive-node-settle .34s cubic-bezier(.16,1,.3,1) both;
-}
-@keyframes immersive-room-shift{
-  0%{opacity:.72;filter:brightness(.98) saturate(1);transform:translateY(0)}
-  40%{opacity:.98;filter:brightness(1.1) saturate(1.1);transform:translateY(2px)}
-  100%{opacity:1;filter:brightness(1) saturate(1);transform:translateY(0)}
-}
-@keyframes immersive-room-bloom{
-  0%{filter:brightness(1) saturate(1); transform:scale(1)}
-  35%{filter:brightness(1.08) saturate(1.08); transform:scale(1.003)}
-  100%{filter:brightness(1) saturate(1); transform:scale(1)}
-}
-@keyframes immersive-bar-enter{
-  0%{transform:translateY(-8px) scale(.985); opacity:.82; filter:brightness(.96)}
-  42%{transform:translateY(0) scale(1.01); opacity:1; filter:brightness(1.07)}
-  100%{transform:translateY(0) scale(1); opacity:1; filter:brightness(1)}
-}
-@keyframes immersive-bar-exit{
-  0%{transform:translateY(0) scale(1); opacity:1; filter:brightness(1)}
-  36%{transform:translateY(-1px) scale(1.01); opacity:1; filter:brightness(1.06)}
-  100%{transform:translateY(-5px) scale(.992); opacity:.90; filter:brightness(.97)}
-}
-@keyframes immersive-bar-switch{
-  0%{transform:translateY(0) scale(1); filter:brightness(1)}
-  38%{transform:translateY(-2px) scale(1.012); filter:brightness(1.08)}
-  100%{transform:translateY(0) scale(1); filter:brightness(1)}
-}
-@keyframes immersive-cta-enter{
-  0%{opacity:0; transform:translate(-50%,calc(-50% + 14px)) scale(.97); filter:blur(1px)}
-  54%{opacity:1; transform:translate(-50%,calc(-50% - 2px)) scale(1.01); filter:blur(0)}
-  100%{opacity:1; transform:translate(-50%,-50%) scale(1); filter:blur(0)}
-}
-@keyframes immersive-cta-exit{
-  0%{opacity:1; transform:translate(-50%,-50%) scale(1)}
-  100%{opacity:0; transform:translate(-50%,calc(-50% - 10px)) scale(.985)}
-}
-@keyframes immersive-node-follow-in{
-  0%{opacity:0; transform:translateY(16px) scale(.985); filter:blur(.8px)}
-  50%{opacity:1; transform:translateY(-2px) scale(1.006); filter:blur(0)}
-  100%{opacity:1; transform:translateY(0) scale(1); filter:blur(0)}
-}
-@keyframes immersive-node-follow-out{
-  0%{opacity:1; transform:translateY(0) scale(1)}
-  100%{opacity:.25; transform:translateY(-10px) scale(.985)}
-}
-@keyframes immersive-node-settle{
-  0%{transform:translateY(8px) scale(.992); opacity:.82}
-  60%{transform:translateY(-1px) scale(1.004); opacity:1}
-  100%{transform:translateY(0) scale(1); opacity:1}
-}
-
-@media (max-width: 820px){
-  #immersive-bar{
-    left:10px;
-    right:10px;
-    top:10px;
-    max-width:none;
-    padding:12px 12px 14px;
-    gap:9px;
-    flex-wrap:wrap;
-  }
-  #immersive-bar .immersive-room-badge{order:1}
-  #immersive-bar .immersive-copy{order:2; flex-basis:100%}
-  #immersive-bar .immersive-actions{order:3; width:100%; justify-content:space-between}
-  #immersive-bar .immersive-action-btn{flex:1 1 0}
-  #immersive-bar .immersive-crumb, #immersive-bar .immersive-crumb-current{max-width:70vw}
-  #immersive-empty-cta{top:calc(50% + 46px);padding:16px 14px 14px}
-  #immersive-empty-cta .ie-title{font-size:18px}
-  #immersive-empty-cta .ie-actions{flex-direction:column}
-  #immersive-empty-cta .ie-btn{width:100%}
-}
+#share-url-size-note strong{color:var(--sf-text-0,#f6f3ed)}
 </style>
-
-
-<script id="patch-v1-8-33-immersive-on-usability-script">
+<script id="patch-v1-8-24-compressed-share-url">
 (function(){
   'use strict';
-  if(window.__IMMERSIVE_ON_USABILITY_PATCH_APPLIED__) return;
-  window.__IMMERSIVE_ON_USABILITY_PATCH_APPLIED__=true;
+  if(window.__COMPRESSED_SHARE_URL_PATCH_APPLIED__) return;
+  window.__COMPRESSED_SHARE_URL_PATCH_APPLIED__=true;
 
-  const host=document.getElementById('cw');
-  const state={
-    active:false,
-    rootNodeId:null,
-    parentViewport:null,
-    previousSelection:{nodeIds:[],edgeId:null},
-    switching:false
-  };
-
-  function esc(str){
-    return String(str==null?'':str)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
-  }
-  function getNode(id){ return (typeof nb==='function') ? nb(id) : null; }
-  function toast(msg,type){ try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){} }
-  function safeRender(){ try{ if(typeof renderNow==='function') renderNow(); else if(typeof draw==='function') draw(); }catch(_e){} }
-  function getRootId(){ return state.active && state.rootNodeId && getNode(state.rootNodeId) ? state.rootNodeId : null; }
-  function isActive(){ return !!getRootId(); }
-  function getDesc(rootId){ try{ return typeof getDescendantIds==='function' ? getDescendantIds(rootId).filter(id=>getNode(id)) : []; }catch(_e){ return []; } }
-  function getChildren(rootId){
-    try{
-      const cmap=typeof getChildrenMap==='function' ? getChildrenMap() : {};
-      return (cmap[rootId]||[]).filter(id=>getNode(id));
-    }catch(_e){ return []; }
-  }
-  function getParent(id){
-    try{ return typeof getParentId==='function' ? getParentId(id) : null; }catch(_e){ return null; }
-  }
-
-  function playFx(kind){
-    if(!host) return;
-    const bar=document.getElementById('immersive-bar');
-    const hostClass=kind==='exit'?'immersive-exiting':kind==='switch'?'immersive-switching':'immersive-entering';
-    const barClass=kind==='exit'?'room-exiting':kind==='switch'?'room-switching':'room-entering';
-    host.classList.remove('immersive-entering','immersive-exiting','immersive-switching');
-    if(bar) bar.classList.remove('room-entering','room-exiting','room-switching');
-    void host.offsetWidth;
-    host.classList.add(hostClass);
-    if(bar){
-      void bar.offsetWidth;
-      bar.classList.add(barClass);
-    }
-    window.setTimeout(()=>{
-      host.classList.remove(hostClass);
-      if(bar) bar.classList.remove(barClass);
-    }, 470);
-  }
-
-  function pulseLayout(){
-    if(!host) return;
-    host.classList.remove('immersive-layout-pulse');
-    void host.offsetWidth;
-    host.classList.add('immersive-layout-pulse');
-    window.setTimeout(()=>host.classList.remove('immersive-layout-pulse'), 360);
-  }
-
-  function ensureBar(){
-    let bar=document.getElementById('immersive-bar');
-    if(bar) return bar;
-    if(!host) return null;
-    bar=document.createElement('div');
-    bar.id='immersive-bar';
-    bar.innerHTML=
-      '<div class="immersive-room-badge">思考の部屋</div>'+
-      '<button id="immersive-exit-btn" type="button">← 親マップに戻る</button>'+
-      '<div class="immersive-copy">'+
-      '  <div class="immersive-kicker">Immersive Room</div>'+
-      '  <div class="immersive-title" id="immersive-bar-title">専心中</div>'+
-      '  <div class="immersive-sub" id="immersive-bar-sub">このノード配下だけを編集しています</div>'+
-      '  <div class="immersive-root-note" id="immersive-root-note"></div>'+
-      '  <div class="immersive-breadcrumbs" id="immersive-breadcrumbs"></div>'+
-      '  <div class="immersive-room-note" id="immersive-room-note">外には要点、ここでは中身を育てます</div>'+
-      '</div>'+
-      '<div class="immersive-actions">'+
-      '  <button id="immersive-layout-btn" class="immersive-action-btn secondary" type="button">中身を整える</button>'+
-      '</div>'+
-      '<div class="immersive-guide"></div>';
-    host.appendChild(bar);
-    const exitBtn=bar.querySelector('#immersive-exit-btn');
-    const layoutBtn=bar.querySelector('#immersive-layout-btn');
-    if(exitBtn) exitBtn.addEventListener('click',()=>exitImmersiveMode({reason:'bar'}));
-    if(layoutBtn) layoutBtn.addEventListener('click',()=>{
-      if(arrangeImmersiveSubtree({snapshotBefore:true})){
-        safeRender();
-        pulseLayout();
-        toast('専心ルームの中身を整えました');
-      }
-    });
-    bar.addEventListener('click',e=>{
-      const crumb=e.target.closest('[data-immersive-crumb-id]');
-      if(!crumb) return;
-      const id=crumb.dataset.immersiveCrumbId;
-      if(!id || !getNode(id) || id===getRootId()) return;
-      e.preventDefault();
-      switchImmersiveRoot(id);
-    });
-    return bar;
-  }
-
-  function getLineage(rootId){
-    const list=[];
-    let cur=rootId;
-    const seen=new Set();
-    while(cur && getNode(cur) && !seen.has(cur)){
-      seen.add(cur);
-      list.push(getNode(cur));
-      cur=getParent(cur);
-    }
-    return list.reverse();
-  }
-
-  function updateBar(){
-    const bar=ensureBar();
-    if(!bar) return;
-    const rootId=getRootId();
-    const root=rootId ? getNode(rootId) : null;
-    const appEl=document.getElementById('app');
-    if(!root){
-      bar.style.display='none';
-      if(appEl) appEl.removeAttribute('data-immersive-root-hidden');
-      return;
-    }
-    if(appEl) appEl.setAttribute('data-immersive-root-hidden','true');
-    const descendants=getDesc(rootId);
-    const direct=getChildren(rootId);
-    const title=bar.querySelector('#immersive-bar-title');
-    const sub=bar.querySelector('#immersive-bar-sub');
-    const note=bar.querySelector('#immersive-root-note');
-    const roomNote=bar.querySelector('#immersive-room-note');
-    const badge=bar.querySelector('.immersive-room-badge');
-    const crumbs=bar.querySelector('#immersive-breadcrumbs');
-    if(badge) badge.textContent=direct.length ? ('思考の部屋 · 直下 '+direct.length+'件') : '思考の部屋 · まだ空です';
-    if(title) title.textContent=String(root.label||'無題')+' を深掘り中';
-    if(sub){
-      sub.textContent=descendants.length
-        ? '親マップでは折りたたまれる中身を、この部屋で育てています。配下 '+descendants.length+' 件を表示中'
-        : '親マップでは折りたたまれる中身を、この部屋で育てます。まずは最初の子ノードを追加してください';
-    }
-    if(note){
-      const raw=String(root.subtext||'').trim();
-      if(raw){
-        note.style.display='block';
-        note.innerHTML='<strong>補足</strong>'+esc(raw);
-      }else{
-        note.style.display='none';
-        note.innerHTML='';
-      }
-    }
-    if(roomNote){
-      roomNote.textContent = getLineage(rootId).length>1
-        ? 'パンくずで位置関係を確認できます。今は「'+String(root.label||'無題')+'」の内側を編集中です'
-        : 'この部屋は最上位の論点です。ここで中身を育ててから親マップへ戻せます';
-    }
-    if(crumbs){
-      const lineage=getLineage(rootId);
-      crumbs.innerHTML=lineage.map((node,idx)=>{
-        const isCurrent=idx===lineage.length-1;
-        const cls=isCurrent?'immersive-crumb-current':'immersive-crumb';
-        const attr=isCurrent?'':' data-immersive-crumb-id="'+esc(node.id)+'"';
-        const titleAttr=' title="'+esc(node.label||'無題')+'"';
-        const part='<span class="'+cls+'"'+attr+titleAttr+'>'+esc(node.label||'無題')+'</span>';
-        return part + (idx<lineage.length-1 ? '<span class="immersive-crumb-sep">›</span>' : '');
-      }).join('');
-    }
-    bar.style.display='flex';
-  }
-
-  function ensureEmptyCta(){
-    let box=document.getElementById('immersive-empty-cta');
-    if(box) return box;
-    if(!host) return null;
-    box=document.createElement('div');
-    box.id='immersive-empty-cta';
-    box.innerHTML=
-      '<div class="ie-kicker">Empty Room</div>'+
-      '<div class="ie-title">この部屋はまだ空です</div>'+
-      '<div class="ie-sub">このノードの中身を、ここで少しずつ育てられます。最初の子ノードから始めましょう。</div>'+
-      '<div class="ie-actions"><button id="immersive-empty-add-btn" class="ie-btn" type="button">子を追加</button></div>'+
-      '<div class="ie-note">追加した内容は、親マップに戻ると折りたたまれて保存されます。</div>';
-    host.appendChild(box);
-    const btn=box.querySelector('#immersive-empty-add-btn');
-    if(btn) btn.addEventListener('click',()=>{
-      const rootId=getRootId();
-      if(!rootId || !getNode(rootId)) return;
-      if(typeof ensureMapTitle==='function' && !ensureMapTitle()) return;
-      try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
-      const child=typeof createChildNode==='function' ? createChildNode(rootId,{status:'none',fitMode:'shrink'}) : null;
-      arrangeImmersiveSubtree();
-      safeRender();
-      pulseLayout();
-      if(child){
-        try{ if(typeof setSingleSelection==='function') setSingleSelection(child.id); }catch(_e){}
-        try{ if(typeof armCanvasShortcutNode==='function') armCanvasShortcutNode(child.id); }catch(_e){}
-        try{ if(typeof openEp==='function') openEp(child.id); }catch(_e){}
-      }
-      toast('専心ルームに子ノードを追加しました');
-    });
-    return box;
-  }
-
-  function updateEmptyCta(){
-    const box=ensureEmptyCta();
-    if(!box) return;
-    const rootId=getRootId();
-    if(!rootId){
-      box.style.display='none';
-      return;
-    }
-    const hasChildren=getChildren(rootId).length>0;
-    box.style.display=hasChildren ? 'none' : 'block';
-  }
-
-  function arrangeImmersiveSubtree(opts={}){
-    const rootId=getRootId();
-    const root=rootId ? getNode(rootId) : null;
-    if(!root) return false;
-    const ids=getDesc(rootId);
-    if(!ids.length) return false;
-    if(opts.snapshotBefore){
-      try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
-    }
-    try{
-      const numberMap=typeof getOutlineNumberMap==='function' ? getOutlineNumberMap() : null;
-      [root,...ids.map(id=>getNode(id)).filter(Boolean)].forEach(n=>{
-        try{ if(typeof updateNodeMetrics==='function') updateNodeMetrics(n,numberMap); }catch(_e){}
-      });
-    }catch(_e){}
-
-    const cmap=typeof getChildrenMap==='function' ? getChildrenMap() : {};
-    const levelGap=122;
-    const baseGap=218;
-    const rootX=root.x||0;
-    const rootY=root.y||0;
-    const sizeMap={};
-    function size(id){
-      if(sizeMap[id]) return sizeMap[id];
-      const children=(cmap[id]||[]).filter(ch=>getNode(ch));
-      if(!children.length) return sizeMap[id]=1;
-      return sizeMap[id]=Math.max(1, children.reduce((sum,ch)=>sum+size(ch),0));
-    }
-    function layout(id,cx,cy,depth){
-      const children=(cmap[id]||[]).filter(ch=>getNode(ch));
-      if(!children.length) return;
-      const total=children.reduce((sum,ch)=>sum+size(ch),0);
-      let cursor=cx-(total*baseGap)/2;
-      children.forEach((ch,index)=>{
-        const node=getNode(ch);
-        const width=size(ch)*baseGap;
-        const childX=cursor+width/2;
-        const childY=cy+levelGap+(depth*10);
-        node.x=childX;
-        node.y=childY;
-        node.order=Number.isFinite(node.order) ? node.order : index+1;
-        cursor+=width;
-        layout(ch, childX, childY, depth+1);
-      });
-    }
-    size(rootId);
-    layout(rootId, rootX, rootY+24, 0);
-    try{ if(typeof fitV==='function') fitV(); }catch(_e){}
-    try{
-      const H=(typeof sv!=='undefined' && sv?.clientHeight) ? sv.clientHeight : 720;
-      if(typeof vy!=='undefined') vy+=Math.min(70,Math.max(36,H*0.08));
-      if(typeof applyT==='function') applyT();
-    }catch(_e){}
-    return true;
-  }
-
-  function enterImmersiveMode(rootId, opts={}){
-    const root=getNode(rootId);
-    if(!root) return false;
-    if(isActive()){
-      if(getRootId()===rootId){
-        updateBar();
-        updateEmptyCta();
-        return true;
-      }
-      toast('専心中です。いったん戻るか、パンくずから移動してください','warn');
-      return false;
-    }
-    try{ if(typeof closePanels==='function') closePanels(); }catch(_e){}
-    state.active=true;
-    state.rootNodeId=rootId;
-    try{ state.parentViewport={vx,vy,vs}; }catch(_e){ state.parentViewport=null; }
-    try{ state.previousSelection={nodeIds:[...selectedNodeIds],edgeId:selectedEdgeId||null}; }catch(_e){ state.previousSelection={nodeIds:[],edgeId:null}; }
-    try{
-      if(meta?.focusMode){
-        meta.focusMode=false;
-        meta.focusNodeId=null;
-      }
-    }catch(_e){}
-    try{ if(typeof clearSelection==='function') clearSelection(); }catch(_e){}
-    try{ if(typeof armCanvasShortcutNode==='function') armCanvasShortcutNode(rootId,2400); }catch(_e){}
-    arrangeImmersiveSubtree();
-    safeRender();
-    updateBar();
-    updateEmptyCta();
-    playFx('enter');
-    toast('専心に入りました: '+String(root.label||'無題'));
-    return true;
-  }
-
-  function exitImmersiveMode(opts={}){
-    if(!state.active) return false;
-    const rootId=state.rootNodeId;
-    const root=rootId ? getNode(rootId) : null;
-    const restore=state.parentViewport ? {...state.parentViewport} : null;
-    playFx('exit');
-    try{ if(typeof closePanels==='function') closePanels(); }catch(_e){}
-    if(root && !root.collapsed){
-      try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
-      root.collapsed=true;
-    }
-    state.active=false;
-    state.rootNodeId=null;
-    state.parentViewport=null;
-    state.previousSelection={nodeIds:[],edgeId:null};
-    if(restore){
-      try{ vx=restore.vx; vy=restore.vy; vs=restore.vs; }catch(_e){}
-    }
-    try{
-      if(rootId && getNode(rootId) && typeof setSingleSelection==='function') setSingleSelection(rootId);
-      else if(typeof clearSelection==='function') clearSelection();
-    }catch(_e){}
-    safeRender();
-    updateBar();
-    updateEmptyCta();
-    toast('親マップに戻りました');
-    return true;
-  }
-
-  function switchImmersiveRoot(nextRootId){
-    const next=getNode(nextRootId);
-    if(!next) return false;
-    if(!isActive()) return enterImmersiveMode(nextRootId,{reason:'breadcrumb'});
-    if(nextRootId===getRootId()) return true;
-    playFx('switch');
-    window.setTimeout(()=>{
-      state.rootNodeId=nextRootId;
-      try{ if(typeof clearSelection==='function') clearSelection(); }catch(_e){}
-      arrangeImmersiveSubtree();
-      safeRender();
-      updateBar();
-      updateEmptyCta();
-      pulseLayout();
-      toast('専心ルームを切り替えました: '+String(next.label||'無題'));
-    }, 115);
-    return true;
-  }
-
-  window.enterImmersiveMode=enterImmersiveMode;
-  window.exitImmersiveMode=exitImmersiveMode;
-  window.isImmersiveModeActive=isActive;
-  window.getImmersiveRootNodeId=getRootId;
-
-  const originalGetHiddenNodeIds=typeof getHiddenNodeIds==='function' ? getHiddenNodeIds : null;
-  if(originalGetHiddenNodeIds && !originalGetHiddenNodeIds.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const rootId=getRootId();
-      if(!rootId) return originalGetHiddenNodeIds.apply(this,arguments);
-      const hidden=new Set();
-      const cmap=typeof getChildrenMap==='function' ? getChildrenMap() : {};
-      function walk(id){
-        (cmap[id]||[]).forEach(ch=>{
-          if(hidden.has(ch)) return;
-          hidden.add(ch);
-          walk(ch);
-        });
-      }
-      try{
-        nodes.forEach(n=>{
-          if(n && n.collapsed && n.id!==rootId) walk(n.id);
-        });
-      }catch(_e){}
-      return hidden;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    getHiddenNodeIds=wrapped;
-  }
-
-  const originalGetVisibleNodes=typeof getVisibleNodes==='function' ? getVisibleNodes : null;
-  if(originalGetVisibleNodes && !originalGetVisibleNodes.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const base=originalGetVisibleNodes.apply(this,arguments);
-      const rootId=getRootId();
-      if(!rootId) return base;
-      const allowed=new Set(getDesc(rootId));
-      return base.filter(n=>n && n.id!==rootId && allowed.has(n.id));
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    getVisibleNodes=wrapped;
-  }
-
-  const originalGetVisibleEdges=typeof getVisibleEdges==='function' ? getVisibleEdges : null;
-  if(originalGetVisibleEdges && !originalGetVisibleEdges.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const rootId=getRootId();
-      if(!rootId) return originalGetVisibleEdges.apply(this,arguments);
-      const visibleSet=new Set(getVisibleNodes().map(n=>n.id));
-      return edges.filter(e=>visibleSet.has(e.from) && visibleSet.has(e.to));
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    getVisibleEdges=wrapped;
-  }
-
-  const originalIsFocusModeActive=typeof isFocusModeActive==='function' ? isFocusModeActive : null;
-  if(originalIsFocusModeActive && !originalIsFocusModeActive.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      if(isActive()) return false;
-      return originalIsFocusModeActive.apply(this,arguments);
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    isFocusModeActive=wrapped;
-  }
-
-  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
-  if(originalRenderNow && !originalRenderNow.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const res=originalRenderNow.apply(this,arguments);
-      updateBar();
-      updateEmptyCta();
-      return res;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    renderNow=wrapped;
-  }
-
-  const originalDraw=typeof draw==='function' ? draw : null;
-  if(originalDraw && !originalDraw.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const res=originalDraw.apply(this,arguments);
-      updateBar();
-      updateEmptyCta();
-      return res;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    draw=wrapped;
-  }
-
-  const originalAddChild=typeof addChildFromCanvasSelection==='function' ? addChildFromCanvasSelection : null;
-  if(originalAddChild && !originalAddChild.__immersiveOnUsabilityPatched){
-    const wrapped=function(sourceId){
-      if(isActive()){
-        const rootId=getRootId();
-        const parentId=(sourceId && getNode(sourceId)) ? sourceId : rootId;
-        const child=originalAddChild.call(this,parentId);
-        arrangeImmersiveSubtree();
-        safeRender();
-        pulseLayout();
-        return child;
-      }
-      return originalAddChild.apply(this,arguments);
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    addChildFromCanvasSelection=wrapped;
-  }
-
-  const originalAddSibling=typeof addSiblingFromCanvasSelection==='function' ? addSiblingFromCanvasSelection : null;
-  if(originalAddSibling && !originalAddSibling.__immersiveOnUsabilityPatched){
-    const wrapped=function(sourceId){
-      if(isActive() && sourceId===getRootId()){
-        toast('専心ルートの同階層追加は、親マップに戻ってから行ってください','warn');
-        return null;
-      }
-      const res=originalAddSibling.apply(this,arguments);
-      if(isActive()){
-        arrangeImmersiveSubtree();
-        safeRender();
-        pulseLayout();
-      }
-      return res;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    addSiblingFromCanvasSelection=wrapped;
-  }
-
-  const originalDeleteNodes=typeof deleteNodes==='function' ? deleteNodes : null;
-  if(originalDeleteNodes && !originalDeleteNodes.__immersiveOnUsabilityPatched){
-    const wrapped=function(ids){
-      const rootId=getRootId();
-      if(rootId && Array.isArray(ids) && ids.includes(rootId)){
-        toast('専心ルートは、この部屋の入口なので削除できません','warn');
-        ids=ids.filter(id=>id!==rootId);
-        if(!ids.length) return;
-      }
-      const res=originalDeleteNodes.call(this,ids);
-      if(isActive()){
-        arrangeImmersiveSubtree();
-        safeRender();
-        pulseLayout();
-      }
-      return res;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    deleteNodes=wrapped;
-  }
-
-  const originalToggleCollapse=typeof toggleCollapse==='function' ? toggleCollapse : null;
-  if(originalToggleCollapse && !originalToggleCollapse.__immersiveOnUsabilityPatched){
-    const wrapped=function(id){
-      const res=originalToggleCollapse.apply(this,arguments);
-      if(isActive()){
-        arrangeImmersiveSubtree();
-        safeRender();
-        pulseLayout();
-      }
-      return res;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    toggleCollapse=wrapped;
-  }
-
-  const originalQuickbarConfig=typeof getQuickbarConfig==='function' ? getQuickbarConfig : null;
-  if(originalQuickbarConfig && !originalQuickbarConfig.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const base=originalQuickbarConfig.apply(this,arguments) || [];
-      if(selectedEdgeId) return base;
-      if(selectedNodeIds && selectedNodeIds.size===1 && activeNodeId && getNode(activeNodeId)){
-        if(isActive()){
-          if(activeNodeId===getRootId()) return [{id:'qb-immersive-exit',label:'専心を解く',action:'immersive-exit',tone:'primary'}, ...base.filter(item=>item.action!=='delete')];
-          return base;
-        }
-        return [{id:'qb-immersive-enter',label:'専心',action:'immersive-enter',tone:'primary'}, ...base];
-      }
-      return base;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    getQuickbarConfig=wrapped;
-  }
-
-  const originalRunQuickbarAction=typeof runQuickbarAction==='function' ? runQuickbarAction : null;
-  if(originalRunQuickbarAction && !originalRunQuickbarAction.__immersiveOnUsabilityPatched){
-    const wrapped=function(action){
-      if(action==='immersive-enter'){
-        const id=activeNodeId;
-        if(id && getNode(id)) return enterImmersiveMode(id,{reason:'quickbar'});
-        return;
-      }
-      if(action==='immersive-exit') return exitImmersiveMode({reason:'quickbar'});
-      if(action==='add-child' && isActive() && !(activeNodeId && getNode(activeNodeId))){
-        const rootId=getRootId();
-        if(rootId && typeof addChildFromCanvasSelection==='function') return addChildFromCanvasSelection(rootId);
-      }
-      return originalRunQuickbarAction.apply(this,arguments);
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    runQuickbarAction=wrapped;
-  }
-
-  function ensureContextItem(){
-    const menu=document.getElementById('cm');
-    if(!menu) return;
-    let item=document.getElementById('c-immersive');
-    if(!item){
-      item=document.createElement('div');
-      item.id='c-immersive';
-      const hr=menu.querySelector('hr');
-      if(hr) menu.insertBefore(item,hr);
-      else menu.appendChild(item);
-      item.addEventListener('mousedown',e=>{
-        e.stopPropagation();
-        menu.style.display='none';
-        const id=(typeof cid!=='undefined') ? cid : activeNodeId;
-        if(isActive()){
-          if(id===getRootId()) exitImmersiveMode({reason:'context'});
-          return;
-        }
-        if(id && getNode(id)) enterImmersiveMode(id,{reason:'context'});
-      });
-    }
-    item.textContent=isActive() ? '親マップに戻る' : '専心に入る';
-  }
-  ensureContextItem();
-
-  const originalRenderMobileMenuSheet=typeof renderMobileMenuSheet==='function' ? renderMobileMenuSheet : null;
-  if(originalRenderMobileMenuSheet && !originalRenderMobileMenuSheet.__immersiveOnUsabilityPatched){
-    const wrapped=function(){
-      const res=originalRenderMobileMenuSheet.apply(this,arguments);
-      const panel=document.getElementById('mobile-menu-panel');
-      const id=(activeNodeId && getNode(activeNodeId)) ? activeNodeId : null;
-      if(panel && id && !panel.querySelector('[data-mobile-menu-action="immersive-enter"]') && !panel.querySelector('[data-mobile-menu-action="immersive-exit"]')){
-        const btn=document.createElement('button');
-        if(isActive()){
-          btn.dataset.mobileMenuAction='immersive-exit';
-          btn.textContent='専心を解く';
-        }else{
-          btn.dataset.mobileMenuAction='immersive-enter';
-          btn.textContent='専心';
-        }
-        btn.type='button';
-        const close=panel.querySelector('.menu-close');
-        panel.insertBefore(btn, close || null);
-      }
-      return res;
-    };
-    wrapped.__immersiveOnUsabilityPatched=true;
-    renderMobileMenuSheet=wrapped;
-  }
-
-  document.addEventListener('click',e=>{
-    const btn=e.target.closest('button[data-mobile-menu-action="immersive-enter"],button[data-mobile-menu-action="immersive-exit"]');
-    if(!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
-    const act=btn.dataset.mobileMenuAction;
-    if(act==='immersive-exit') exitImmersiveMode({reason:'mobile'});
-    if(act==='immersive-enter'){
-      const id=activeNodeId;
-      if(id && getNode(id)) enterImmersiveMode(id,{reason:'mobile'});
-    }
-  }, true);
-
-  document.addEventListener('keydown',e=>{
-    if(e.key==='Escape' && isActive()){
-      e.preventDefault();
-      exitImmersiveMode({reason:'escape'});
-    }
-  });
-
-  ensureBar();
-  ensureEmptyCta();
-  updateBar();
-  updateEmptyCta();
-})();
-</script>
-
-
-<style id="patch-v1-8-34-immersive-compact-blue-style">
-/* 専心バー軽量化：通常UIに寄せた青系ステータスバー */
-#immersive-bar{
-  top:12px !important;
-  right:12px !important;
-  left:auto !important;
-  width:min(680px, calc(100% - 24px)) !important;
-  max-width:min(680px, calc(100% - 24px)) !important;
-  min-height:0 !important;
-  display:none;
-  align-items:center !important;
-  gap:8px !important;
-  flex-wrap:wrap !important;
-  padding:8px 10px !important;
-  border-radius:14px !important;
-  border:1px solid rgba(18,198,255,.36) !important;
-  background:linear-gradient(180deg, rgba(11,43,55,.94), rgba(10,18,26,.97)) !important;
-  color:var(--sf-text-0,#f6f3ed) !important;
-  box-shadow:0 10px 24px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04) !important;
-  backdrop-filter:blur(10px) !important;
-  overflow:visible !important;
-  clip-path:none !important;
-}
-#immersive-bar::before,
-#immersive-bar::after{
-  display:none !important;
-  content:none !important;
-}
-
-/* 大きく見える装飾は使わない */
-#immersive-bar .immersive-room-badge,
-#immersive-bar .immersive-root-note,
-#immersive-bar .immersive-room-note,
-#immersive-bar .immersive-guide{
-  display:none !important;
-}
-
-/* コピー領域をコンパクトな1〜2行に */
-#immersive-bar .immersive-copy{
-  order:1 !important;
-  flex:1 1 320px !important;
-  min-width:220px !important;
-  display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
-  align-items:center !important;
-  column-gap:8px !important;
-  row-gap:3px !important;
-  padding:0 !important;
-}
-#immersive-bar .immersive-kicker{
-  grid-column:1 !important;
-  grid-row:1 !important;
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  padding:4px 8px !important;
-  border-radius:999px !important;
-  border:1px solid rgba(18,198,255,.34) !important;
-  background:rgba(18,198,255,.10) !important;
-  color:#dff8ff !important;
-  font-size:10px !important;
-  line-height:1 !important;
-  font-weight:900 !important;
-  letter-spacing:.08em !important;
-  text-transform:none !important;
-  white-space:nowrap !important;
-}
-#immersive-bar .immersive-title{
-  grid-column:2 !important;
-  grid-row:1 !important;
-  min-width:0 !important;
-  max-width:100% !important;
-  margin:0 !important;
-  color:#f4fbff !important;
-  font-size:13px !important;
-  line-height:1.35 !important;
-  font-weight:800 !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-}
-#immersive-bar .immersive-sub{
-  grid-column:3 !important;
-  grid-row:1 !important;
-  margin:0 !important;
-  color:#a9d8e8 !important;
-  font-size:11px !important;
-  line-height:1.2 !important;
-  white-space:nowrap !important;
-  opacity:1 !important;
-}
-#immersive-bar .immersive-breadcrumbs{
-  grid-column:1 / -1 !important;
-  grid-row:2 !important;
-  display:flex !important;
-  align-items:center !important;
-  flex-wrap:nowrap !important;
-  gap:5px !important;
-  margin:0 !important;
-  padding-top:2px !important;
-  min-width:0 !important;
-  overflow:hidden !important;
-}
-#immersive-bar .immersive-crumb,
-#immersive-bar .immersive-crumb-current{
-  max-width:150px !important;
-  padding:0 !important;
-  border:0 !important;
-  border-radius:0 !important;
-  background:transparent !important;
-  color:#9fc9dc !important;
-  font-size:10.5px !important;
-  line-height:1.25 !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  cursor:pointer !important;
-}
-#immersive-bar .immersive-crumb:hover{
-  color:#e8fbff !important;
-  transform:none !important;
-  text-decoration:underline !important;
-}
-#immersive-bar .immersive-crumb-current{
-  color:#ffffff !important;
-  font-weight:800 !important;
-  cursor:default !important;
-}
-#immersive-bar .immersive-crumb-sep{
-  flex:0 0 auto !important;
-  color:#6fa8ba !important;
-  font-size:10px !important;
-  opacity:1 !important;
-}
-
-/* ボタンを既存UI寄りに戻す */
-#immersive-bar .immersive-actions{
-  order:2 !important;
-  display:flex !important;
-  align-items:center !important;
-  gap:6px !important;
-  flex:0 0 auto !important;
-  align-self:center !important;
-  padding:0 !important;
-}
-#immersive-bar button{
-  min-height:30px !important;
-  padding:6px 10px !important;
-  border-radius:10px !important;
-  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px) !important;
-  border:1px solid rgba(132,145,164,.24) !important;
-  background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96)) !important;
-  color:var(--sf-text-0,#f6f3ed) !important;
-  font-size:12px !important;
-  line-height:1.15 !important;
-  font-weight:800 !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;
-}
-#immersive-bar button:hover{
-  transform:translateY(-1px) !important;
-  border-color:rgba(18,198,255,.40) !important;
-  background:linear-gradient(180deg, rgba(35,43,57,.96), rgba(17,23,31,.98)) !important;
-}
-#immersive-bar #immersive-exit-btn{
-  order:3 !important;
-  flex:0 0 auto !important;
-  border-color:rgba(18,198,255,.48) !important;
-  background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98)) !important;
-  color:#effcff !important;
-}
-
-/* 左上メニュー・HUDの邪魔をしないよう、専心中も左上は空ける */
-#cw.immersive-entering #immersive-bar,
-#cw.immersive-switching #immersive-bar,
-#cw.immersive-exiting #immersive-bar{
-  animation:immersive-compact-fade .18s cubic-bezier(.16,1,.3,1) both !important;
-}
-@keyframes immersive-compact-fade{
-  0%{opacity:0;transform:translateY(-4px)}
-  100%{opacity:1;transform:translateY(0)}
-}
-
-@media (max-width: 820px){
-  #immersive-bar{
-    top:10px !important;
-    left:10px !important;
-    right:10px !important;
-    width:auto !important;
-    max-width:none !important;
-    padding:8px 9px !important;
-  }
-  #immersive-bar .immersive-copy{
-    flex-basis:100% !important;
-    grid-template-columns:auto minmax(0,1fr) auto !important;
-    order:1 !important;
-  }
-  #immersive-bar .immersive-actions{
-    order:2 !important;
-    margin-left:auto !important;
-  }
-  #immersive-bar #immersive-exit-btn{
-    order:3 !important;
-  }
-  #immersive-bar .immersive-crumb,
-  #immersive-bar .immersive-crumb-current{
-    max-width:32vw !important;
-  }
-}
-</style>
-
-
-<script id="patch-v1-8-34-immersive-compact-blue-script">
-(function(){
-  'use strict';
-  if(window.__IMMERSIVE_COMPACT_BLUE_PATCH_APPLIED__) return;
-  window.__IMMERSIVE_COMPACT_BLUE_PATCH_APPLIED__=true;
+  const PATCH_SHARE_URL_PARAM = (typeof SHARE_URL_PARAM !== 'undefined') ? SHARE_URL_PARAM : 'mm';
+  const PATCH_SAFE_URL_LIMIT = 6500;
+  const PATCH_HARD_URL_LIMIT = 7800;
+  const PATCH_FORMAT_PREFIX_COMPRESSED = 'z';
+  const PATCH_FORMAT_PREFIX_RAW = 'b';
 
   function nodeById(id){
     try{ return typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
   }
-  function descendantCount(rootId){
-    try{ return typeof getDescendantIds==='function' ? getDescendantIds(rootId).filter(id=>nodeById(id)).length : 0; }
-    catch(_e){ return 0; }
+  function getCurrentColoringMode(){
+    try{ return typeof getNodeColoringMode==='function' ? getNodeColoringMode() : (meta?.coloringMode || 'manual'); }
+    catch(_e){ return 'manual'; }
   }
-  function compactImmersiveBar(){
-    const bar=document.getElementById('immersive-bar');
-    if(!bar) return;
-    const active=(typeof isImmersiveModeActive==='function') && isImmersiveModeActive();
-    const rootId=active && typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null;
-    const root=rootId ? nodeById(rootId) : null;
-
-    const badge=bar.querySelector('.immersive-room-badge');
-    const guide=bar.querySelector('.immersive-guide');
-    const note=bar.querySelector('#immersive-root-note');
-    const roomNote=bar.querySelector('#immersive-room-note');
-    if(badge) badge.remove();
-    if(guide) guide.remove();
-    if(note) note.remove();
-    if(roomNote) roomNote.remove();
-
-    const kicker=bar.querySelector('.immersive-kicker');
-    const title=bar.querySelector('#immersive-bar-title');
-    const sub=bar.querySelector('#immersive-bar-sub');
-    const exitBtn=bar.querySelector('#immersive-exit-btn');
-    const layoutBtn=bar.querySelector('#immersive-layout-btn');
-
-    if(kicker) kicker.textContent='専心中';
-    if(exitBtn) exitBtn.textContent='戻る';
-    if(layoutBtn) layoutBtn.textContent='整える';
-
-    if(root){
-      if(title) title.textContent=String(root.label||'無題')+' を深掘り中';
-      if(sub) sub.textContent='配下 '+descendantCount(rootId)+'件';
+  function cleanUrlWithoutShareParam(){
+    const url=new URL(window.location.href);
+    url.searchParams.delete(PATCH_SHARE_URL_PARAM);
+    return url;
+  }
+  function stripUndefinedDeepForShare(value){
+    if(Array.isArray(value)) return value.map(stripUndefinedDeepForShare);
+    if(value && typeof value==='object'){
+      const out={};
+      Object.entries(value).forEach(([k,v])=>{
+        if(v===undefined || v===null || v==='') return;
+        out[k]=stripUndefinedDeepForShare(v);
+      });
+      return out;
     }
-
-    // 余計な inline style が残っていても軽量表示に戻す
-    bar.style.maxWidth='';
-    bar.style.minHeight='';
+    return value;
+  }
+  function bytesToBase64UrlPatch(bytes){
+    let binary='';
+    const chunkSize=0x8000;
+    for(let i=0;i<bytes.length;i+=chunkSize){
+      binary+=String.fromCharCode(...bytes.subarray(i,i+chunkSize));
+    }
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function base64UrlToBytesPatch(value){
+    const normalized=String(value||'').replace(/-/g,'+').replace(/_/g,'/');
+    const padding=normalized.length%4===0 ? '' : '='.repeat(4-(normalized.length%4));
+    const binary=atob(normalized+padding);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    return bytes;
+  }
+  async function gzipTextToBytes(text){
+    const input=new TextEncoder().encode(String(text||''));
+    if(typeof CompressionStream==='undefined') return null;
+    const stream=new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  async function gunzipBytesToText(bytes){
+    if(typeof DecompressionStream==='undefined') throw new Error('このブラウザは圧縮URLの展開に未対応です');
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
   }
 
-  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
-  if(originalRenderNow && !originalRenderNow.__compactBluePatched){
-    const wrapped=function(){
-      const res=originalRenderNow.apply(this,arguments);
-      try{ compactImmersiveBar(); }catch(_e){}
-      return res;
+  function buildShareObjectV4(){
+    const allNodes=(typeof nodes!=='undefined' ? nodes : []).filter(Boolean);
+    const nodeIds=new Set(allNodes.map(n=>n.id));
+    const allEdges=(typeof edges!=='undefined' ? edges : []).filter(e=>nodeIds.has(e.from) && nodeIds.has(e.to));
+    let focusSeedId=null;
+    try{ focusSeedId=typeof getFocusSeedNodeId==='function' ? getFocusSeedNodeId() : (meta?.focusNodeId || null); }catch(_e){}
+    const focusMode=!!(meta?.focusMode && focusSeedId && nodeIds.has(focusSeedId));
+
+    return stripUndefinedDeepForShare({
+      v:4,
+      note:'coords-and-colors-omitted',
+      m:{
+        t:meta?.title && meta.title!=='案件マインドマップ' ? meta.title : undefined,
+        l:meta?.layoutMode && meta.layoutMode!=='radial' ? meta.layoutMode : undefined,
+        h:meta?.hideDone ? 1 : undefined,
+        p:meta?.presentationMode ? 1 : undefined,
+        cm:getCurrentColoringMode()!=='manual' ? getCurrentColoringMode() : undefined,
+        fm:focusMode ? 1 : undefined,
+        fi:focusMode ? focusSeedId : undefined
+      },
+      n:allNodes.map(n=>({
+        i:n.id,
+        l:n.label,
+        s:n.subtext || undefined,
+        u:(typeof getNodeRelatedUrl==='function' ? getNodeRelatedUrl(n) : (n.relatedUrl || '')) || undefined,
+        t:n.status && n.status!=='none' ? n.status : undefined,
+        k:n.collapsed ? 1 : undefined,
+        w:n.fitMode==='wrap' ? 1 : undefined,
+        o:Number.isFinite(n.order) && n.order!==1 ? n.order : undefined,
+        f:n.favorite ? 1 : undefined,
+        a:Number.isFinite(n.createdAt) ? n.createdAt : undefined
+      })),
+      e:allEdges.map(e=>e.label ? [e.from,e.to,e.label] : [e.from,e.to])
+    });
+  }
+
+  function expandShareObjectV4(obj){
+    if(!obj || obj.v!==4 || !Array.isArray(obj.n)) return null;
+    const focusSeedId=obj.m?.fi;
+    const hasFocusTarget=typeof focusSeedId==='string' && obj.n.some(n=>String(n?.i||'')===focusSeedId);
+    const focusMode=!!obj.m?.fm && hasFocusTarget;
+    return {
+      schemaVersion:'1.0',
+      meta:{
+        title:obj.m?.t || '案件マインドマップ',
+        layoutMode:obj.m?.l || 'horizontal',
+        hideDone:!!obj.m?.h,
+        focusMode,
+        focusNodeId:focusMode ? focusSeedId : null,
+        presentationMode:!!obj.m?.p,
+        coloringMode:(obj.m?.cm==='depth' || obj.m?.cm==='branch') ? obj.m.cm : 'manual'
+      },
+      nodes:obj.n.map((n,idx)=>({
+        id:n.i || `n${idx+1}`,
+        label:n.l || '新規案件',
+        subtext:n.s || '',
+        relatedUrl:n.u || '',
+        status:(n.t==='done' || n.t==='none') ? n.t : 'none',
+        collapsed:!!n.k,
+        fitMode:n.w ? 'wrap' : 'shrink',
+        order:Number.isFinite(n.o) ? n.o : 1,
+        favorite:!!n.f,
+        createdAt:Number.isFinite(n.a) ? n.a : null,
+        // URL軽量化のため座標・色は持たない。読み込み後に自動レイアウトと現行配色で復元する。
+        x:0,
+        y:0,
+        color:PRESETS[idx % PRESETS.length]
+      })),
+      edges:(obj.e||[]).map((e,idx)=>({
+        id:`e${idx+1}`,
+        from:Array.isArray(e) ? e[0] : e?.from,
+        to:Array.isArray(e) ? e[1] : e?.to,
+        label:Array.isArray(e) ? (e[2]||'') : (e?.label||'')
+      }))
     };
-    wrapped.__compactBluePatched=true;
-    renderNow=wrapped;
   }
 
-  const originalDraw=typeof draw==='function' ? draw : null;
-  if(originalDraw && !originalDraw.__compactBluePatched){
-    const wrapped=function(){
-      const res=originalDraw.apply(this,arguments);
-      try{ compactImmersiveBar(); }catch(_e){}
-      return res;
+  async function encodeSharePayload(raw){
+    const gz=await gzipTextToBytes(raw).catch(()=>null);
+    if(gz && gz.length){
+      return {
+        value:PATCH_FORMAT_PREFIX_COMPRESSED+bytesToBase64UrlPatch(gz),
+        mode:'gzip',
+        byteLength:gz.length,
+        rawLength:raw.length
+      };
+    }
+    const rawBytes=new TextEncoder().encode(raw);
+    return {
+      value:PATCH_FORMAT_PREFIX_RAW+bytesToBase64UrlPatch(rawBytes),
+      mode:'raw-fallback',
+      byteLength:rawBytes.length,
+      rawLength:raw.length
     };
-    wrapped.__compactBluePatched=true;
-    draw=wrapped;
+  }
+  async function decodeSharePayload(value){
+    const encoded=String(value||'');
+    if(encoded.startsWith(PATCH_FORMAT_PREFIX_COMPRESSED)){
+      return await gunzipBytesToText(base64UrlToBytesPatch(encoded.slice(1)));
+    }
+    if(encoded.startsWith(PATCH_FORMAT_PREFIX_RAW)){
+      return new TextDecoder().decode(base64UrlToBytesPatch(encoded.slice(1)));
+    }
+    // 旧形式: prefixなし base64url JSON
+    return new TextDecoder().decode(base64UrlToBytesPatch(encoded));
   }
 
-  const originalEnter=window.enterImmersiveMode;
-  if(typeof originalEnter==='function' && !originalEnter.__compactBluePatched){
-    const wrapped=function(){
-      const res=originalEnter.apply(this,arguments);
-      try{ compactImmersiveBar(); }catch(_e){}
-      return res;
+  async function buildCompressedShareUrl(){
+    const compact=buildShareObjectV4();
+    const raw=JSON.stringify(compact);
+    const encoded=await encodeSharePayload(raw);
+    const url=cleanUrlWithoutShareParam();
+    url.searchParams.set(PATCH_SHARE_URL_PARAM, encoded.value);
+    return {
+      url:url.toString(),
+      urlLength:url.toString().length,
+      encodedLength:encoded.value.length,
+      payloadLength:raw.length,
+      compressionMode:encoded.mode,
+      compressedBytes:encoded.byteLength,
+      nodes:compact.n.length,
+      edges:compact.e.length
     };
-    wrapped.__compactBluePatched=true;
-    window.enterImmersiveMode=wrapped;
   }
 
-  const originalExit=window.exitImmersiveMode;
-  if(typeof originalExit==='function' && !originalExit.__compactBluePatched){
-    const wrapped=function(){
-      const res=originalExit.apply(this,arguments);
-      try{ compactImmersiveBar(); }catch(_e){}
-      return res;
-    };
-    wrapped.__compactBluePatched=true;
-    window.exitImmersiveMode=wrapped;
+  function setShareButtonState(running){
+    const btn=document.getElementById('b-share-url-hi');
+    if(!btn) return null;
+    const prev=btn.dataset.prevText || btn.textContent;
+    if(!btn.dataset.prevText) btn.dataset.prevText=prev;
+    btn.disabled=!!running;
+    btn.textContent=running ? '圧縮中…' : (btn.dataset.prevText || '圧縮URLでコピー');
+    return prev;
+  }
+  function updateShareButtonLabel(){
+    const btn=document.getElementById('b-share-url-hi');
+    if(btn){
+      btn.textContent='圧縮URLでコピー';
+      btn.dataset.prevText='圧縮URLでコピー';
+      btn.title='座標・色を除外し、gzip圧縮した共有URLをコピーします';
+    }
+  }
+  function formatLength(n){ return Number(n||0).toLocaleString('ja-JP'); }
+
+  async function copyShareUrlHighFidelityPatched(){
+    updateShareButtonLabel();
+    setShareButtonState(true);
+    try{
+      const result=await buildCompressedShareUrl();
+      const stats=`ノード ${result.nodes}件 / 矢印 ${result.edges}件 / URL ${formatLength(result.urlLength)}文字 / payload ${formatLength(result.payloadLength)}文字 / ${result.compressionMode}`;
+      if(result.urlLength>PATCH_HARD_URL_LIMIT){
+        const message='圧縮してもURLが長すぎるため、コピーを止めました。情報を落とさず共有する場合は JSON保存 または JSONコピー を使ってください。\n'+stats;
+        if(typeof setIoStatus==='function') setIoStatus(message,'warn');
+        if(typeof showToast==='function') showToast('URLが長すぎるためコピーを止めました','warn');
+        return false;
+      }
+      const warn=result.urlLength>PATCH_SAFE_URL_LIMIT;
+      if(typeof setIoStatus==='function'){
+        setIoStatus(
+          (warn?'圧縮URLを生成しました。ただし長めです。':'圧縮URLを生成しました。')+
+          '\n座標・色はURLから除外し、読み込み時に自動レイアウトと現行配色で再構成します。\n'+stats,
+          warn?'warn':'ok'
+        );
+      }
+      const success=warn ? '圧縮URLをコピーしました（長めです）' : '圧縮URLをコピーしました';
+      return copyTextToClipboard(result.url,{successMessage:success,buttonId:'b-share-url-hi'});
+    }catch(err){
+      console.error('[compressed-share-url]',err);
+      if(typeof setIoStatus==='function') setIoStatus('圧縮URLの生成に失敗しました: '+(err?.message||err),'err');
+      if(typeof showToast==='function') showToast('圧縮URLの生成に失敗しました','warn');
+      return false;
+    }finally{
+      setShareButtonState(false);
+      updateShareButtonLabel();
+    }
   }
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>{ try{ compactImmersiveBar(); }catch(_e){}; },{once:true});
-  }else{
-    try{ compactImmersiveBar(); }catch(_e){}
-  }
-})();
-</script>
-
-
-<style id="patch-v1-8-35-immersive-minimal-controls-style">
-/* 4. ボタンCSSを通常UIにさらに寄せる */
-#immersive-bar button,
-#immersive-bar .immersive-action-btn,
-#immersive-bar #immersive-exit-btn,
-#immersive-bar #immersive-layout-btn{
-  min-height:28px !important;
-  padding:5px 9px !important;
-  border-radius:9px !important;
-  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px) !important;
-  border:1px solid rgba(132,145,164,.24) !important;
-  background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96)) !important;
-  color:var(--sf-text-1,#d6dee8) !important;
-  font-size:11.5px !important;
-  line-height:1.15 !important;
-  font-weight:800 !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
-  text-shadow:none !important;
-}
-#immersive-bar button::before,
-#immersive-bar .immersive-action-btn::before{
-  display:none !important;
-  content:none !important;
-}
-#immersive-bar button:hover,
-#immersive-bar .immersive-action-btn:hover{
-  transform:none !important;
-  border-color:rgba(18,198,255,.34) !important;
-  background:linear-gradient(180deg, rgba(35,43,57,.94), rgba(17,23,31,.96)) !important;
-  color:var(--sf-text-0,#f6f3ed) !important;
-}
-#immersive-bar #immersive-exit-btn{
-  border-color:rgba(18,198,255,.42) !important;
-  background:linear-gradient(180deg, rgba(11,43,55,.88), rgba(10,18,26,.96)) !important;
-  color:#effcff !important;
-}
-#immersive-bar .immersive-actions{
-  gap:5px !important;
-}
-
-/* 5. 空CTAをカードから小型チップへ */
-#immersive-empty-cta{
-  top:58% !important;
-  left:50% !important;
-  width:auto !important;
-  min-width:min(320px, calc(100% - 32px)) !important;
-  max-width:min(420px, calc(100% - 32px)) !important;
-  padding:10px 12px !important;
-  border-radius:14px !important;
-  clip-path:none !important;
-  border:1px solid rgba(18,198,255,.24) !important;
-  background:linear-gradient(180deg, rgba(16,21,29,.92), rgba(9,13,18,.96)) !important;
-  color:var(--sf-text-0,#f6f3ed) !important;
-  box-shadow:0 10px 24px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.035) !important;
-  text-align:left !important;
-  backdrop-filter:blur(8px) !important;
-}
-#immersive-empty-cta::before,
-#immersive-empty-cta::after{
-  display:none !important;
-  content:none !important;
-}
-#immersive-empty-cta .ie-kicker,
-#immersive-empty-cta .ie-note{
-  display:none !important;
-}
-#immersive-empty-cta .ie-title{
-  margin:0 !important;
-  font-size:12.5px !important;
-  line-height:1.35 !important;
-  font-weight:900 !important;
-  color:#eaf7ff !important;
-}
-#immersive-empty-cta .ie-sub{
-  margin:3px 0 0 !important;
-  max-width:none !important;
-  font-size:11px !important;
-  line-height:1.45 !important;
-  color:#9aa8ba !important;
-}
-#immersive-empty-cta .ie-actions{
-  display:flex !important;
-  justify-content:flex-end !important;
-  gap:8px !important;
-  margin-top:8px !important;
-}
-#immersive-empty-cta .ie-btn{
-  min-height:28px !important;
-  padding:5px 10px !important;
-  border-radius:9px !important;
-  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px) !important;
-  border:1px solid rgba(18,198,255,.34) !important;
-  background:linear-gradient(180deg, rgba(11,43,55,.88), rgba(10,18,26,.96)) !important;
-  color:#effcff !important;
-  font-size:11.5px !important;
-  line-height:1.15 !important;
-  font-weight:900 !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
-}
-#immersive-empty-cta .ie-btn:hover{
-  transform:none !important;
-  border-color:rgba(18,198,255,.46) !important;
-}
-
-/* 6. アニメーションを弱める */
-#cw.immersive-entering::before,
-#cw.immersive-entering::after,
-#cw.immersive-exiting::before,
-#cw.immersive-exiting::after,
-#cw.immersive-switching::before,
-#cw.immersive-switching::after{
-  animation:none !important;
-}
-#immersive-bar.room-entering,
-#immersive-bar.room-exiting,
-#immersive-bar.room-switching{
-  animation:immersive-soft-fade .18s cubic-bezier(.16,1,.3,1) both !important;
-}
-#cw.immersive-entering #NL > g[data-id],
-#cw.immersive-switching #NL > g[data-id],
-#cw.immersive-layout-pulse #NL > g[data-id]{
-  animation:immersive-node-soft-in .20s cubic-bezier(.16,1,.3,1) both !important;
-  animation-delay:0s !important;
-}
-#cw.immersive-exiting #NL > g[data-id]{
-  animation:none !important;
-}
-#cw.immersive-entering #immersive-empty-cta,
-#cw.immersive-switching #immersive-empty-cta{
-  animation:immersive-cta-soft-in .18s cubic-bezier(.16,1,.3,1) both !important;
-}
-#cw.immersive-exiting #immersive-empty-cta{
-  animation:immersive-cta-soft-out .14s cubic-bezier(.4,0,.2,1) both !important;
-}
-@keyframes immersive-soft-fade{
-  0%{opacity:0;transform:translateY(-3px)}
-  100%{opacity:1;transform:translateY(0)}
-}
-@keyframes immersive-node-soft-in{
-  0%{opacity:.72}
-  100%{opacity:1}
-}
-@keyframes immersive-cta-soft-in{
-  0%{opacity:0;transform:translate(-50%,calc(-50% + 4px))}
-  100%{opacity:1;transform:translate(-50%,-50%)}
-}
-@keyframes immersive-cta-soft-out{
-  0%{opacity:1;transform:translate(-50%,-50%)}
-  100%{opacity:0;transform:translate(-50%,calc(-50% - 3px))}
-}
-
-@media (max-width: 820px){
-  #immersive-empty-cta{
-    top:58% !important;
-    min-width:0 !important;
-    width:min(360px, calc(100% - 28px)) !important;
-    padding:10px 11px !important;
-  }
-  #immersive-empty-cta .ie-actions{
-    justify-content:flex-start !important;
-  }
-}
-</style>
-
-
-<script id="patch-v1-8-35-immersive-minimal-controls-script">
-(function(){
-  'use strict';
-  if(window.__IMMERSIVE_MINIMAL_CONTROLS_PATCH_APPLIED__) return;
-  window.__IMMERSIVE_MINIMAL_CONTROLS_PATCH_APPLIED__=true;
-
-  function trimEmptyCta(){
-    const box=document.getElementById('immersive-empty-cta');
-    if(!box) return;
-    const title=box.querySelector('.ie-title');
-    const sub=box.querySelector('.ie-sub');
-    const btn=box.querySelector('.ie-btn');
-    if(title) title.textContent='まだ中身がありません';
-    if(sub) sub.textContent='このノードの内側に、最初の子ノードを追加できます。';
-    if(btn) btn.textContent='子を追加';
+  async function tryLoadSharedMapFromUrlPatched(){
+    if(typeof sharedMapLoadedFromUrl!=='undefined' && sharedMapLoadedFromUrl) return false;
+    const params=new URLSearchParams(window.location.search);
+    const encoded=params.get(PATCH_SHARE_URL_PARAM);
+    if(!encoded) return false;
+    try{
+      const raw=await decodeSharePayload(encoded);
+      const parsedJson=JSON.parse(raw);
+      const compactV4=expandShareObjectV4(parsedJson);
+      const compactLegacy=(typeof expandCompactShareObject==='function') ? expandCompactShareObject(parsedJson) : null;
+      const parsed=compactV4 || compactLegacy || parseImportData(raw,{kind:'json'});
+      if(!parsed || !parsed.nodes?.length) throw new Error('共有URLの内容が空です');
+      sharedMapLoadedFromUrl=true;
+      replaceMapData(parsed,{toastMessage:compactV4?'圧縮共有URLから読み込みました':'共有URLから読み込みました',skipHistory:true});
+      if(compactV4){
+        try{ applyAutoLayout(parsed.meta?.layoutMode || 'horizontal'); placeGraphAtViewportCenter({resetViewport:true}); renderNow(); }catch(_e){}
+        if(typeof setIoStatus==='function') setIoStatus('圧縮共有URLから読み込みました。座標・色はURLに含めず、自動レイアウトと現行配色で再構成しています。','ok');
+      }
+      if(typeof setSharedUrlBanner==='function') setSharedUrlBanner(true);
+      return true;
+    }catch(err){
+      console.error('Failed to load compressed/shared map from URL',err);
+      if(typeof showToast==='function') showToast('共有URLの読み込みに失敗しました','warn');
+      if(typeof setIoStatus==='function') setIoStatus('共有URLの読み込みに失敗しました: '+(err?.message||err),'err');
+      sharedMapLoadedFromUrl=true;
+      return false;
+    }
   }
 
-  function compactButtons(){
-    const bar=document.getElementById('immersive-bar');
-    if(!bar) return;
-    const layoutBtn=bar.querySelector('#immersive-layout-btn');
-    const exitBtn=bar.querySelector('#immersive-exit-btn');
-    if(layoutBtn) layoutBtn.textContent='整える';
-    if(exitBtn) exitBtn.textContent='戻る';
-  }
+  window.buildShareObject=buildShareObjectV4;
+  window.expandShareObjectV4=expandShareObjectV4;
+  window.buildCompressedShareUrl=buildCompressedShareUrl;
+  window.copyShareUrlHighFidelity=copyShareUrlHighFidelityPatched;
+  window.tryLoadSharedMapFromUrl=tryLoadSharedMapFromUrlPatched;
 
-  function applyMinimal(){
-    trimEmptyCta();
-    compactButtons();
-  }
+  // 既存の onclick 登録より後に読み込まれるため、capture で古い同期処理を止めて差し替える。
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest && e.target.closest('#b-share-url-hi');
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+    copyShareUrlHighFidelityPatched();
+  },true);
 
-  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
-  if(originalRenderNow && !originalRenderNow.__minimalControlsPatched){
-    const wrapped=function(){
-      const res=originalRenderNow.apply(this,arguments);
-      try{ applyMinimal(); }catch(_e){}
-      return res;
-    };
-    wrapped.__minimalControlsPatched=true;
-    renderNow=wrapped;
-  }
-
-  const originalDraw=typeof draw==='function' ? draw : null;
-  if(originalDraw && !originalDraw.__minimalControlsPatched){
-    const wrapped=function(){
-      const res=originalDraw.apply(this,arguments);
-      try{ applyMinimal(); }catch(_e){}
-      return res;
-    };
-    wrapped.__minimalControlsPatched=true;
-    draw=wrapped;
-  }
-
-  const originalEnter=window.enterImmersiveMode;
-  if(typeof originalEnter==='function' && !originalEnter.__minimalControlsPatched){
-    const wrapped=function(){
-      const res=originalEnter.apply(this,arguments);
-      try{ applyMinimal(); }catch(_e){}
-      return res;
-    };
-    wrapped.__minimalControlsPatched=true;
-    window.enterImmersiveMode=wrapped;
-  }
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>{ try{ applyMinimal(); }catch(_e){}; },{once:true});
-  }else{
-    try{ applyMinimal(); }catch(_e){}
-  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateShareButtonLabel,{once:true});
+  else updateShareButtonLabel();
 })();
 </script>
