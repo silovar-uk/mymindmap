@@ -19483,3 +19483,696 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   };
 })();
 </script>
+
+
+<style id="patch-v1-8-61-mobile-lite-renderer-fixes-style">
+@media (max-width:720px){
+  /* 機能チェックはスマホでは完全非表示 */
+  #feature-selfcheck-chip,
+  #feature-selfcheck-panel{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+    width:0 !important;
+    height:0 !important;
+    overflow:hidden !important;
+  }
+
+  /* Mobile Lite Renderer: スマホは読むための最低限表示 */
+  #app.mobile-mode.mobile-lite-renderer #EL .edge-label-bg,
+  #app.mobile-mode.mobile-lite-renderer #EL .edge-label-text,
+  #app.mobile-mode.mobile-lite-renderer #EL text,
+  #app.mobile-mode.mobile-lite-renderer #NL .node-subtext,
+  #app.mobile-mode.mobile-lite-renderer #NL .node-url,
+  #app.mobile-mode.mobile-lite-renderer #NL .node-meta,
+  #app.mobile-mode.mobile-lite-renderer #NL .node-number,
+  #app.mobile-mode.mobile-lite-renderer #NL .node-badge,
+  #app.mobile-mode.mobile-lite-renderer #NL .node-created-at{
+    display:none !important;
+  }
+
+  #app.mobile-mode.mobile-lite-renderer #NL .nodebox,
+  #app.mobile-mode.mobile-lite-renderer #EL .edge-path{
+    filter:none !important;
+    box-shadow:none !important;
+  }
+
+  #app.mobile-mode.mobile-lite-renderer #EL .edge-path{
+    stroke-width:1.15 !important;
+    opacity:.72 !important;
+  }
+
+  #app.mobile-mode.mobile-lite-renderer.mobile-touching #mobile-actionbar,
+  #app.mobile-mode.mobile-lite-renderer.mobile-touching #mobile-mode-indicator,
+  #app.mobile-mode.mobile-lite-renderer.mobile-touching #mobile-move-mode-indicator{
+    transform:translateY(0) !important;
+    transition:none !important;
+  }
+
+  /* ちらつき対策：下部バーは最終パッチのものだけを見せる */
+  #mobile-actionbar.mobile-lite-stable-bar{
+    display:grid !important;
+    grid-template-columns:repeat(var(--mobile-lite-cols,3), minmax(0,1fr)) !important;
+    gap:6px !important;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) !important;
+  }
+  #mobile-actionbar.mobile-lite-stable-bar button{
+    min-width:0 !important;
+    min-height:42px !important;
+    padding:6px 4px !important;
+    border-radius:13px !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+    box-shadow:none !important;
+  }
+  #mobile-actionbar.mobile-lite-stable-bar .mobile-btn-main{
+    display:block;
+    font-size:12px;
+    font-weight:900;
+  }
+  #mobile-actionbar.mobile-lite-stable-bar .mobile-btn-sub{
+    display:block;
+    margin-top:2px;
+    font-size:9.5px;
+    opacity:.72;
+  }
+
+  /* 文言変更：移動モード -> 位置調整 */
+  #mobile-move-mode-indicator .mmi-main{
+    font-size:0 !important;
+  }
+  #mobile-move-mode-indicator .mmi-main::after{
+    content:"位置調整中";
+    font-size:11px;
+  }
+
+  /* データパネル中に右端で閉じるが浮かないように固定 */
+  #b-io-side.force-data-label{
+    position:static !important;
+    transform:none !important;
+  }
+  #app.io-open #b-io-side.force-data-label{
+    color:inherit !important;
+  }
+  #app.io-open #b-io-side.force-data-label::after{
+    content:none !important;
+  }
+}
+#b-io-side.force-data-label{
+  white-space:nowrap !important;
+}
+#app.io-open #b-io-side.force-data-label{
+  opacity:.92;
+}
+#app.io-open #b-io-side.force-data-label{
+  font-size:0 !important;
+}
+#app.io-open #b-io-side.force-data-label::before{
+  content:"データ";
+  font-size:12px;
+}
+#app.io-open #b-io-inline{
+  position:static !important;
+  float:none !important;
+  right:auto !important;
+  top:auto !important;
+  transform:none !important;
+  z-index:auto !important;
+}
+</style>
+
+
+<script id="patch-v1-8-61-mobile-lite-renderer-fixes">
+(function(){
+  'use strict';
+  if(window.__MOBILE_LITE_RENDERER_FIXES_APPLIED__) return;
+  window.__MOBILE_LITE_RENDERER_FIXES_APPLIED__=true;
+
+  const LITE={
+    enabled:false,
+    touching:false,
+    rendering:false,
+    suppressUi:false,
+    pendingFull:false,
+    lastBarHtml:'',
+    lastBarAt:0,
+    cullSet:null,
+    touchEndTimer:0
+  };
+
+  function app(){ return document.getElementById('app'); }
+  function isMobile(){
+    return !!app()?.classList.contains('mobile-mode') || window.matchMedia('(max-width:720px)').matches;
+  }
+  function nodeById(id){
+    try{ return id && typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function selectedIds(){
+    try{ return [...selectedNodeIds].filter(id=>nodeById(id)); }catch(_e){ return []; }
+  }
+  function activeNodeIdSafe(){
+    try{ return activeNodeId && nodeById(activeNodeId) ? activeNodeId : null; }catch(_e){ return null; }
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function enableLiteClasses(){
+    const a=app();
+    if(!a) return;
+    const on=isMobile();
+    LITE.enabled=on;
+    a.classList.toggle('mobile-lite-renderer',on);
+    a.classList.toggle('mobile-touching',on && LITE.touching);
+    if(on) removeSelfcheckOnMobile();
+  }
+  function removeSelfcheckOnMobile(){
+    if(!isMobile()) return;
+    ['feature-selfcheck-chip','feature-selfcheck-panel'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.remove();
+    });
+  }
+
+  /* スマホでは機能チェックを完全スキップ */
+  const oldRunFeatureSelfCheck=window.runFeatureSelfCheck;
+  window.runFeatureSelfCheck=function(){
+    if(isMobile()){
+      removeSelfcheckOnMobile();
+      const report={skipped:true,reason:'mobile-lite-renderer',summary:{ok:0,warnings:0,errors:0,total:0},features:[],errors:[],warnings:[]};
+      window.__featureSelfCheckReport=report;
+      return report;
+    }
+    return typeof oldRunFeatureSelfCheck==='function' ? oldRunFeatureSelfCheck.apply(this,arguments) : null;
+  };
+  const oldPreExport=window.runPreExportSelfCheck;
+  window.runPreExportSelfCheck=function(){
+    if(isMobile()){
+      removeSelfcheckOnMobile();
+      return true;
+    }
+    return typeof oldPreExport==='function' ? oldPreExport.apply(this,arguments) : true;
+  };
+
+  function viewportWorldRect(){
+    try{
+      const w=sv?.clientWidth || window.innerWidth || 360;
+      const h=sv?.clientHeight || window.innerHeight || 568;
+      const a=typeof toS==='function' ? toS(0,0) : {x:(0-vx)/vs,y:(0-vy)/vs};
+      const b=typeof toS==='function' ? toS(w,h) : {x:(w-vx)/vs,y:(h-vy)/vs};
+      const margin=Math.max(160, 260/Math.max(0.35, vs||1));
+      return {
+        left:Math.min(a.x,b.x)-margin,
+        right:Math.max(a.x,b.x)+margin,
+        top:Math.min(a.y,b.y)-margin,
+        bottom:Math.max(a.y,b.y)+margin
+      };
+    }catch(_e){
+      return {left:-999999,right:999999,top:-999999,bottom:999999};
+    }
+  }
+
+  function nodeInRect(n,rect){
+    if(!n) return false;
+    const w=n.w||180;
+    const h=n.h||64;
+    return !(n.x+w/2<rect.left || n.x-w/2>rect.right || n.y+h/2<rect.top || n.y-h/2>rect.bottom);
+  }
+
+  function importantNodeIds(){
+    const set=new Set(selectedIds());
+    const active=activeNodeIdSafe();
+    if(active) set.add(active);
+    try{
+      if(typeof getImmersiveRootNodeId==='function'){
+        const rid=getImmersiveRootNodeId();
+        if(rid) set.add(rid);
+      }
+    }catch(_e){}
+    // 選択中ノードの親子だけは画面外でも残す
+    try{
+      (edges||[]).forEach(e=>{
+        if(set.has(e.from)) set.add(e.to);
+        if(set.has(e.to)) set.add(e.from);
+      });
+    }catch(_e){}
+    return set;
+  }
+
+  function getMobileVisibleNodeSet(baseNodes){
+    const rect=viewportWorldRect();
+    const important=importantNodeIds();
+    const visible=new Set();
+    (baseNodes||[]).forEach(n=>{
+      if(!n) return;
+      if(important.has(n.id) || nodeInRect(n,rect)) visible.add(n.id);
+    });
+    // 表示ノードに接続する相手が重要ノードなら残す
+    try{
+      (edges||[]).forEach(e=>{
+        if(visible.has(e.from) && important.has(e.to)) visible.add(e.to);
+        if(visible.has(e.to) && important.has(e.from)) visible.add(e.from);
+      });
+    }catch(_e){}
+    return visible;
+  }
+
+  const originalGetVisibleNodes=typeof getVisibleNodes==='function' ? getVisibleNodes : null;
+  if(originalGetVisibleNodes && !originalGetVisibleNodes.__mobileLiteCullingPatched){
+    const wrapped=function(){
+      const base=originalGetVisibleNodes.apply(this,arguments) || [];
+      if(!isMobile() || !LITE.rendering) return base;
+      const visibleSet=getMobileVisibleNodeSet(base);
+      LITE.cullSet=visibleSet;
+      return base.filter(n=>visibleSet.has(n.id));
+    };
+    wrapped.__mobileLiteCullingPatched=true;
+    window.getVisibleNodes=wrapped;
+    try{ getVisibleNodes=wrapped; }catch(_e){}
+  }
+
+  const originalGetVisibleEdges=typeof getVisibleEdges==='function' ? getVisibleEdges : null;
+  if(originalGetVisibleEdges && !originalGetVisibleEdges.__mobileLiteCullingPatched){
+    const wrapped=function(){
+      const base=originalGetVisibleEdges.apply(this,arguments) || [];
+      if(!isMobile() || !LITE.rendering) return base;
+      const set=LITE.cullSet || getMobileVisibleNodeSet(typeof originalGetVisibleNodes==='function' ? originalGetVisibleNodes() : nodes);
+      return base.filter(e=>set.has(e.from) && set.has(e.to));
+    };
+    wrapped.__mobileLiteCullingPatched=true;
+    window.getVisibleEdges=wrapped;
+    try{ getVisibleEdges=wrapped; }catch(_e){}
+  }
+
+  function stripMobileDetails(){
+    if(!isMobile()) return;
+    try{
+      document.querySelectorAll('#EL text,#EL .edge-label-bg,#EL .edge-label-text,#NL .node-subtext,#NL .node-url,#NL .node-meta,#NL .node-number,#NL .node-badge,#NL .node-created-at').forEach(el=>el.remove());
+    }catch(_e){}
+  }
+
+  const originalDraw=typeof draw==='function' ? draw : null;
+  function drawMobileLite({final=false}={}){
+    if(!originalDraw) return false;
+    if(!isMobile()) return originalDraw();
+    enableLiteClasses();
+    LITE.rendering=true;
+    try{
+      const res=originalDraw();
+      stripMobileDetails();
+      return res;
+    }finally{
+      LITE.rendering=false;
+      LITE.cullSet=null;
+      if(final){
+        LITE.pendingFull=false;
+      }
+    }
+  }
+
+  if(originalDraw && !originalDraw.__mobileLiteRendererPatched){
+    const wrapped=function(){
+      if(isMobile()) return drawMobileLite();
+      return originalDraw.apply(this,arguments);
+    };
+    wrapped.__mobileLiteRendererPatched=true;
+    window.draw=wrapped;
+    try{ draw=wrapped; }catch(_e){}
+  }
+
+  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
+  if(originalRenderNow && !originalRenderNow.__mobileLiteRendererPatched){
+    const wrapped=function(){
+      if(!isMobile()) return originalRenderNow.apply(this,arguments);
+
+      enableLiteClasses();
+
+      // タッチ中は重いHUD/quickbar/outline更新を止めて、地図だけ描く
+      if(LITE.touching || LITE.suppressUi){
+        try{ if(typeof applyT==='function') applyT(); }catch(_e){}
+        LITE.pendingFull=true;
+        return drawMobileLite();
+      }
+
+      return originalRenderNow.apply(this,arguments);
+    };
+    wrapped.__mobileLiteRendererPatched=true;
+    window.renderNow=wrapped;
+    try{ renderNow=wrapped; }catch(_e){}
+  }
+
+  function scheduleFinalRender(){
+    clearTimeout(LITE.touchEndTimer);
+    LITE.touchEndTimer=setTimeout(()=>{
+      LITE.touching=false;
+      LITE.suppressUi=false;
+      enableLiteClasses();
+      // 指を離した後に1回だけ正式更新
+      if(originalRenderNow){
+        originalRenderNow();
+        stripMobileDetails();
+      }else{
+        drawMobileLite({final:true});
+      }
+      stabilizeMobileActionbar(true);
+    },90);
+  }
+
+  function onTouchStart(){
+    if(!isMobile()) return;
+    LITE.touching=true;
+    LITE.suppressUi=true;
+    enableLiteClasses();
+  }
+  function onTouchEnd(){
+    if(!isMobile()) return;
+    scheduleFinalRender();
+  }
+
+  ['touchstart','pointerdown'].forEach(evt=>document.addEventListener(evt,onTouchStart,{passive:true,capture:true}));
+  ['touchend','touchcancel','pointerup','pointercancel'].forEach(evt=>document.addEventListener(evt,onTouchEnd,{passive:true,capture:true}));
+
+  /* 下部バーちらつき対策：このパッチのバーだけが最後に勝つ */
+  function currentMobileBarItems(){
+    const ids=selectedIds();
+    const id=activeNodeIdSafe() || (ids.length===1 ? ids[0] : null);
+    const immersive=(()=>{ try{return typeof isImmersiveModeActive==='function' && isImmersiveModeActive()}catch(_e){return false} })();
+    const root=(()=>{ try{return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null}catch(_e){return null} })();
+
+    if(immersive){
+      return [
+        ['child','子追加','専心'],
+        ['layout','整える',''],
+        ['back','戻る','親マップ']
+      ];
+    }
+    if(window.__mobileUltraPerfDataShortcuts?.MOVE?.active){
+      return [
+        ['move-done','完了','位置調整'],
+        ['name','名前','変更'],
+        ['fit','全体','表示']
+      ];
+    }
+    if(ids.length>=2){
+      return [
+        ['multi-done','完了',`${ids.length}件`],
+        ['connect','線','2件'],
+        ['delete','削除',''],
+      ];
+    }
+    if(id){
+      return [
+        ['name','名前','変更'],
+        ['details','詳細','編集'],
+        ['move','位置調整',''],
+      ];
+    }
+    return [
+      ['add','追加','中央'],
+      ['fit','全体','表示'],
+      ['menu','メニュー','']
+    ];
+  }
+
+  function barBtn([action,main,sub]){
+    return `<button data-mobile-lite-action="${action}" type="button"><span class="mobile-btn-main">${main}</span>${sub?`<span class="mobile-btn-sub">${sub}</span>`:''}</button>`;
+  }
+
+  function stabilizeMobileActionbar(force=false){
+    if(!isMobile()) return;
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return;
+    if(document.documentElement.classList.contains('mobile-editor-modal-lock') || document.body.classList.contains('mobile-editor-modal-lock')) return;
+    if(LITE.touching && !force) return;
+
+    const items=currentMobileBarItems();
+    const html=items.map(barBtn).join('');
+    if(!force && html===LITE.lastBarHtml && Date.now()-LITE.lastBarAt<450) return;
+
+    LITE.lastBarHtml=html;
+    LITE.lastBarAt=Date.now();
+
+    bar.className=(bar.className||'').split(/\s+/).filter(c=>!/^mobile-(smart|state|ultra)-actionbar$/.test(c)).join(' ');
+    bar.classList.add('mobile-lite-stable-bar');
+    bar.style.setProperty('--mobile-lite-cols',String(Math.max(3,Math.min(3,items.length))));
+    bar.innerHTML=html;
+
+    try{
+      const h=Math.ceil(bar.getBoundingClientRect().height)||70;
+      app()?.style.setProperty('--mobile-actionbar-h',h+'px');
+    }catch(_e){}
+  }
+
+  function runLiteAction(action){
+    const ids=selectedIds();
+    const id=activeNodeIdSafe() || ids[0] || null;
+    if(action==='name') return clickNativeMobileAction('edit');
+    if(action==='details'){
+      if(id && typeof openEp==='function') openEp(id);
+      return true;
+    }
+    if(action==='move'){
+      if(id && window.__mobileUltraPerfDataShortcuts?.enableMoveMode) return window.__mobileUltraPerfDataShortcuts.enableMoveMode(id);
+      return false;
+    }
+    if(action==='move-done'){
+      if(window.__mobileUltraPerfDataShortcuts?.disableMoveMode) return window.__mobileUltraPerfDataShortcuts.disableMoveMode();
+      return false;
+    }
+    if(action==='fit'){
+      try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+      return true;
+    }
+    if(action==='add'){
+      try{
+        if(typeof snapshot==='function') snapshot();
+        const anchor=typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0};
+        const n=typeof createStandaloneNode==='function' ? createStandaloneNode({label:'',status:'none',fitMode:'shrink',anchor}) : null;
+        if(n){
+          try{
+            selectedNodeIds.clear();
+            selectedNodeIds.add(n.id);
+            activeNodeId=n.id;
+            selectedEdgeId=null;
+          }catch(_e){}
+          drawMobileLite({final:true});
+          setTimeout(()=>clickNativeMobileAction('edit'),0);
+        }
+      }catch(_e){}
+      return true;
+    }
+    if(action==='menu'){
+      try{ if(typeof toggleMobileMenu==='function') return toggleMobileMenu(); }catch(_e){}
+      return false;
+    }
+    if(action==='child') return clickNativeMobileAction('child');
+    if(action==='layout'){
+      const rid=(()=>{ try{return typeof getImmersiveRootNodeId==='function'?getImmersiveRootNodeId():null}catch(_e){return null} })();
+      if(rid && typeof applyChildDepthAwareLayout==='function') applyChildDepthAwareLayout(rid,'radial');
+      return true;
+    }
+    if(action==='back'){
+      try{ if(typeof exitImmersiveMode==='function') exitImmersiveMode({reason:'mobile-lite'}); }catch(_e){}
+      return true;
+    }
+    if(action==='connect'){
+      try{ if(window.__mobileModesOverlay?.startConnectFlow) return window.__mobileModesOverlay.startConnectFlow(); }catch(_e){}
+      return false;
+    }
+    if(action==='delete'){
+      if(ids.length && typeof deleteNodes==='function'){
+        try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+        deleteNodes(ids);
+        drawMobileLite({final:true});
+        toast('削除しました','warn');
+      }
+      return true;
+    }
+    if(action==='multi-done'){
+      try{ if(window.__mobileModesOverlay?.finishMultiSelect) window.__mobileModesOverlay.finishMultiSelect(); }catch(_e){}
+      return true;
+    }
+  }
+
+  function clickNativeMobileAction(action){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return false;
+    let btn=bar.querySelector(`[data-mobile-action="${action}"]`);
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.dataset.mobileAction=action;
+      btn.style.display='none';
+      bar.appendChild(btn);
+      setTimeout(()=>btn.remove(),0);
+    }
+    btn.click();
+    return true;
+  }
+
+  function bindLiteBar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || bar.__mobileLiteStableBound) return;
+    bar.__mobileLiteStableBound=true;
+    bar.addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-mobile-lite-action]');
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      runLiteAction(btn.dataset.mobileLiteAction);
+      setTimeout(()=>stabilizeMobileActionbar(true),0);
+    },true);
+  }
+
+  /* 2.1 データタブ復旧 + ショートカット */
+  function setDataTab(kind='json'){
+    const map={json:'b-exp-json',text:'b-exp-text',md:'b-exp-md'};
+    const btn=document.getElementById(map[kind]||'b-exp-json');
+    if(btn) btn.click();
+    try{ if(typeof setExportTab==='function') setExportTab(kind); }catch(_e){}
+    try{ if(typeof writeCurrentExportToBox==='function') writeCurrentExportToBox(kind,{silent:true}); }catch(_e){}
+    try{ currentExportKind=kind; }catch(_e){}
+  }
+
+  function openDataKind(kind='json'){
+    try{
+      const a=app();
+      if(typeof setIoOpen==='function') setIoOpen(true);
+      else a?.classList.add('io-open');
+      fixDataButtons();
+      setTimeout(()=>setDataTab(kind),0);
+      setTimeout(()=>setDataTab(kind),80);
+      const box=document.getElementById('j-io');
+      if(box) setTimeout(()=>box.focus(),120);
+      toast(kind==='json'?'JSONを開きました':kind==='text'?'テキストを開きました':'MDを開きました');
+      return true;
+    }catch(err){
+      console.warn('[openDataKind]',err);
+      return false;
+    }
+  }
+
+  function fixDataButtons(){
+    const side=document.getElementById('b-io-side');
+    if(side){
+      side.classList.add('force-data-label');
+      side.textContent='データ';
+      side.setAttribute('title','データを開く / 閉じる');
+      if(!side.__fixedDataToggle){
+        side.__fixedDataToggle=true;
+        side.addEventListener('click',e=>{
+          e.preventDefault();
+          e.stopPropagation();
+          const open=!!app()?.classList.contains('io-open');
+          if(typeof setIoOpen==='function') setIoOpen(!open);
+          else app()?.classList.toggle('io-open',!open);
+          setTimeout(fixDataButtons,0);
+        },true);
+      }
+    }
+    const inline=document.getElementById('b-io-inline');
+    if(inline && !inline.__fixedInlineClose){
+      inline.__fixedInlineClose=true;
+      inline.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof setIoOpen==='function') setIoOpen(false);
+        else app()?.classList.remove('io-open');
+        setTimeout(fixDataButtons,0);
+      },true);
+    }
+    const outline=document.getElementById('b-outline-side');
+    if(outline && outline.textContent.trim()==='閉じる'){
+      outline.textContent='アウトライナー';
+    }
+  }
+
+  const oldSetIoOpen=typeof setIoOpen==='function' ? setIoOpen : null;
+  if(oldSetIoOpen && !oldSetIoOpen.__mobileLiteDataFixed){
+    const wrapped=function(open){
+      const res=oldSetIoOpen.apply(this,arguments);
+      setTimeout(fixDataButtons,0);
+      setTimeout(fixDataButtons,120);
+      return res;
+    };
+    wrapped.__mobileLiteDataFixed=true;
+    window.setIoOpen=wrapped;
+    try{ setIoOpen=wrapped; }catch(_e){}
+  }
+
+  document.addEventListener('keydown',e=>{
+    const tag=(document.activeElement?.tagName||'').toUpperCase();
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+    const key=(e.key||'').toLowerCase();
+    if(key==='d' && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); openDataKind(typeof currentExportKind==='string'?currentExportKind:'json'); }
+    if(key==='j' && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); openDataKind('json'); }
+    if(key==='t' && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); openDataKind('text'); }
+    if(key==='m' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); openDataKind('md'); }
+  },true);
+
+  function patchDesktopShortcutPanel(){
+    const panel=document.getElementById('desktop-shortcut-panel');
+    if(!panel || panel.__mobileLiteDataShortcutsPatched) return;
+    const body=panel.querySelector('.dsp-body');
+    if(!body) return;
+    const group=document.createElement('div');
+    group.className='dsp-group';
+    group.id='dsp-data-shortcuts-lite';
+    group.innerHTML=`
+      <div class="dsp-group-title">データ</div>
+      <div class="dsp-list">
+        <button data-shortcut-action="data-open-lite" type="button"><span class="dsp-label">データを開く</span><span class="dsp-key">(D)</span></button>
+        <button data-shortcut-action="data-json-lite" type="button"><span class="dsp-label">JSONを開く</span><span class="dsp-key">(J)</span></button>
+        <button data-shortcut-action="data-text-lite" type="button"><span class="dsp-label">テキストを開く</span><span class="dsp-key">(T)</span></button>
+        <button data-shortcut-action="data-md-lite" type="button"><span class="dsp-label">MDを開く</span><span class="dsp-key">(Shift+M)</span></button>
+      </div>`;
+    body.insertBefore(group,body.firstChild);
+    panel.__mobileLiteDataShortcutsPatched=true;
+    panel.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-shortcut-action]');
+      if(!btn) return;
+      const action=btn.dataset.shortcutAction;
+      if(action==='data-open-lite'){ e.stopPropagation(); openDataKind(typeof currentExportKind==='string'?currentExportKind:'json'); }
+      if(action==='data-json-lite'){ e.stopPropagation(); openDataKind('json'); }
+      if(action==='data-text-lite'){ e.stopPropagation(); openDataKind('text'); }
+      if(action==='data-md-lite'){ e.stopPropagation(); openDataKind('md'); }
+    },true);
+  }
+
+  function sync(){
+    enableLiteClasses();
+    removeSelfcheckOnMobile();
+    bindLiteBar();
+    if(isMobile()) stabilizeMobileActionbar(false);
+    fixDataButtons();
+    patchDesktopShortcutPanel();
+  }
+
+  const observer=new MutationObserver(()=>{ if(!isMobile()) return; setTimeout(sync,0); });
+  function start(){
+    sync();
+    observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});
+    setTimeout(sync,250);
+    setTimeout(sync,900);
+    // setInterval乱立によるちらつき対策：低頻度・差分ありの同期だけ
+    setInterval(()=>{ if(!LITE.touching) sync(); },1800);
+  }
+
+  window.addEventListener('resize',()=>setTimeout(sync,80),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(sync,160),{passive:true});
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+
+  window.drawMobileLite=drawMobileLite;
+  window.__mobileLiteRendererFixes={
+    LITE,
+    drawMobileLite,
+    openDataKind,
+    fixDataButtons,
+    stabilizeMobileActionbar
+  };
+})();
+</script>
