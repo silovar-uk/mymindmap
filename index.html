@@ -18475,3 +18475,1011 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   };
 })();
 </script>
+
+
+<style id="patch-v1-8-59-mobile-performance-mode-style">
+@media (max-width:720px){
+  /* スマホでは機能チェックUIは出さない */
+  #feature-selfcheck-chip,
+  #feature-selfcheck-panel{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  /* スマホではPC補助系も非表示 */
+  #desktop-shortcut-panel,
+  #shortcut-dock,
+  #hint{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  /* 軽量モード：影・ぼかし・アニメーションを極力減らす */
+  #app.mobile-mode.mobile-performance-mode *,
+  #app.mobile-mode.mobile-performance-mode *::before,
+  #app.mobile-mode.mobile-performance-mode *::after{
+    transition:none !important;
+    animation:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+
+  #app.mobile-mode.mobile-performance-mode .nodebox,
+  #app.mobile-mode.mobile-performance-mode .nodebox *,
+  #app.mobile-mode.mobile-performance-mode #quickbar,
+  #app.mobile-mode.mobile-performance-mode #cm,
+  #app.mobile-mode.mobile-performance-mode .panel,
+  #app.mobile-mode.mobile-performance-mode .io-panel,
+  #app.mobile-mode.mobile-performance-mode #mobile-actionbar,
+  #app.mobile-mode.mobile-performance-mode #mobile-longpress-sheet .mlp-panel,
+  #app.mobile-mode.mobile-performance-mode #mobile-rename-sheet,
+  #app.mobile-mode.mobile-performance-mode #ep,
+  #app.mobile-mode.mobile-performance-mode #eep{
+    box-shadow:none !important;
+    filter:none !important;
+  }
+
+  #app.mobile-mode.mobile-performance-mode .edge-label-bg,
+  #app.mobile-mode.mobile-performance-mode .edge-label-text{
+    display:none !important;
+  }
+
+  #app.mobile-mode.mobile-performance-mode .focus-edge-background,
+  #app.mobile-mode.mobile-performance-mode .focus-node-background{
+    opacity:.45 !important;
+  }
+
+  /* ドラッグ中はさらに軽くする */
+  html.mobile-drag-lite #EL text,
+  html.mobile-drag-lite #EL rect.edge-label-bg,
+  html.mobile-drag-lite #NL .node-subtext,
+  html.mobile-drag-lite #NL .node-meta,
+  html.mobile-drag-lite #NL .node-url,
+  html.mobile-drag-lite #NL .node-number{
+    display:none !important;
+  }
+
+  html.mobile-drag-lite #NL .nodebox{
+    filter:none !important;
+  }
+
+  html.mobile-drag-lite #EL .edge-path{
+    stroke-width:1.1 !important;
+    opacity:.55 !important;
+  }
+
+  /* スマホでは選択中だけ最低限わかる表現にする */
+  #app.mobile-mode.mobile-performance-mode #NL [data-id].sel .nodebox{
+    stroke-width:2.2px !important;
+    filter:none !important;
+  }
+
+  /* 複雑な装飾パネルを抑制 */
+  #app.mobile-mode.mobile-performance-mode .immersive-guide,
+  #app.mobile-mode.mobile-performance-mode .immersive-room-note,
+  #app.mobile-mode.mobile-performance-mode .immersive-kicker{
+    display:none !important;
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-59-mobile-performance-mode">
+(function(){
+  'use strict';
+  if(window.__MOBILE_PERFORMANCE_MODE_PATCH_APPLIED__) return;
+  window.__MOBILE_PERFORMANCE_MODE_PATCH_APPLIED__=true;
+
+  const PERF={
+    enabled:false,
+    touchActive:false,
+    dragging:false,
+    lastDrawAt:0,
+    drawScheduled:false,
+    pendingDraw:false,
+    minDrawInterval:70
+  };
+
+  function app(){
+    return document.getElementById('app');
+  }
+
+  function isMobile(){
+    const a=app();
+    return !!(a && a.classList.contains('mobile-mode')) || window.matchMedia('(max-width:720px)').matches;
+  }
+
+  function enableMobilePerformanceMode(){
+    const a=app();
+    if(!a) return;
+    const should=isMobile();
+    PERF.enabled=should;
+    a.classList.toggle('mobile-performance-mode',should);
+    if(should){
+      hideFeatureSelfcheckUi();
+      hideDesktopHelpers();
+    }
+  }
+
+  function hideFeatureSelfcheckUi(){
+    ['feature-selfcheck-chip','feature-selfcheck-panel'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      el.classList.remove('open','visible','show');
+      el.hidden=true;
+      el.style.setProperty('display','none','important');
+      el.style.setProperty('visibility','hidden','important');
+      el.style.setProperty('opacity','0','important');
+      el.style.setProperty('pointer-events','none','important');
+    });
+  }
+
+  function hideDesktopHelpers(){
+    ['desktop-shortcut-panel','shortcut-dock','hint'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      el.classList.remove('open','visible','show');
+      el.hidden=true;
+      el.style.setProperty('display','none','important');
+      el.style.setProperty('visibility','hidden','important');
+      el.style.setProperty('opacity','0','important');
+      el.style.setProperty('pointer-events','none','important');
+    });
+  }
+
+  /* スマホでは機能チェックの重いDOM検査を止める */
+  const originalRunFeatureSelfCheck=window.runFeatureSelfCheck;
+  window.runFeatureSelfCheck=function(){
+    if(isMobile()){
+      hideFeatureSelfcheckUi();
+      const report={
+        at:new Date().toISOString(),
+        skipped:true,
+        reason:'mobile-performance-mode',
+        summary:{ok:0,warnings:0,errors:0,total:0},
+        features:[],
+        errors:[],
+        warnings:[]
+      };
+      window.__featureSelfCheckReport=report;
+      return report;
+    }
+    return typeof originalRunFeatureSelfCheck==='function'
+      ? originalRunFeatureSelfCheck.apply(this,arguments)
+      : null;
+  };
+
+  const originalRunPreExportSelfCheck=window.runPreExportSelfCheck;
+  window.runPreExportSelfCheck=function(){
+    if(isMobile()){
+      hideFeatureSelfcheckUi();
+      return true;
+    }
+    return typeof originalRunPreExportSelfCheck==='function'
+      ? originalRunPreExportSelfCheck.apply(this,arguments)
+      : true;
+  };
+
+  function markDragLite(on){
+    document.documentElement.classList.toggle('mobile-drag-lite',!!on);
+    document.body.classList.toggle('mobile-drag-lite',!!on);
+  }
+
+  function flushScheduledDraw(originalDraw){
+    if(!PERF.pendingDraw) return;
+    PERF.pendingDraw=false;
+    PERF.lastDrawAt=performance.now();
+    originalDraw();
+  }
+
+  /* スマホ操作中だけ描画を間引く。静止時・保存時は通常描画 */
+  const originalDraw=typeof draw==='function' ? draw : null;
+  if(originalDraw && !originalDraw.__mobilePerformancePatched){
+    const wrapped=function(){
+      if(!PERF.enabled || !isMobile()){
+        return originalDraw.apply(this,arguments);
+      }
+
+      const now=performance.now();
+      const active=PERF.touchActive || PERF.dragging || document.documentElement.classList.contains('mobile-drag-lite');
+
+      if(!active){
+        PERF.lastDrawAt=now;
+        return originalDraw.apply(this,arguments);
+      }
+
+      PERF.pendingDraw=true;
+
+      if(now-PERF.lastDrawAt>=PERF.minDrawInterval){
+        PERF.pendingDraw=false;
+        PERF.lastDrawAt=now;
+        return originalDraw.apply(this,arguments);
+      }
+
+      if(!PERF.drawScheduled){
+        PERF.drawScheduled=true;
+        window.requestAnimationFrame(()=>{
+          PERF.drawScheduled=false;
+          if(!PERF.pendingDraw) return;
+          const elapsed=performance.now()-PERF.lastDrawAt;
+          if(elapsed>=PERF.minDrawInterval){
+            PERF.pendingDraw=false;
+            PERF.lastDrawAt=performance.now();
+            originalDraw();
+          }else{
+            window.setTimeout(()=>{
+              PERF.drawScheduled=false;
+              if(PERF.pendingDraw){
+                flushScheduledDraw(originalDraw);
+              }
+            },Math.max(16,PERF.minDrawInterval-elapsed));
+          }
+        });
+      }
+      return undefined;
+    };
+    wrapped.__mobilePerformancePatched=true;
+    window.draw=wrapped;
+    try{ draw=wrapped; }catch(_e){}
+  }
+
+  const originalRenderNow=typeof renderNow==='function' ? renderNow : null;
+  if(originalRenderNow && !originalRenderNow.__mobilePerformancePatched){
+    const wrapped=function(){
+      if(!PERF.enabled || !isMobile()){
+        return originalRenderNow.apply(this,arguments);
+      }
+      // renderNowがdrawを呼ぶ構造でも、上のdrawラッパーで間引かれる
+      return originalRenderNow.apply(this,arguments);
+    };
+    wrapped.__mobilePerformancePatched=true;
+    window.renderNow=wrapped;
+    try{ renderNow=wrapped; }catch(_e){}
+  }
+
+  /* スマホではノード移動を軽くする：移動中はラベル/補足を隠して描画負荷を下げる */
+  function onTouchStart(e){
+    if(!isMobile()) return;
+    PERF.touchActive=true;
+    const target=e.target;
+    const onNode=!!target?.closest?.('[data-id]');
+    PERF.dragging=onNode;
+    if(onNode) markDragLite(true);
+  }
+
+  function onTouchMove(e){
+    if(!isMobile()) return;
+    PERF.touchActive=true;
+    if(PERF.dragging) markDragLite(true);
+  }
+
+  function onTouchEnd(){
+    if(!isMobile()) return;
+    PERF.touchActive=false;
+    PERF.dragging=false;
+    PERF.pendingDraw=false;
+    markDragLite(false);
+    // 最終状態だけは必ず正確に描く
+    window.setTimeout(()=>{
+      try{
+        if(originalDraw) originalDraw();
+      }catch(_e){}
+    },30);
+  }
+
+  ['touchstart','pointerdown'].forEach(evt=>{
+    document.addEventListener(evt,onTouchStart,{passive:true,capture:true});
+  });
+  ['touchmove','pointermove'].forEach(evt=>{
+    document.addEventListener(evt,onTouchMove,{passive:true,capture:true});
+  });
+  ['touchend','touchcancel','pointerup','pointercancel'].forEach(evt=>{
+    document.addEventListener(evt,onTouchEnd,{passive:true,capture:true});
+  });
+
+  /* 重い補助UIが後から生成されてもスマホでは消す */
+  const observer=new MutationObserver(()=>{
+    if(!isMobile()) return;
+    hideFeatureSelfcheckUi();
+    hideDesktopHelpers();
+  });
+
+  function start(){
+    enableMobilePerformanceMode();
+    observer.observe(document.body,{childList:true,subtree:true});
+    window.setTimeout(enableMobilePerformanceMode,200);
+    window.setTimeout(enableMobilePerformanceMode,900);
+  }
+
+  window.addEventListener('resize',()=>window.setTimeout(enableMobilePerformanceMode,80),{passive:true});
+  window.addEventListener('orientationchange',()=>window.setTimeout(enableMobilePerformanceMode,160),{passive:true});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',()=>window.setTimeout(enableMobilePerformanceMode,80),{passive:true});
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+
+  window.__mobilePerformanceMode={
+    PERF,
+    enableMobilePerformanceMode,
+    hideFeatureSelfcheckUi,
+    hideDesktopHelpers
+  };
+})();
+</script>
+
+
+<style id="patch-v1-8-60-mobile-ultra-perf-data-shortcuts-style">
+@media (max-width:720px){
+  /* スマホでは機能チェックを「非表示」ではなく実質撤去扱い */
+  #feature-selfcheck-chip,
+  #feature-selfcheck-panel{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+    width:0 !important;
+    height:0 !important;
+    overflow:hidden !important;
+  }
+
+  /* スマホ超軽量モード */
+  #app.mobile-mode.mobile-ultra-performance .edge-label-bg,
+  #app.mobile-mode.mobile-ultra-performance .edge-label-text,
+  #app.mobile-mode.mobile-ultra-performance .node-subtext,
+  #app.mobile-mode.mobile-ultra-performance .node-url,
+  #app.mobile-mode.mobile-ultra-performance .node-meta,
+  #app.mobile-mode.mobile-ultra-performance .node-number{
+    display:none !important;
+  }
+
+  #app.mobile-mode.mobile-ultra-performance .nodebox{
+    filter:none !important;
+    box-shadow:none !important;
+  }
+
+  #app.mobile-mode.mobile-ultra-performance #EL path{
+    stroke-width:1.15 !important;
+  }
+
+  #app.mobile-mode.mobile-ultra-performance *{
+    text-shadow:none !important;
+  }
+
+  /* ノード移動は移動モード時だけ */
+  #mobile-move-mode-indicator{
+    position:fixed;
+    left:10px;
+    right:10px;
+    bottom:calc(var(--mobile-actionbar-h,70px) + 12px + env(safe-area-inset-bottom,0px));
+    z-index:3360;
+    display:none;
+    pointer-events:none;
+  }
+  #mobile-move-mode-indicator.visible{
+    display:block;
+  }
+  #mobile-move-mode-indicator .mmi-chip{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    min-height:34px;
+    padding:7px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,227,109,.42);
+    background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98));
+    color:#fff5c7;
+    font-size:11px;
+    font-weight:900;
+    box-shadow:none;
+  }
+
+  #app.mobile-mode.mobile-node-move-locked #NL [data-id]{
+    touch-action:manipulation !important;
+  }
+
+  #app.mobile-mode.mobile-node-move-enabled #NL [data-id]{
+    touch-action:none !important;
+  }
+
+  #app.mobile-mode.mobile-node-move-locked #NL [data-id]:not(.sel){
+    opacity:.96;
+  }
+
+  #mobile-actionbar.mobile-ultra-actionbar{
+    display:grid !important;
+    grid-template-columns:repeat(var(--mobile-ultra-cols,4), minmax(0,1fr)) !important;
+    gap:6px !important;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) !important;
+  }
+  #mobile-actionbar.mobile-ultra-actionbar button{
+    min-width:0 !important;
+    min-height:42px !important;
+    padding:6px 4px !important;
+    border-radius:13px !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+    box-shadow:none !important;
+  }
+  #mobile-actionbar.mobile-ultra-actionbar .mobile-btn-main{
+    display:block;
+    font-size:12px;
+    font-weight:900;
+  }
+  #mobile-actionbar.mobile-ultra-actionbar .mobile-btn-sub{
+    display:block;
+    margin-top:2px;
+    font-size:9.5px;
+    opacity:.72;
+  }
+  #mobile-actionbar.mobile-ultra-actionbar [data-mobile-ultra-action="move"],
+  #mobile-actionbar.mobile-ultra-actionbar [data-mobile-ultra-action="move-done"]{
+    border-color:rgba(255,227,109,.42) !important;
+    color:#fff5c7 !important;
+    background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98)) !important;
+  }
+}
+
+/* IO右端に浮く「閉じる」対策 */
+#b-io-side.force-data-label,
+#b-outline-side.force-outline-label{
+  white-space:nowrap !important;
+}
+#app.io-open #b-io-side.force-data-label{
+  opacity:.92;
+}
+#app.io-open #b-io-inline{
+  position:static !important;
+  float:none !important;
+  right:auto !important;
+  top:auto !important;
+  transform:none !important;
+  z-index:auto !important;
+}
+</style>
+
+
+<script id="patch-v1-8-60-mobile-ultra-perf-data-shortcuts">
+(function(){
+  'use strict';
+  if(window.__MOBILE_ULTRA_PERF_DATA_SHORTCUTS_APPLIED__) return;
+  window.__MOBILE_ULTRA_PERF_DATA_SHORTCUTS_APPLIED__=true;
+
+  const MOVE={
+    active:false,
+    nodeId:null,
+    until:0,
+    timer:0,
+    pointer:null
+  };
+
+  function app(){ return document.getElementById('app'); }
+  function isMobile(){
+    return !!app()?.classList.contains('mobile-mode') || window.matchMedia('(max-width:720px)').matches;
+  }
+  function nodeById(id){
+    try{ return id && typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function selectedIds(){
+    try{ return [...selectedNodeIds].filter(id=>nodeById(id)); }catch(_e){ return []; }
+  }
+  function activeNode(){
+    try{ return activeNodeId && nodeById(activeNodeId) ? activeNodeId : null; }catch(_e){ return null; }
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function render(){
+    try{ if(typeof renderNow==='function') renderNow(); else if(typeof draw==='function') draw(); }catch(_e){}
+  }
+  function setSingle(id){
+    if(!id || !nodeById(id)) return false;
+    try{
+      if(typeof setSingleSelection==='function') setSingleSelection(id);
+      else {
+        selectedNodeIds.clear();
+        selectedNodeIds.add(id);
+        activeNodeId=id;
+        selectedEdgeId=null;
+      }
+    }catch(_e){}
+    render();
+    return true;
+  }
+
+  /* 1.1 機能チェックはスマホでは表示不要・実行不要 */
+  function removeSelfcheckOnMobile(){
+    if(!isMobile()) return;
+    ['feature-selfcheck-chip','feature-selfcheck-panel'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.remove();
+    });
+  }
+
+  const oldRunFeatureSelfCheck=window.runFeatureSelfCheck;
+  window.runFeatureSelfCheck=function(){
+    if(isMobile()){
+      removeSelfcheckOnMobile();
+      const report={skipped:true,reason:'mobile',summary:{ok:0,warnings:0,errors:0,total:0},features:[],errors:[],warnings:[]};
+      window.__featureSelfCheckReport=report;
+      return report;
+    }
+    return typeof oldRunFeatureSelfCheck==='function' ? oldRunFeatureSelfCheck.apply(this,arguments) : null;
+  };
+
+  const oldPreExport=window.runPreExportSelfCheck;
+  window.runPreExportSelfCheck=function(){
+    if(isMobile()){
+      removeSelfcheckOnMobile();
+      return true;
+    }
+    return typeof oldPreExport==='function' ? oldPreExport.apply(this,arguments) : true;
+  };
+
+  function ensureMoveIndicator(){
+    let el=document.getElementById('mobile-move-mode-indicator');
+    if(el) return el;
+    el=document.createElement('div');
+    el.id='mobile-move-mode-indicator';
+    el.innerHTML='<div class="mmi-chip"><span class="mmi-main">移動モード</span><span class="mmi-sub"></span></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function updateMoveIndicator(){
+    const el=ensureMoveIndicator();
+    if(MOVE.active && MOVE.nodeId && nodeById(MOVE.nodeId)){
+      const remain=Math.max(0,Math.ceil((MOVE.until-Date.now())/1000));
+      el.classList.add('visible');
+      el.querySelector('.mmi-main').textContent='移動モード';
+      el.querySelector('.mmi-sub').textContent=`${nodeById(MOVE.nodeId).label||'ノード'} / ${remain}s`;
+    }else{
+      el.classList.remove('visible');
+    }
+  }
+
+  function enableMoveMode(id,{duration=9000}={}){
+    if(!id || !nodeById(id)) return false;
+    setSingle(id);
+    MOVE.active=true;
+    MOVE.nodeId=id;
+    MOVE.until=Date.now()+duration;
+    clearTimeout(MOVE.timer);
+    MOVE.timer=setTimeout(disableMoveMode,duration);
+    syncMoveClasses();
+    updateMoveIndicator();
+    renderUltraActionbar();
+    toast('移動モード：このノードだけ動かせます');
+    return true;
+  }
+
+  function disableMoveMode(){
+    MOVE.active=false;
+    MOVE.nodeId=null;
+    MOVE.until=0;
+    clearTimeout(MOVE.timer);
+    MOVE.timer=0;
+    syncMoveClasses();
+    updateMoveIndicator();
+    renderUltraActionbar();
+  }
+
+  function isMoveAllowed(id){
+    return MOVE.active && MOVE.nodeId===id && Date.now()<MOVE.until;
+  }
+
+  function syncMoveClasses(){
+    const a=app();
+    if(!a) return;
+    const mobile=isMobile();
+    a.classList.toggle('mobile-ultra-performance',mobile);
+    a.classList.toggle('mobile-node-move-locked',mobile && !MOVE.active);
+    a.classList.toggle('mobile-node-move-enabled',mobile && MOVE.active);
+  }
+
+  /* 1.2 動かし方を制限：通常時はノードドラッグを止め、移動モード時だけ通す */
+  function captureNodePointer(e){
+    if(!isMobile()) return;
+    const g=e.target?.closest?.('[data-id]');
+    if(!g) return;
+    const id=g.dataset.id;
+    if(!id || !nodeById(id)) return;
+    if(isMoveAllowed(id)) return;
+
+    // 複数選択/線つなぎ中は既存のモード処理に渡す
+    const mobileState=window.getMobileUiState ? window.getMobileUiState() : null;
+    if(mobileState && (mobileState.mode==='multiSelect' || mobileState.mode==='connectPick')) return;
+
+    // 既存のドラッグ開始を止める。タップ選択は自前で行う。
+    e.stopPropagation();
+    if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+
+    MOVE.pointer={
+      id,
+      x:e.clientX || e.touches?.[0]?.clientX || 0,
+      y:e.clientY || e.touches?.[0]?.clientY || 0,
+      moved:false
+    };
+  }
+
+  function captureNodeMove(e){
+    if(!isMobile() || !MOVE.pointer) return;
+    const x=e.clientX || e.touches?.[0]?.clientX || 0;
+    const y=e.clientY || e.touches?.[0]?.clientY || 0;
+    if(Math.hypot(x-MOVE.pointer.x,y-MOVE.pointer.y)>10) MOVE.pointer.moved=true;
+    // 通常時のノード上ドラッグは明示的に止める
+    e.stopPropagation();
+    if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+  }
+
+  function captureNodeEnd(e){
+    if(!isMobile() || !MOVE.pointer) return;
+    const p=MOVE.pointer;
+    MOVE.pointer=null;
+    e.stopPropagation();
+    if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+
+    if(!p.moved){
+      setSingle(p.id);
+      renderUltraActionbar();
+    }
+  }
+
+  ['pointerdown','touchstart','mousedown'].forEach(evt=>{
+    document.addEventListener(evt,captureNodePointer,{capture:true,passive:true});
+  });
+  ['pointermove','touchmove','mousemove'].forEach(evt=>{
+    document.addEventListener(evt,captureNodeMove,{capture:true,passive:true});
+  });
+  ['pointerup','pointercancel','touchend','touchcancel','mouseup'].forEach(evt=>{
+    document.addEventListener(evt,captureNodeEnd,{capture:true,passive:true});
+  });
+
+  function ultraItems(){
+    const ids=selectedIds();
+    const id=activeNode() || (ids.length===1 ? ids[0] : null);
+    const immersive=(()=>{ try{return typeof isImmersiveModeActive==='function' && isImmersiveModeActive()}catch(_e){return false} })();
+    const immersiveRoot=(()=>{ try{return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null}catch(_e){return null} })();
+
+    if(immersive){
+      return [
+        ['child','子追加','専心'],
+        ['layout','整える',''],
+        ['back','戻る','親マップ']
+      ];
+    }
+
+    if(MOVE.active){
+      return [
+        ['move-done','完了','移動'],
+        ['name','名前','変更'],
+        ['fit','全体','表示']
+      ];
+    }
+
+    if(ids.length>=2){
+      return [
+        ['multi-done','完了',`${ids.length}件`],
+        ['connect','線','2件'],
+        ['delete','削除',''],
+        ['more','その他','']
+      ];
+    }
+
+    if(id){
+      return [
+        ['name','名前','変更'],
+        ['details','詳細','編集'],
+        ['move','移動','長押し'],
+        ['more','その他','']
+      ];
+    }
+
+    return [
+      ['add','追加','中央'],
+      ['fit','全体','表示'],
+      ['more','メニュー','']
+    ];
+  }
+
+  function btnHtml([action,main,sub]){
+    return `<button data-mobile-ultra-action="${action}" type="button"><span class="mobile-btn-main">${main}</span>${sub?`<span class="mobile-btn-sub">${sub}</span>`:''}</button>`;
+  }
+
+  function renderUltraActionbar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || !isMobile()) return;
+    if(document.documentElement.classList.contains('mobile-editor-modal-lock')) return;
+    const items=ultraItems();
+    bar.classList.add('mobile-ultra-actionbar');
+    bar.style.setProperty('--mobile-ultra-cols',String(Math.max(3,Math.min(4,items.length))));
+    bar.innerHTML=items.map(btnHtml).join('');
+    try{
+      const h=Math.ceil(bar.getBoundingClientRect().height) || 70;
+      app()?.style.setProperty('--mobile-actionbar-h',h+'px');
+    }catch(_e){}
+  }
+
+  function nativeMobileAction(action){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return false;
+    let btn=bar.querySelector(`[data-mobile-action="${action}"]`);
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.dataset.mobileAction=action;
+      btn.style.display='none';
+      bar.appendChild(btn);
+      setTimeout(()=>btn.remove(),0);
+    }
+    btn.click();
+    return true;
+  }
+
+  function runUltraAction(action){
+    const id=activeNode() || selectedIds()[0] || null;
+    if(action==='move') return enableMoveMode(id);
+    if(action==='move-done') return disableMoveMode();
+    if(action==='name') return nativeMobileAction('edit');
+    if(action==='details'){
+      if(id && typeof openEp==='function') openEp(id);
+      return true;
+    }
+    if(action==='child') return nativeMobileAction('child');
+    if(action==='fit'){
+      try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+      return true;
+    }
+    if(action==='more'){
+      try{
+        if(window.MobileOverlayManager && id) return window.MobileOverlayManager.open('longpress',{nodeId:id,source:'node'});
+        if(typeof toggleMobileMenu==='function') return toggleMobileMenu();
+      }catch(_e){}
+      return false;
+    }
+    if(action==='add'){
+      try{
+        if(typeof snapshot==='function') snapshot();
+        const anchor=typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0};
+        const n=typeof createStandaloneNode==='function' ? createStandaloneNode({label:'',status:'none',fitMode:'shrink',anchor}) : null;
+        if(n){ setSingle(n.id); setTimeout(()=>nativeMobileAction('edit'),0); }
+      }catch(_e){}
+      return true;
+    }
+    if(action==='connect'){
+      try{
+        if(window.__mobileModesOverlay?.startConnectFlow) return window.__mobileModesOverlay.startConnectFlow();
+      }catch(_e){}
+      return false;
+    }
+    if(action==='delete'){
+      const ids=selectedIds();
+      if(ids.length && typeof deleteNodes==='function'){
+        try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+        deleteNodes(ids);
+        render();
+        toast('削除しました','warn');
+      }
+      return true;
+    }
+    if(action==='multi-done'){
+      try{ if(window.__mobileModesOverlay?.finishMultiSelect) window.__mobileModesOverlay.finishMultiSelect(); }catch(_e){}
+      return true;
+    }
+    if(action==='layout'){
+      const rid=(()=>{ try{return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null}catch(_e){return null} })();
+      if(rid && typeof applyChildDepthAwareLayout==='function') applyChildDepthAwareLayout(rid,'radial');
+      return true;
+    }
+    if(action==='back'){
+      try{ if(typeof exitImmersiveMode==='function') exitImmersiveMode({reason:'mobile-ultra'}); }catch(_e){}
+      return true;
+    }
+  }
+
+  function bindUltraActionbar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || bar.__mobileUltraPerfBound) return;
+    bar.__mobileUltraPerfBound=true;
+    bar.addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-mobile-ultra-action]');
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      runUltraAction(btn.dataset.mobileUltraAction);
+      setTimeout(renderUltraActionbar,0);
+      setTimeout(renderUltraActionbar,160);
+    },true);
+  }
+
+  function patchLongpressMoveAction(){
+    const sheet=document.getElementById('mobile-longpress-sheet');
+    if(!sheet || sheet.__mobileMoveActionPatched) return;
+    sheet.__mobileMoveActionPatched=true;
+    sheet.addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-mlp-action="move-mode"]');
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id=sheet.dataset.nodeId || activeNode();
+      try{ window.MobileOverlayManager?.closeAll('move-mode'); }catch(_e){}
+      enableMoveMode(id);
+    },true);
+  }
+
+  function injectMoveIntoLongpress(){
+    const sheet=document.getElementById('mobile-longpress-sheet');
+    if(!sheet || !isMobile()) return;
+    const grid=sheet.querySelector('.mlp-grid');
+    if(!grid || grid.querySelector('[data-mlp-action="move-mode"]')) return;
+    const nodeId=sheet.dataset.nodeId;
+    if(!nodeId || !nodeById(nodeId)) return;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.dataset.mlpAction='move-mode';
+    btn.textContent='移動モード';
+    grid.insertBefore(btn,grid.children[2] || null);
+  }
+
+  /* 2.1 データ/JSON/テキスト/MDショートカット */
+  function openDataKind(kind='json'){
+    try{
+      if(typeof setIoOpen==='function') setIoOpen(true);
+      else app()?.classList.add('io-open');
+      const map={json:'b-exp-json',text:'b-exp-text',md:'b-exp-md'};
+      document.getElementById(map[kind]||'b-exp-json')?.click();
+      if(typeof setExportTab==='function') setExportTab(kind);
+      if(typeof writeCurrentExportToBox==='function') writeCurrentExportToBox(kind,{silent:true});
+      const box=document.getElementById('j-io');
+      if(box) setTimeout(()=>box.focus(),40);
+      toast(kind==='json'?'JSONを開きました':kind==='text'?'テキストを開きました':'MDを開きました');
+    }catch(err){
+      console.warn('[openDataKind]',err);
+    }
+  }
+
+  function patchDesktopShortcutPanel(){
+    const panel=document.getElementById('desktop-shortcut-panel');
+    if(!panel || panel.__dataShortcutsPatched) return;
+    const body=panel.querySelector('.dsp-body');
+    if(!body) return;
+    const group=document.createElement('div');
+    group.className='dsp-group';
+    group.id='dsp-data-shortcuts';
+    group.innerHTML=`
+      <div class="dsp-group-title">データ</div>
+      <div class="dsp-list">
+        <button data-shortcut-action="data-open" type="button"><span class="dsp-label">データを開く</span><span class="dsp-key">(D)</span></button>
+        <button data-shortcut-action="data-json" type="button"><span class="dsp-label">JSONを開く</span><span class="dsp-key">(J)</span></button>
+        <button data-shortcut-action="data-text" type="button"><span class="dsp-label">テキストを開く</span><span class="dsp-key">(T)</span></button>
+        <button data-shortcut-action="data-md" type="button"><span class="dsp-label">MDを開く</span><span class="dsp-key">(Shift+M)</span></button>
+      </div>`;
+    body.insertBefore(group,body.firstChild);
+    panel.__dataShortcutsPatched=true;
+    panel.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-shortcut-action]');
+      if(!btn) return;
+      const action=btn.dataset.shortcutAction;
+      if(action==='data-open'){ e.stopPropagation(); openDataKind(currentExportKind||'json'); }
+      if(action==='data-json'){ e.stopPropagation(); openDataKind('json'); }
+      if(action==='data-text'){ e.stopPropagation(); openDataKind('text'); }
+      if(action==='data-md'){ e.stopPropagation(); openDataKind('md'); }
+    },true);
+  }
+
+  document.addEventListener('keydown',e=>{
+    const tag=(document.activeElement?.tagName||'').toUpperCase();
+    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+    const key=(e.key||'').toLowerCase();
+    if(key==='d' && !e.ctrlKey && !e.metaKey && !e.altKey){
+      e.preventDefault();
+      openDataKind(currentExportKind||'json');
+    }
+    if(key==='j' && !e.ctrlKey && !e.metaKey && !e.altKey){
+      e.preventDefault();
+      openDataKind('json');
+    }
+    if(key==='t' && !e.ctrlKey && !e.metaKey && !e.altKey){
+      e.preventDefault();
+      openDataKind('text');
+    }
+    if(key==='m' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey){
+      e.preventDefault();
+      openDataKind('md');
+    }
+  },true);
+
+  /* 2.2 右端に浮く「閉じる」ボタン対策 */
+  function fixFloatingCloseButtons(){
+    const side=document.getElementById('b-io-side');
+    if(side){
+      side.classList.add('force-data-label');
+      side.textContent='データ';
+      side.setAttribute('title','データを開く / 閉じる');
+      side.onclick=function(e){
+        e.preventDefault();
+        if(typeof setIoOpen==='function') setIoOpen(!app()?.classList.contains('io-open'));
+      };
+    }
+
+    const outline=document.getElementById('b-outline-side');
+    if(outline){
+      outline.classList.add('force-outline-label');
+      if(outline.textContent.trim()==='閉じる') outline.textContent='アウトライナー';
+      outline.setAttribute('title','アウトライナーを開く / 閉じる');
+    }
+
+    const inline=document.getElementById('b-io-inline');
+    if(inline && !inline.__closeFixed){
+      inline.__closeFixed=true;
+      inline.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof setIoOpen==='function') setIoOpen(false);
+        else app()?.classList.remove('io-open');
+      },true);
+    }
+  }
+
+  const oldSetIoOpen=typeof setIoOpen==='function' ? setIoOpen : null;
+  if(oldSetIoOpen && !oldSetIoOpen.__floatingCloseFixed){
+    const wrapped=function(open){
+      const res=oldSetIoOpen.apply(this,arguments);
+      setTimeout(fixFloatingCloseButtons,0);
+      setTimeout(fixFloatingCloseButtons,120);
+      return res;
+    };
+    wrapped.__floatingCloseFixed=true;
+    window.setIoOpen=wrapped;
+    try{ setIoOpen=wrapped; }catch(_e){}
+  }
+
+  function sync(){
+    syncMoveClasses();
+    removeSelfcheckOnMobile();
+    bindUltraActionbar();
+    renderUltraActionbar();
+    updateMoveIndicator();
+    patchLongpressMoveAction();
+    injectMoveIntoLongpress();
+    patchDesktopShortcutPanel();
+    fixFloatingCloseButtons();
+  }
+
+  const observer=new MutationObserver(()=>setTimeout(sync,0));
+
+  function start(){
+    sync();
+    observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});
+    window.setTimeout(sync,250);
+    window.setTimeout(sync,900);
+    window.setInterval(sync,1000);
+  }
+
+  window.addEventListener('resize',()=>setTimeout(sync,80),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(sync,160),{passive:true});
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+
+  window.__mobileUltraPerfDataShortcuts={
+    MOVE,
+    enableMoveMode,
+    disableMoveMode,
+    openDataKind,
+    fixFloatingCloseButtons,
+    renderUltraActionbar
+  };
+})();
+</script>
