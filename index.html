@@ -20176,3 +20176,186 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   };
 })();
 </script>
+<style id="patch-v1-8-62-right-edge-overlay-fix-style">
+@media (max-width:720px){
+  /* 右端に長押しシートの破片が残るのを防ぐ */
+  #mobile-longpress-sheet:not(.visible){
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+    width:0 !important;
+    height:0 !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+    left:auto !important;
+    right:auto !important;
+    bottom:auto !important;
+  }
+  #mobile-longpress-sheet:not(.visible) *{
+    display:none !important;
+  }
+  #mobile-longpress-sheet.visible{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    left:8px !important;
+    right:8px !important;
+    bottom:calc(8px + env(safe-area-inset-bottom,0px)) !important;
+    width:auto !important;
+    height:auto !important;
+    overflow:visible !important;
+  }
+  #mobile-longpress-sheet.visible .mlp-panel{
+    display:block !important;
+    width:auto !important;
+    max-width:100% !important;
+    margin:0 !important;
+  }
+
+  /* 移動インジケータも画面内に制限 */
+  #mobile-move-mode-indicator{
+    left:12px !important;
+    right:12px !important;
+    max-width:calc(100vw - 24px) !important;
+    overflow:hidden !important;
+  }
+  #mobile-move-mode-indicator .mmi-chip{
+    max-width:100% !important;
+    overflow:hidden !important;
+  }
+  #mobile-move-mode-indicator .mmi-main,
+  #mobile-move-mode-indicator .mmi-sub{
+    display:block !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+}
+</style>
+<script id="patch-v1-8-62-right-edge-overlay-fix">
+(function(){
+  'use strict';
+  if(window.__RIGHT_EDGE_OVERLAY_FIX_APPLIED__) return;
+  window.__RIGHT_EDGE_OVERLAY_FIX_APPLIED__=true;
+
+  function app(){ return document.getElementById('app'); }
+  function isMobile(){
+    return !!app()?.classList.contains('mobile-mode') || window.matchMedia('(max-width:720px)').matches;
+  }
+  function closeLongpressIfPossible(){
+    try{ if(typeof closeLongpressMenu==='function') closeLongpressMenu(); }catch(_e){}
+    try{ if(window.MobileOverlayManager?.closeAll) window.MobileOverlayManager.closeAll('right-edge-fix'); }catch(_e){}
+    try{ if(window.__mobileOverlayManager?.closeAll) window.__mobileOverlayManager.closeAll('right-edge-fix'); }catch(_e){}
+  }
+  function hideSheetHard(sheet){
+    if(!sheet) return;
+    sheet.classList.remove('visible');
+    sheet.removeAttribute('data-open');
+    sheet.style.display='none';
+    sheet.style.visibility='hidden';
+    sheet.style.opacity='0';
+    sheet.style.pointerEvents='none';
+    sheet.style.width='0px';
+    sheet.style.height='0px';
+    sheet.style.overflow='hidden';
+    sheet.style.left='auto';
+    sheet.style.right='auto';
+    sheet.style.bottom='auto';
+  }
+  function showSheetNormal(sheet){
+    if(!sheet) return;
+    sheet.style.display='';
+    sheet.style.visibility='';
+    sheet.style.opacity='';
+    sheet.style.pointerEvents='';
+    sheet.style.width='';
+    sheet.style.height='';
+    sheet.style.overflow='';
+    sheet.style.left='';
+    sheet.style.right='';
+    sheet.style.bottom='';
+  }
+  function renameLongpressMoveButton(){
+    document.querySelectorAll('#mobile-longpress-sheet button[data-mlp-action="move-mode"]').forEach(btn=>{
+      btn.textContent='位置調整';
+    });
+  }
+  function normalizeDataButton(){
+    const btn=document.getElementById('b-io-side');
+    if(btn){
+      btn.textContent='データ';
+      btn.setAttribute('title','データを開く / 閉じる');
+    }
+  }
+  function fixRightEdgeArtifacts(){
+    if(!isMobile()) return;
+    const sheet=document.getElementById('mobile-longpress-sheet');
+    const backdrop=document.getElementById('mobile-longpress-backdrop');
+    const ioOpen=!!app()?.classList.contains('io-open');
+    const sheetVisible=!!sheet?.classList.contains('visible');
+    const backdropVisible=!!backdrop?.classList.contains('visible');
+
+    renameLongpressMoveButton();
+    normalizeDataButton();
+
+    /* データを開いている時は、長押しシートの残骸を必ず消す */
+    if(ioOpen){
+      closeLongpressIfPossible();
+    }
+
+    if(sheet && !sheetVisible){
+      hideSheetHard(sheet);
+    }else if(sheet && sheetVisible){
+      showSheetNormal(sheet);
+    }
+
+    /* シートだけ残ってバックドロップが無い不整合を解消 */
+    if(sheet && sheetVisible && !backdropVisible){
+      closeLongpressIfPossible();
+      hideSheetHard(sheet);
+    }
+  }
+
+  const oldOpenDataKind = window.__mobileLiteRendererFixes?.openDataKind;
+  if(typeof oldOpenDataKind === 'function' && !oldOpenDataKind.__rightEdgeWrapped){
+    const wrapped = function(kind){
+      closeLongpressIfPossible();
+      const res = oldOpenDataKind.apply(this, arguments);
+      setTimeout(fixRightEdgeArtifacts, 0);
+      setTimeout(fixRightEdgeArtifacts, 120);
+      return res;
+    };
+    wrapped.__rightEdgeWrapped = true;
+    try{ window.__mobileLiteRendererFixes.openDataKind = wrapped; }catch(_e){}
+  }
+
+  const oldSetIoOpen = window.setIoOpen;
+  if(typeof oldSetIoOpen === 'function' && !oldSetIoOpen.__rightEdgeWrapped){
+    const wrapped = function(open){
+      if(open) closeLongpressIfPossible();
+      const res = oldSetIoOpen.apply(this, arguments);
+      setTimeout(fixRightEdgeArtifacts, 0);
+      setTimeout(fixRightEdgeArtifacts, 120);
+      return res;
+    };
+    wrapped.__rightEdgeWrapped = true;
+    window.setIoOpen = wrapped;
+    try{ setIoOpen = wrapped; }catch(_e){}
+  }
+
+  function start(){
+    fixRightEdgeArtifacts();
+    setTimeout(fixRightEdgeArtifacts, 250);
+    setTimeout(fixRightEdgeArtifacts, 900);
+    const mo = new MutationObserver(()=>{ setTimeout(fixRightEdgeArtifacts, 0); });
+    mo.observe(document.body, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style','hidden']});
+    window.addEventListener('resize', ()=>setTimeout(fixRightEdgeArtifacts, 50), {passive:true});
+    window.addEventListener('orientationchange', ()=>setTimeout(fixRightEdgeArtifacts, 120), {passive:true});
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
+  else start();
+})();
+</script>
