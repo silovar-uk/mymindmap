@@ -17982,3 +17982,496 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   };
 })();
 </script>
+
+
+<style id="patch-v1-8-58-immersive-root-shortcuts-panel-style">
+/* PC-only left shortcut panel */
+#desktop-shortcut-panel{
+  position:absolute;
+  left:12px;
+  top:96px;
+  z-index:72;
+  width:292px;
+  max-height:calc(100% - 132px);
+  display:flex;
+  flex-direction:column;
+  border:1px solid rgba(132,145,164,.24);
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(22,28,38,.96), rgba(9,13,18,.98));
+  color:var(--sf-text-0,#f6f3ed);
+  box-shadow:0 18px 48px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(10px);
+  overflow:hidden;
+  pointer-events:auto;
+}
+#desktop-shortcut-panel.collapsed{
+  width:auto;
+  max-width:190px;
+}
+#desktop-shortcut-panel .dsp-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 10px 8px;
+  border-bottom:1px solid rgba(132,145,164,.16);
+}
+#desktop-shortcut-panel .dsp-title{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+#desktop-shortcut-panel .dsp-title strong{
+  font-size:12px;
+  line-height:1.25;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+#desktop-shortcut-panel .dsp-title span{
+  font-size:10px;
+  line-height:1.25;
+  color:var(--sf-text-2,#9aa8ba);
+}
+#desktop-shortcut-panel .dsp-toggle{
+  flex:0 0 auto;
+  min-height:28px;
+  padding:5px 9px;
+  border-radius:999px;
+  border:1px solid rgba(132,145,164,.24);
+  background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));
+  color:var(--sf-text-1,#d6dee8);
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+#desktop-shortcut-panel .dsp-body{
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding:8px;
+}
+#desktop-shortcut-panel.collapsed .dsp-body,
+#desktop-shortcut-panel.collapsed .dsp-title span{
+  display:none;
+}
+#desktop-shortcut-panel .dsp-group{
+  margin-bottom:10px;
+}
+#desktop-shortcut-panel .dsp-group:last-child{
+  margin-bottom:0;
+}
+#desktop-shortcut-panel .dsp-group-title{
+  margin:2px 2px 5px;
+  font-size:10px;
+  line-height:1.25;
+  color:#aeeeff;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+#desktop-shortcut-panel .dsp-list{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+#desktop-shortcut-panel button[data-shortcut-action]{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:34px;
+  padding:7px 9px;
+  border-radius:11px;
+  border:1px solid rgba(132,145,164,.18);
+  background:rgba(255,255,255,.035);
+  color:var(--sf-text-0,#f6f3ed);
+  cursor:pointer;
+  text-align:left;
+}
+#desktop-shortcut-panel button[data-shortcut-action]:hover{
+  border-color:rgba(18,198,255,.36);
+  background:rgba(18,198,255,.08);
+}
+#desktop-shortcut-panel button[data-shortcut-action] .dsp-label{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:11.5px;
+  font-weight:850;
+}
+#desktop-shortcut-panel button[data-shortcut-action] .dsp-key{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:32px;
+  padding:3px 7px;
+  border-radius:8px;
+  border:1px solid rgba(132,145,164,.24);
+  background:rgba(255,255,255,.05);
+  color:#dff8ff;
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+}
+#desktop-shortcut-panel .dsp-note{
+  margin:8px 2px 0;
+  color:var(--sf-text-2,#9aa8ba);
+  font-size:10px;
+  line-height:1.45;
+}
+@media (max-width:720px){
+  #desktop-shortcut-panel{
+    display:none !important;
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-58-immersive-root-shortcuts-panel">
+(function(){
+  'use strict';
+  if(window.__IMMERSIVE_ROOT_SHORTCUTS_PANEL_PATCH_APPLIED__) return;
+  window.__IMMERSIVE_ROOT_SHORTCUTS_PANEL_PATCH_APPLIED__=true;
+
+  let lastImmersiveRootId=null;
+  let centeringLock=false;
+
+  function getNode(id){
+    try{ return id && typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function isImmersive(){
+    try{ return typeof isImmersiveModeActive==='function' && isImmersiveModeActive(); }catch(_e){ return false; }
+  }
+  function rootId(){
+    try{ return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null; }catch(_e){ return null; }
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function render(){
+    try{ if(typeof renderNow==='function') renderNow(); else if(typeof draw==='function') draw(); }catch(_e){}
+  }
+  function isDesktop(){
+    return !document.getElementById('app')?.classList.contains('mobile-mode') && window.matchMedia('(min-width: 721px)').matches;
+  }
+
+  /* 1.1 専心中もrootノードを表示対象に戻す */
+  const prevGetVisibleNodes=typeof getVisibleNodes==='function' ? getVisibleNodes : null;
+  if(prevGetVisibleNodes && !prevGetVisibleNodes.__immersiveRootVisiblePatched){
+    const wrapped=function(){
+      const base=prevGetVisibleNodes.apply(this,arguments) || [];
+      const rid=rootId();
+      const root=rid ? getNode(rid) : null;
+      if(!root) return base;
+      if(base.some(n=>n && n.id===rid)) return base;
+      // rootを先頭に入れることで、専心ルームの中心として描画しやすくする。
+      return [root, ...base];
+    };
+    wrapped.__immersiveRootVisiblePatched=true;
+    window.getVisibleNodes=wrapped;
+    try{ getVisibleNodes=wrapped; }catch(_e){}
+  }
+
+  function centerViewportOnNode(id,{scale=null,reason=''}={}){
+    const node=getNode(id);
+    if(!node) return false;
+    if(typeof sv==='undefined' || !sv) return false;
+    try{
+      const W=sv.clientWidth || 800;
+      const H=sv.clientHeight || 480;
+      if(scale!=null && Number.isFinite(scale)){
+        vs=Math.max(0.25,Math.min(1.4,scale));
+      }
+      vx=W/2 - node.x*vs;
+      vy=H/2 - node.y*vs;
+      if(typeof applyT==='function') applyT();
+      if(typeof syncViewportUi==='function') syncViewportUi();
+      return true;
+    }catch(err){
+      console.warn('[immersive center root]',err);
+      return false;
+    }
+  }
+
+  function centerImmersiveRoot({force=false,reason=''}={}){
+    if(centeringLock) return false;
+    const rid=rootId();
+    if(!rid) return false;
+    if(!force && lastImmersiveRootId===rid) return false;
+    lastImmersiveRootId=rid;
+    centeringLock=true;
+    try{
+      // 既存の専心レイアウト後にrootが画面中央へ来るよう調整する。
+      centerViewportOnNode(rid,{reason});
+      return true;
+    }finally{
+      setTimeout(()=>{ centeringLock=false; },80);
+    }
+  }
+
+  const prevEnter=window.enterImmersiveMode;
+  if(typeof prevEnter==='function' && !prevEnter.__immersiveRootCenterPatched){
+    const wrapped=function(rootIdArg,opts={}){
+      const res=prevEnter.apply(this,arguments);
+      setTimeout(()=>{ centerImmersiveRoot({force:true,reason:'enter'}); render(); },0);
+      setTimeout(()=>centerImmersiveRoot({force:true,reason:'enter-late'}),120);
+      return res;
+    };
+    wrapped.__immersiveRootCenterPatched=true;
+    window.enterImmersiveMode=wrapped;
+    try{ enterImmersiveMode=wrapped; }catch(_e){}
+  }
+
+  const prevExit=window.exitImmersiveMode;
+  if(typeof prevExit==='function' && !prevExit.__immersiveRootCenterPatched){
+    const wrapped=function(){
+      lastImmersiveRootId=null;
+      return prevExit.apply(this,arguments);
+    };
+    wrapped.__immersiveRootCenterPatched=true;
+    window.exitImmersiveMode=wrapped;
+    try{ exitImmersiveMode=wrapped; }catch(_e){}
+  }
+
+  const prevRenderNow=typeof renderNow==='function' ? renderNow : null;
+  if(prevRenderNow && !prevRenderNow.__immersiveRootCenterPatched){
+    const wrapped=function(){
+      const before=rootId();
+      const res=prevRenderNow.apply(this,arguments);
+      const after=rootId();
+      if(after && after!==lastImmersiveRootId){
+        setTimeout(()=>centerImmersiveRoot({force:true,reason:'root-change'}),0);
+      }else if(after && before!==after){
+        setTimeout(()=>centerImmersiveRoot({force:true,reason:'root-switch'}),0);
+      }
+      return res;
+    };
+    wrapped.__immersiveRootCenterPatched=true;
+    window.renderNow=wrapped;
+    try{ renderNow=wrapped; }catch(_e){}
+  }
+
+  /* 1.2 編集モーダル中F2で専心へ */
+  function enterImmersiveFromEditor(){
+    let id=null;
+    try{ id=(typeof epid!=='undefined' && epid) ? epid : null; }catch(_e){}
+    if(!id || !getNode(id)) return false;
+    const ok=(()=>{
+      try{
+        if(typeof tryCommitNodeEdit==='function') return tryCommitNodeEdit();
+        if(typeof commitNodeEdit==='function') return commitNodeEdit()!==false;
+      }catch(_e){ return false; }
+      return true;
+    })();
+    if(!ok) return false;
+    setTimeout(()=>{
+      const enter=window.enterImmersiveMode || (typeof enterImmersiveMode==='function' ? enterImmersiveMode : null);
+      if(typeof enter==='function') enter(id,{reason:'editor-f2'});
+    },0);
+    return true;
+  }
+
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='F2') return;
+    const ep=document.getElementById('ep');
+    if(!ep || getComputedStyle(ep).display==='none') return;
+    if(!e.target?.closest?.('#ep')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+    enterImmersiveFromEditor();
+  },true);
+
+  /* 2.1 PC用ショートカット左パネル */
+  const shortcutGroups=[
+    {
+      title:'基本操作',
+      items:[
+        {label:'名前/詳細を編集',key:'F2 / ダブルクリック',action:'edit'},
+        {label:'子ノード追加',key:'Tab',action:'add-child'},
+        {label:'同階層追加',key:'Enter',action:'add-sibling'},
+        {label:'削除',key:'Delete',action:'delete'},
+        {label:'全体表示',key:'Ctrl+0',action:'fit'},
+      ]
+    },
+    {
+      title:'ノード操作',
+      items:[
+        {label:'完了切替',key:'D',action:'done'},
+        {label:'複製',key:'Ctrl+D',action:'duplicate'},
+        {label:'線でつなぐ',key:'E',action:'connect'},
+        {label:'関連URLを開く',key:'O',action:'open-url'},
+      ]
+    },
+    {
+      title:'専心 / 表示',
+      items:[
+        {label:'専心に入る',key:'F2（編集内）/ 右クリック',action:'immersive'},
+        {label:'専心から戻る',key:'Esc',action:'immersive-exit'},
+        {label:'子階層を放射で整える',key:'右クリック',action:'child-radial'},
+        {label:'ヘルプを開く',key:'?',action:'help'},
+      ]
+    }
+  ];
+
+  function ensureShortcutPanel(){
+    if(!isDesktop()) return null;
+    let panel=document.getElementById('desktop-shortcut-panel');
+    if(panel) return panel;
+    const host=document.getElementById('cw') || document.getElementById('app') || document.body;
+    panel=document.createElement('div');
+    panel.id='desktop-shortcut-panel';
+    panel.className=localStorage.getItem('mindmap.desktopShortcutPanel.collapsed')==='1' ? 'collapsed' : '';
+    panel.innerHTML=
+      '<div class="dsp-head">'+
+      '  <div class="dsp-title"><strong>ショートカット集</strong><span>PC表示のみ / 折り畳み可</span></div>'+
+      '  <button class="dsp-toggle" type="button"></button>'+
+      '</div>'+
+      '<div class="dsp-body"></div>';
+    host.appendChild(panel);
+    panel.querySelector('.dsp-toggle').addEventListener('click',()=>{
+      panel.classList.toggle('collapsed');
+      localStorage.setItem('mindmap.desktopShortcutPanel.collapsed',panel.classList.contains('collapsed')?'1':'0');
+      updateShortcutPanelToggle(panel);
+    });
+    panel.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-shortcut-action]');
+      if(!btn) return;
+      runShortcutPanelAction(btn.dataset.shortcutAction);
+    });
+    renderShortcutPanel(panel);
+    updateShortcutPanelToggle(panel);
+    return panel;
+  }
+
+  function updateShortcutPanelToggle(panel=document.getElementById('desktop-shortcut-panel')){
+    if(!panel) return;
+    const btn=panel.querySelector('.dsp-toggle');
+    if(btn) btn.textContent=panel.classList.contains('collapsed') ? '開く' : '畳む';
+  }
+
+  function renderShortcutPanel(panel=document.getElementById('desktop-shortcut-panel')){
+    if(!panel) return;
+    const body=panel.querySelector('.dsp-body');
+    if(!body) return;
+    body.innerHTML=shortcutGroups.map(group=>`
+      <div class="dsp-group">
+        <div class="dsp-group-title">${group.title}</div>
+        <div class="dsp-list">
+          ${group.items.map(item=>`
+            <button data-shortcut-action="${item.action}" type="button">
+              <span class="dsp-label">${item.label}</span>
+              <span class="dsp-key">(${item.key})</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `).join('') + '<div class="dsp-note">※ 表示はPC時のみ。スマホでは下部バー/長押しメニューを使用。</div>';
+  }
+
+  function activeNodeIdSafe(){
+    try{ return activeNodeId && getNode(activeNodeId) ? activeNodeId : null; }catch(_e){ return null; }
+  }
+
+  function runShortcutPanelAction(action){
+    const id=activeNodeIdSafe();
+    if(action==='edit'){
+      if(id && typeof openEp==='function') openEp(id);
+      return;
+    }
+    if(action==='add-child'){
+      if(id && typeof createChildNode==='function'){
+        try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+        const child=createChildNode(id,{status:'none',fitMode:'shrink'});
+        render();
+        if(child && typeof openEp==='function') openEp(child.id);
+      }else{
+        document.getElementById('b-add')?.click();
+      }
+      return;
+    }
+    if(action==='add-sibling'){
+      if(id && typeof createSiblingNode==='function'){
+        try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+        const sibling=createSiblingNode(id,{status:'none',fitMode:'shrink'});
+        render();
+        if(sibling && typeof openEp==='function') openEp(sibling.id);
+      }
+      return;
+    }
+    if(action==='delete'){
+      try{
+        if(typeof selectedNodeIds!=='undefined' && selectedNodeIds.size && typeof deleteNodes==='function'){
+          if(typeof snapshot==='function') snapshot();
+          deleteNodes([...selectedNodeIds]);
+          render();
+          toast('ノードを削除しました','warn');
+        }
+      }catch(_e){}
+      return;
+    }
+    if(action==='fit'){
+      try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+      return;
+    }
+    if(action==='done'){
+      if(id && typeof toggleNodeDone==='function') toggleNodeDone(id);
+      return;
+    }
+    if(action==='duplicate'){
+      try{ if(typeof duplicateActiveNode==='function') duplicateActiveNode(); }catch(_e){}
+      return;
+    }
+    if(action==='connect'){
+      try{
+        if(typeof runQuickbarAction==='function') runQuickbarAction('connect');
+      }catch(_e){}
+      return;
+    }
+    if(action==='open-url'){
+      if(id && typeof openNodeRelatedUrl==='function') openNodeRelatedUrl(id,{source:'shortcut-panel'});
+      return;
+    }
+    if(action==='immersive'){
+      if(id && typeof window.enterImmersiveMode==='function') window.enterImmersiveMode(id,{reason:'shortcut-panel'});
+      return;
+    }
+    if(action==='immersive-exit'){
+      if(typeof window.exitImmersiveMode==='function') window.exitImmersiveMode({reason:'shortcut-panel'});
+      return;
+    }
+    if(action==='child-radial'){
+      if(id && typeof applyChildDepthAwareLayout==='function') applyChildDepthAwareLayout(id,'radial');
+      return;
+    }
+    if(action==='help'){
+      const hb=document.getElementById('help-backdrop');
+      if(hb) hb.classList.add('open');
+      return;
+    }
+  }
+
+  function syncShortcutPanelVisibility(){
+    let panel=document.getElementById('desktop-shortcut-panel');
+    if(isDesktop()){
+      panel=ensureShortcutPanel();
+      if(panel) panel.style.display='flex';
+    }else if(panel){
+      panel.style.display='none';
+    }
+  }
+
+  window.addEventListener('resize',()=>setTimeout(syncShortcutPanelVisibility,80),{passive:true});
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(syncShortcutPanelVisibility,0),{once:true});
+  setTimeout(syncShortcutPanelVisibility,0);
+  setTimeout(syncShortcutPanelVisibility,600);
+
+  window.__immersiveRootShortcutsPanel={
+    centerImmersiveRoot,
+    enterImmersiveFromEditor,
+    ensureShortcutPanel,
+    syncShortcutPanelVisibility
+  };
+})();
+</script>
