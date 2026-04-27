@@ -18854,7 +18854,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     text-shadow:none !important;
   }
 
-  /* ノード移動は移動モード時だけ */
+  /* ノード移動は位置調整時だけ */
   #mobile-move-mode-indicator{
     position:fixed;
     left:10px;
@@ -19031,7 +19031,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     if(el) return el;
     el=document.createElement('div');
     el.id='mobile-move-mode-indicator';
-    el.innerHTML='<div class="mmi-chip"><span class="mmi-main">移動モード</span><span class="mmi-sub"></span></div>';
+    el.innerHTML='<div class="mmi-chip"><span class="mmi-main">位置調整</span><span class="mmi-sub"></span></div>';
     document.body.appendChild(el);
     return el;
   }
@@ -19041,7 +19041,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     if(MOVE.active && MOVE.nodeId && nodeById(MOVE.nodeId)){
       const remain=Math.max(0,Math.ceil((MOVE.until-Date.now())/1000));
       el.classList.add('visible');
-      el.querySelector('.mmi-main').textContent='移動モード';
+      el.querySelector('.mmi-main').textContent='位置調整';
       el.querySelector('.mmi-sub').textContent=`${nodeById(MOVE.nodeId).label||'ノード'} / ${remain}s`;
     }else{
       el.classList.remove('visible');
@@ -19059,7 +19059,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     syncMoveClasses();
     updateMoveIndicator();
     renderUltraActionbar();
-    toast('移動モード：このノードだけ動かせます');
+    toast('位置調整：このノードだけ動かせます');
     return true;
   }
 
@@ -19087,7 +19087,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     a.classList.toggle('mobile-node-move-enabled',mobile && MOVE.active);
   }
 
-  /* 1.2 動かし方を制限：通常時はノードドラッグを止め、移動モード時だけ通す */
+  /* 1.2 動かし方を制限：通常時はノードドラッグを止め、位置調整時だけ通す */
   function captureNodePointer(e){
     if(!isMobile()) return;
     const g=e.target?.closest?.('[data-id]');
@@ -19328,7 +19328,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     const btn=document.createElement('button');
     btn.type='button';
     btn.dataset.mlpAction='move-mode';
-    btn.textContent='移動モード';
+    btn.textContent='位置調整';
     grid.insertBefore(btn,grid.children[2] || null);
   }
 
@@ -19559,7 +19559,7 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
     opacity:.72;
   }
 
-  /* 文言変更：移動モード -> 位置調整 */
+  /* 文言変更：位置調整 -> 位置調整 */
   #mobile-move-mode-indicator .mmi-main{
     font-size:0 !important;
   }
@@ -20357,5 +20357,999 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
   else start();
+})();
+</script>
+
+
+<style id="patch-v1-8-63-mobile-overlay-reset-style">
+@media (max-width:720px){
+  /* 旧スマホOverlayは完全に殺す。visibleが戻っても表示させない */
+  #mobile-longpress-sheet,
+  #mobile-longpress-backdrop,
+  #mobile-move-mode-indicator,
+  #mobile-mode-indicator{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+    width:0 !important;
+    height:0 !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    max-width:0 !important;
+    max-height:0 !important;
+    overflow:hidden !important;
+    inset:auto !important;
+    left:auto !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:auto !important;
+    transform:none !important;
+  }
+  #mobile-longpress-sheet *,
+  #mobile-longpress-backdrop *,
+  #mobile-move-mode-indicator *,
+  #mobile-mode-indicator *{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  /* 新Overlay */
+  #mobile-overlay-layer{
+    position:fixed;
+    inset:0;
+    z-index:3900;
+    display:none;
+    pointer-events:none;
+  }
+  #mobile-overlay-layer.open{
+    display:block;
+    pointer-events:auto;
+  }
+  #mobile-overlay-layer .mol-backdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(2,6,14,.38);
+  }
+  #mobile-overlay-layer .mol-sheet{
+    position:absolute;
+    left:8px;
+    right:8px;
+    bottom:calc(8px + env(safe-area-inset-bottom,0px));
+    max-height:min(72dvh, 500px);
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    padding:12px;
+    border-radius:18px;
+    border:1px solid rgba(132,145,164,.24);
+    background:linear-gradient(180deg, rgba(22,28,38,.98), rgba(9,13,18,.99));
+    color:var(--sf-text-0,#f6f3ed);
+    box-shadow:0 18px 48px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  #mobile-overlay-layer .mol-title{
+    font-size:14px;
+    line-height:1.35;
+    font-weight:900;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  #mobile-overlay-layer .mol-sub{
+    margin-top:3px;
+    color:var(--sf-text-2,#9aa8ba);
+    font-size:11px;
+    line-height:1.4;
+  }
+  #mobile-overlay-layer .mol-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    margin-top:12px;
+  }
+  #mobile-overlay-layer button[data-mobile-sheet-action]{
+    min-height:42px;
+    padding:8px 9px;
+    border-radius:13px;
+    border:1px solid rgba(132,145,164,.24);
+    background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));
+    color:var(--sf-text-0,#f6f3ed);
+    font-size:12px;
+    font-weight:850;
+    text-align:left;
+  }
+  #mobile-overlay-layer button[data-mobile-sheet-action="name"],
+  #mobile-overlay-layer button[data-mobile-sheet-action="multi"],
+  #mobile-overlay-layer button[data-mobile-sheet-action="connect"]{
+    border-color:rgba(18,198,255,.42);
+    color:#effcff;
+  }
+  #mobile-overlay-layer button[data-mobile-sheet-action="position"]{
+    border-color:rgba(255,227,109,.42);
+    color:#fff5c7;
+  }
+  #mobile-overlay-layer button[data-mobile-sheet-action="delete"]{
+    border-color:rgba(255,107,120,.42);
+    color:#ffe7e9;
+  }
+  #mobile-overlay-layer button[data-mobile-sheet-action="cancel"]{
+    grid-column:1 / -1;
+    text-align:center;
+    color:var(--sf-text-2,#9aa8ba);
+  }
+
+  /* 新Mode chip */
+  #mobile-overlay-mode-chip{
+    position:fixed;
+    left:10px;
+    right:10px;
+    bottom:calc(70px + 12px + env(safe-area-inset-bottom,0px));
+    z-index:3880;
+    display:none;
+    pointer-events:none;
+  }
+  #mobile-overlay-mode-chip.visible{
+    display:block;
+  }
+  #mobile-overlay-mode-chip .momc-inner{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    min-height:34px;
+    padding:7px 10px;
+    border-radius:999px;
+    border:1px solid rgba(18,198,255,.34);
+    background:linear-gradient(180deg, rgba(11,43,55,.94), rgba(10,18,26,.98));
+    color:#effcff;
+    font-size:11px;
+    font-weight:900;
+    box-shadow:none;
+    overflow:hidden;
+  }
+  #mobile-overlay-mode-chip .momc-main,
+  #mobile-overlay-mode-chip .momc-sub{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  #mobile-overlay-mode-chip .momc-sub{
+    color:#a9d8e8;
+    font-size:10px;
+    font-weight:800;
+  }
+
+  /* 新Bottom Bar: これだけをスマホ下部バーとして使う */
+  #mobile-actionbar.mobile-reset-actionbar{
+    display:grid !important;
+    grid-template-columns:repeat(var(--mobile-reset-cols,3), minmax(0,1fr)) !important;
+    gap:6px !important;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    transform:none !important;
+  }
+  #mobile-actionbar.mobile-reset-actionbar button{
+    min-width:0 !important;
+    min-height:42px !important;
+    padding:6px 4px !important;
+    border-radius:13px !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+    box-shadow:none !important;
+  }
+  #mobile-actionbar.mobile-reset-actionbar .mobile-btn-main{
+    display:block;
+    font-size:12px;
+    font-weight:900;
+  }
+  #mobile-actionbar.mobile-reset-actionbar .mobile-btn-sub{
+    display:block;
+    margin-top:2px;
+    font-size:9.5px;
+    opacity:.72;
+  }
+  #mobile-actionbar.mobile-reset-actionbar [data-mobile-reset-action="position"],
+  #mobile-actionbar.mobile-reset-actionbar [data-mobile-reset-action="position-done"],
+  #mobile-actionbar.mobile-reset-actionbar [data-mobile-reset-action="connect-start"],
+  #mobile-actionbar.mobile-reset-actionbar [data-mobile-reset-action="connect-cancel"],
+  #mobile-actionbar.mobile-reset-actionbar [data-mobile-reset-action="immersive-back"]{
+    border-color:rgba(255,227,109,.42) !important;
+    color:#fff5c7 !important;
+    background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98)) !important;
+  }
+  #mobile-actionbar.mobile-reset-actionbar [data-mobile-reset-action="delete-selected"]{
+    border-color:rgba(255,107,120,.42) !important;
+    color:#ffe7e9 !important;
+  }
+  #mobile-actionbar.mobile-reset-actionbar button[disabled]{
+    opacity:.42 !important;
+    pointer-events:none !important;
+  }
+
+  html.mobile-reset-overlay-open #mobile-actionbar,
+  body.mobile-reset-overlay-open #mobile-actionbar,
+  html.mobile-reset-data-open #mobile-actionbar,
+  body.mobile-reset-data-open #mobile-actionbar{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  /* 機能チェックはスマホでは不要 */
+  #feature-selfcheck-chip,
+  #feature-selfcheck-panel{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  @media (max-height:480px){
+    #mobile-overlay-layer .mol-sheet{
+      max-height:calc(100dvh - 16px);
+      padding:10px;
+      border-radius:16px;
+    }
+    #mobile-overlay-layer .mol-grid{
+      gap:6px;
+    }
+    #mobile-overlay-layer button[data-mobile-sheet-action]{
+      min-height:38px;
+      font-size:11.5px;
+      padding:7px 8px;
+    }
+    #mobile-overlay-layer .mol-sub{
+      display:none;
+    }
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-63-mobile-overlay-reset">
+(function(){
+  'use strict';
+  if(window.__MOBILE_OVERLAY_RESET_PATCH_APPLIED__) return;
+  window.__MOBILE_OVERLAY_RESET_PATCH_APPLIED__=true;
+
+  const LEGACY_OVERLAY_IDS=[
+    'mobile-longpress-sheet',
+    'mobile-longpress-backdrop',
+    'mobile-move-mode-indicator',
+    'mobile-mode-indicator'
+  ];
+  const STATE={
+    overlay:null,
+    sheetPayload:null,
+    mode:'normal',
+    connectFromId:null,
+    positionNodeId:null,
+    uiScheduled:false,
+    touching:false,
+    lastBarHtml:'',
+    lastModeText:'',
+    dataOpen:false
+  };
+
+  function app(){ return document.getElementById('app'); }
+  function isMobile(){
+    return !!app()?.classList.contains('mobile-mode') || window.matchMedia('(max-width:720px)').matches;
+  }
+  function nodeById(id){
+    try{ return id && typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function selectedIds(){
+    try{ return [...selectedNodeIds].filter(id=>nodeById(id)); }catch(_e){ return []; }
+  }
+  function activeId(){
+    try{ return activeNodeId && nodeById(activeNodeId) ? activeNodeId : null; }catch(_e){ return null; }
+  }
+  function setActive(id){
+    if(!id || !nodeById(id)) return false;
+    try{
+      if(typeof setSingleSelection==='function') setSingleSelection(id);
+      else{
+        selectedNodeIds.clear();
+        selectedNodeIds.add(id);
+        activeNodeId=id;
+        selectedEdgeId=null;
+      }
+    }catch(_e){}
+    redrawLite();
+    return true;
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function redrawLite(){
+    try{
+      if(typeof drawMobileLite==='function' && isMobile()) drawMobileLite({final:true});
+      else if(typeof renderNow==='function') renderNow();
+      else if(typeof draw==='function') draw();
+    }catch(_e){}
+  }
+  function immersiveActive(){
+    try{ return typeof isImmersiveModeActive==='function' && isImmersiveModeActive(); }catch(_e){ return false; }
+  }
+  function immersiveRootId(){
+    try{ return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null; }catch(_e){ return null; }
+  }
+  function isDataOpen(){
+    return !!app()?.classList.contains('io-open') || !!document.getElementById('io-wrap')?.classList.contains('mobile-data-open');
+  }
+
+  /* 1-2. 旧スマホOverlay掃除。非表示ではなくremove。 */
+  function cleanupLegacyMobileOverlays(){
+    if(!isMobile()) return;
+    LEGACY_OVERLAY_IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.remove();
+    });
+    document.documentElement.classList.remove(
+      'mobile-longpress-open',
+      'mobile-rename-sheet-lock',
+      'mobile-overlay-manager-lock'
+    );
+    document.body.classList.remove(
+      'mobile-longpress-open',
+      'mobile-rename-sheet-lock',
+      'mobile-overlay-manager-lock'
+    );
+    try{
+      if(window.__mobileUsabilityCore){
+        window.__mobileUsabilityCore.openLongpressMenu=openMobileSheetFromCompat;
+        window.__mobileUsabilityCore.closeLongpressMenu=closeMobileSheet;
+        window.__mobileUsabilityCore.renderSmartActionbar=scheduleMobileUiUpdate;
+      }
+      if(window.__mobileModesOverlay){
+        window.__mobileModesOverlay.renderStateActionbar=scheduleMobileUiUpdate;
+      }
+      if(window.__mobileUltraPerfDataShortcuts){
+        window.__mobileUltraPerfDataShortcuts.renderUltraActionbar=scheduleMobileUiUpdate;
+      }
+      if(window.__mobileLiteRendererFixes){
+        window.__mobileLiteRendererFixes.stabilizeMobileActionbar=scheduleMobileUiUpdate;
+      }
+    }catch(_e){}
+  }
+
+  /* 3. 新Overlay layer */
+  function ensureMobileOverlayLayer(){
+    let layer=document.getElementById('mobile-overlay-layer');
+    if(layer) return layer;
+    layer=document.createElement('div');
+    layer.id='mobile-overlay-layer';
+    layer.innerHTML=
+      '<div class="mol-backdrop" data-mobile-overlay-close="1"></div>'+
+      '<div class="mol-sheet" role="dialog" aria-modal="true">'+
+      '  <div class="mol-title"></div>'+
+      '  <div class="mol-sub"></div>'+
+      '  <div class="mol-grid"></div>'+
+      '</div>';
+    document.body.appendChild(layer);
+    layer.addEventListener('click',e=>{
+      if(e.target.closest('[data-mobile-overlay-close]')){
+        closeMobileSheet('backdrop');
+        return;
+      }
+      const btn=e.target.closest('button[data-mobile-sheet-action]');
+      if(!btn) return;
+      const action=btn.dataset.mobileSheetAction;
+      const payload=STATE.sheetPayload || {};
+      closeMobileSheet('action');
+      runSheetAction(action,payload);
+    });
+    return layer;
+  }
+
+  function ensureModeChip(){
+    let chip=document.getElementById('mobile-overlay-mode-chip');
+    if(chip) return chip;
+    chip=document.createElement('div');
+    chip.id='mobile-overlay-mode-chip';
+    chip.innerHTML='<div class="momc-inner"><span class="momc-main"></span><span class="momc-sub"></span></div>';
+    document.body.appendChild(chip);
+    return chip;
+  }
+
+  function sheetItems(type,payload){
+    if(type==='blank'){
+      return [
+        ['add-blank','ここに追加'],
+        ['multi','複数選択'],
+        ['fit','全体表示'],
+        ['menu','メニュー'],
+        ['cancel','キャンセル']
+      ];
+    }
+    return [
+      ['name','名前変更'],
+      ['details','詳細編集'],
+      ['child','子を追加'],
+      ['multi','複数選択'],
+      ['connect','線でつなぐ'],
+      ['position','位置調整'],
+      ['immersive',immersiveActive()?'専心を解く':'専心'],
+      ['delete','削除'],
+      ['cancel','キャンセル']
+    ];
+  }
+
+  /* 4. openMobileSheet / closeMobileSheet に統一 */
+  function openMobileSheet(type='node',payload={}){
+    if(!isMobile()) return false;
+    cleanupLegacyMobileOverlays();
+    closeDataIfNeededBeforeOverlay();
+    const layer=ensureMobileOverlayLayer();
+    const node=payload.nodeId ? nodeById(payload.nodeId) : null;
+    STATE.overlay='sheet';
+    STATE.sheetPayload={type,...payload};
+    if(node) setActive(node.id);
+
+    const title=layer.querySelector('.mol-title');
+    const sub=layer.querySelector('.mol-sub');
+    const grid=layer.querySelector('.mol-grid');
+    title.textContent=type==='blank' ? 'キャンバス操作' : (node?.label || 'ノード操作');
+    sub.textContent=type==='blank' ? '空白地点の操作' : '必要な操作を選択';
+    grid.innerHTML=sheetItems(type,payload)
+      .map(([action,label])=>`<button data-mobile-sheet-action="${action}" type="button">${label}</button>`)
+      .join('');
+
+    layer.classList.add('open');
+    document.documentElement.classList.add('mobile-reset-overlay-open');
+    document.body.classList.add('mobile-reset-overlay-open');
+    scheduleMobileUiUpdate('open-sheet');
+    return true;
+  }
+
+  function openMobileSheetFromCompat(opts={}){
+    if(opts && opts.source==='blank') return openMobileSheet('blank',opts);
+    return openMobileSheet('node',opts);
+  }
+
+  function closeMobileSheet(reason='close'){
+    const layer=document.getElementById('mobile-overlay-layer');
+    if(layer) layer.classList.remove('open');
+    STATE.overlay=null;
+    STATE.sheetPayload=null;
+    document.documentElement.classList.remove('mobile-reset-overlay-open');
+    document.body.classList.remove('mobile-reset-overlay-open');
+    scheduleMobileUiUpdate('close-sheet');
+    return true;
+  }
+
+  /* 5. Bottom Bar一本化 */
+  function barItems(){
+    const ids=selectedIds();
+    const id=activeId() || (ids.length===1 ? ids[0] : null);
+    const root=immersiveRootId();
+
+    if(STATE.mode==='position' && STATE.positionNodeId){
+      return [
+        ['position-done','完了','位置調整'],
+        ['position-cancel','取消',''],
+        ['fit','全体','表示']
+      ];
+    }
+
+    if(immersiveActive()){
+      return [
+        ['child','子追加','専心'],
+        ['layout','整える',''],
+        ['immersive-back','戻る','親マップ']
+      ];
+    }
+
+    if(STATE.mode==='connect'){
+      return [
+        ['connect-cancel','中止',''],
+        ['fit','全体','表示'],
+        ['multi','複数','選択']
+      ];
+    }
+
+    if(STATE.mode==='multi'){
+      return [
+        ['multi-done','完了',`${ids.length}件`],
+        ['connect-start','線でつなぐ','2件'],
+        ['clear','全解除',''],
+        ['delete-selected','削除','選択']
+      ];
+    }
+
+    if(id){
+      return [
+        ['name','名前','変更'],
+        ['details','詳細','編集'],
+        ['position','位置調整','']
+      ];
+    }
+
+    return [
+      ['add','追加','中央'],
+      ['fit','全体','表示'],
+      ['menu','メニュー','']
+    ];
+  }
+
+  function barButton([action,main,sub]){
+    const disabled=(action==='connect-start' && selectedIds().length!==2) ||
+      (action==='delete-selected' && !selectedIds().length);
+    return `<button data-mobile-reset-action="${action}" type="button" ${disabled?'disabled':''}><span class="mobile-btn-main">${main}</span>${sub?`<span class="mobile-btn-sub">${sub}</span>`:''}</button>`;
+  }
+
+  function renderMobileBottomBar(){
+    if(!isMobile()) return;
+    cleanupLegacyMobileOverlays();
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return;
+
+    const hide=STATE.overlay || isDataOpen() ||
+      document.documentElement.classList.contains('mobile-editor-modal-lock') ||
+      document.body.classList.contains('mobile-editor-modal-lock');
+    document.documentElement.classList.toggle('mobile-reset-data-open',isDataOpen());
+    document.body.classList.toggle('mobile-reset-data-open',isDataOpen());
+    if(hide){
+      bar.style.display='none';
+      return;
+    }
+
+    const items=barItems();
+    const html=items.map(barButton).join('');
+    if(html!==STATE.lastBarHtml){
+      bar.className=(bar.className||'')
+        .split(/\s+/)
+        .filter(c=>!/^mobile-(smart|state|ultra|lite)-.*actionbar$/.test(c) && c!=='mobile-lite-stable-bar')
+        .join(' ');
+      bar.classList.add('mobile-reset-actionbar');
+      bar.style.setProperty('--mobile-reset-cols',String(Math.max(3,Math.min(4,items.length))));
+      bar.innerHTML=html;
+      STATE.lastBarHtml=html;
+    }
+    bar.style.display='grid';
+  }
+
+  function renderModeChip(){
+    if(!isMobile()) return;
+    const chip=ensureModeChip();
+    let main='',sub='';
+    if(STATE.mode==='multi'){
+      main=`複数選択中：${selectedIds().length}件`;
+      sub='タップで追加/解除';
+    }else if(STATE.mode==='connect'){
+      main='線でつなぐ';
+      sub=STATE.connectFromId ? `${nodeById(STATE.connectFromId)?.label||'始点'} → 接続先をタップ` : '始点を選択';
+    }else if(STATE.mode==='position'){
+      main='位置調整中';
+      sub=STATE.positionNodeId ? (nodeById(STATE.positionNodeId)?.label||'ノード') : '';
+    }
+    const text=main+'|'+sub;
+    if(text===STATE.lastModeText) return;
+    STATE.lastModeText=text;
+    if(main){
+      chip.querySelector('.momc-main').textContent=main;
+      chip.querySelector('.momc-sub').textContent=sub;
+      chip.classList.add('visible');
+    }else{
+      chip.classList.remove('visible');
+    }
+  }
+
+  function scheduleMobileUiUpdate(reason=''){
+    if(!isMobile()) return;
+    if(STATE.touching && reason!=='touchend') return;
+    if(STATE.uiScheduled) return;
+    STATE.uiScheduled=true;
+    requestAnimationFrame(()=>{
+      STATE.uiScheduled=false;
+      cleanupLegacyMobileOverlays();
+      renderMobileBottomBar();
+      renderModeChip();
+    });
+  }
+
+  function runBarAction(action){
+    const ids=selectedIds();
+    const id=activeId() || ids[0] || null;
+    if(action==='name') return openName(id);
+    if(action==='details') return openDetails(id);
+    if(action==='position') return enterPositionAdjust(id);
+    if(action==='position-done' || action==='position-cancel') return exitPositionAdjust(action);
+    if(action==='add') return addStandalone();
+    if(action==='fit') return fitMap();
+    if(action==='menu') return openMobileSheet('blank',{source:'blank'});
+    if(action==='child') return addChild(id || immersiveRootId());
+    if(action==='layout') return layoutCurrent();
+    if(action==='immersive-back') return exitImmersive();
+    if(action==='multi') return enterMulti(id);
+    if(action==='multi-done') return exitMulti();
+    if(action==='clear') return clearSelectionOnly();
+    if(action==='delete-selected') return deleteSelection();
+    if(action==='connect-start') return startConnect();
+    if(action==='connect-cancel') return cancelConnect();
+  }
+
+  function bindBottomBar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || bar.__mobileOverlayResetBound) return;
+    bar.__mobileOverlayResetBound=true;
+    bar.addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-mobile-reset-action]');
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      runBarAction(btn.dataset.mobileResetAction);
+      scheduleMobileUiUpdate('bar-action');
+    },true);
+  }
+
+  /* 6-7. 長押しメニューはキャンセル式にし、位置調整へ統一 */
+  function runSheetAction(action,payload){
+    const id=payload.nodeId || activeId();
+    if(action==='cancel') return true;
+    if(action==='name') return openName(id);
+    if(action==='details') return openDetails(id);
+    if(action==='child') return addChild(id);
+    if(action==='multi') return enterMulti(id);
+    if(action==='connect') return startConnect(id);
+    if(action==='position') return enterPositionAdjust(id);
+    if(action==='immersive') return toggleImmersive(id);
+    if(action==='delete') return deleteNode(id);
+    if(action==='add-blank') return addStandalone();
+    if(action==='fit') return fitMap();
+    if(action==='menu') return true;
+  }
+
+  function clickNativeMobileAction(action){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return false;
+    let btn=bar.querySelector(`[data-mobile-action="${action}"]`);
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.dataset.mobileAction=action;
+      btn.style.display='none';
+      bar.appendChild(btn);
+      setTimeout(()=>btn.remove(),0);
+    }
+    btn.click();
+    return true;
+  }
+
+  function openName(id){
+    if(!id || !nodeById(id)) return false;
+    setActive(id);
+    return clickNativeMobileAction('edit');
+  }
+  function openDetails(id){
+    if(!id || !nodeById(id)) return false;
+    setActive(id);
+    if(typeof openEp==='function') openEp(id);
+    return true;
+  }
+  function addChild(id){
+    if(!id || !nodeById(id)) return false;
+    setActive(id);
+    return clickNativeMobileAction('child');
+  }
+  function addStandalone(){
+    try{
+      if(typeof snapshot==='function') snapshot();
+      const anchor=typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0};
+      const n=typeof createStandaloneNode==='function' ? createStandaloneNode({label:'',status:'none',fitMode:'shrink',anchor}) : null;
+      if(n){
+        setActive(n.id);
+        setTimeout(()=>openName(n.id),0);
+      }
+    }catch(_e){}
+    return true;
+  }
+  function fitMap(){
+    try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+    return true;
+  }
+  function enterPositionAdjust(id){
+    if(!id || !nodeById(id)) return false;
+    STATE.mode='position';
+    STATE.positionNodeId=id;
+    setActive(id);
+    try{ if(window.__mobileUltraPerfDataShortcuts?.enableMoveMode) window.__mobileUltraPerfDataShortcuts.enableMoveMode(id); }catch(_e){}
+    cleanupLegacyMobileOverlays();
+    toast('位置調整：このノードだけ動かせます');
+    scheduleMobileUiUpdate('position');
+    return true;
+  }
+  function exitPositionAdjust(){
+    try{ if(window.__mobileUltraPerfDataShortcuts?.disableMoveMode) window.__mobileUltraPerfDataShortcuts.disableMoveMode(); }catch(_e){}
+    STATE.mode='normal';
+    STATE.positionNodeId=null;
+    cleanupLegacyMobileOverlays();
+    scheduleMobileUiUpdate('position-exit');
+    return true;
+  }
+  function enterMulti(seedId){
+    STATE.mode='multi';
+    if(seedId && nodeById(seedId)){
+      try{
+        selectedNodeIds.add(seedId);
+        activeNodeId=seedId;
+        selectedEdgeId=null;
+      }catch(_e){}
+    }
+    redrawLite();
+    scheduleMobileUiUpdate('multi');
+    toast('複数選択：タップで追加/解除');
+    return true;
+  }
+  function exitMulti(){
+    STATE.mode='normal';
+    scheduleMobileUiUpdate('multi-exit');
+    return true;
+  }
+  function clearSelectionOnly(){
+    try{
+      selectedNodeIds.clear();
+      activeNodeId=null;
+      selectedEdgeId=null;
+    }catch(_e){}
+    redrawLite();
+    scheduleMobileUiUpdate('clear');
+    return true;
+  }
+  function deleteSelection(){
+    const ids=selectedIds();
+    if(!ids.length) return false;
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    if(typeof deleteNodes==='function') deleteNodes(ids);
+    clearSelectionOnly();
+    STATE.mode='normal';
+    toast('削除しました','warn');
+    return true;
+  }
+  function deleteNode(id){
+    if(!id || !nodeById(id)) return false;
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    if(typeof deleteNodes==='function') deleteNodes([id]);
+    STATE.mode='normal';
+    redrawLite();
+    toast('削除しました','warn');
+    return true;
+  }
+  function startConnect(seedId=null){
+    const ids=selectedIds();
+    const from=seedId || activeId() || ids[0];
+    if(ids.length===2){
+      const a=activeId() && ids.includes(activeId()) ? activeId() : ids[0];
+      const b=ids.find(x=>x!==a);
+      return connectNodes(a,b);
+    }
+    if(!from || !nodeById(from)){
+      toast('始点にするノードを選択してください','warn');
+      return false;
+    }
+    STATE.mode='connect';
+    STATE.connectFromId=from;
+    setActive(from);
+    toast('接続先のノードをタップしてください');
+    scheduleMobileUiUpdate('connect');
+    return true;
+  }
+  function cancelConnect(){
+    STATE.mode='normal';
+    STATE.connectFromId=null;
+    scheduleMobileUiUpdate('connect-cancel');
+    return true;
+  }
+  function connectNodes(from,to){
+    if(!from || !to || from===to || !nodeById(from) || !nodeById(to)) return false;
+    if((edges||[]).some(e=>e.from===from && e.to===to)){
+      toast('同じ向きの線はすでにあります','warn');
+      return false;
+    }
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    const edgeId='e'+(nid++);
+    const edge=typeof normalizeEdge==='function'
+      ? normalizeEdge({id:edgeId,from,to,label:''})
+      : {id:edgeId,from,to,label:''};
+    edges.push(edge);
+    STATE.mode='normal';
+    STATE.connectFromId=null;
+    clearSelectionOnly();
+    redrawLite();
+    toast('線でつなぎました');
+    return true;
+  }
+  function layoutCurrent(){
+    const id=immersiveRootId() || activeId();
+    if(id && typeof applyChildDepthAwareLayout==='function') applyChildDepthAwareLayout(id,'radial');
+    return true;
+  }
+  function exitImmersive(){
+    try{ if(typeof exitImmersiveMode==='function') exitImmersiveMode({reason:'mobile-overlay-reset'}); }catch(_e){}
+    return true;
+  }
+  function toggleImmersive(id){
+    if(immersiveActive()) return exitImmersive();
+    if(id && typeof enterImmersiveMode==='function') return enterImmersiveMode(id,{reason:'mobile-overlay-reset'});
+    return false;
+  }
+
+  function bindCanvasMobileModes(){
+    const svg=document.getElementById('sv');
+    if(!svg || svg.__mobileOverlayResetCanvasBound) return;
+    svg.__mobileOverlayResetCanvasBound=true;
+
+    svg.addEventListener('click',e=>{
+      if(!isMobile()) return;
+      const g=e.target.closest?.('[data-id]');
+      if(STATE.mode==='multi' || STATE.mode==='connect'){
+        if(!g) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+        const id=g.dataset.id;
+        if(STATE.mode==='multi'){
+          try{
+            selectedEdgeId=null;
+            if(selectedNodeIds.has(id)){
+              selectedNodeIds.delete(id);
+              if(activeNodeId===id) activeNodeId=[...selectedNodeIds].at(-1)||null;
+            }else{
+              selectedNodeIds.add(id);
+              activeNodeId=id;
+            }
+          }catch(_e){}
+          redrawLite();
+          scheduleMobileUiUpdate('multi-tap');
+        }else if(STATE.mode==='connect'){
+          connectNodes(STATE.connectFromId,id);
+        }
+      }
+    },true);
+
+    let longTimer=0, startPoint=null;
+    function cancelLong(){
+      if(longTimer) clearTimeout(longTimer);
+      longTimer=0;
+      startPoint=null;
+    }
+    svg.addEventListener('touchstart',e=>{
+      if(!isMobile() || e.touches.length!==1) return;
+      const t=e.touches[0];
+      const g=e.target.closest?.('[data-id]');
+      const edge=e.target.closest?.('[data-eid]');
+      const nodeId=g?.dataset?.id || null;
+      const type=nodeId ? 'node' : (!edge ? 'blank' : null);
+      if(!type) return;
+      startPoint={x:t.clientX,y:t.clientY,nodeId,type};
+      longTimer=setTimeout(()=>{
+        longTimer=0;
+        if(type==='node') openMobileSheet('node',{nodeId});
+        else openMobileSheet('blank',{source:'blank'});
+        try{ if(navigator.vibrate) navigator.vibrate(10); }catch(_e){}
+      },560);
+    },{passive:true,capture:true});
+    svg.addEventListener('touchmove',e=>{
+      if(!startPoint || !e.touches.length) return;
+      const t=e.touches[0];
+      if(Math.hypot(t.clientX-startPoint.x,t.clientY-startPoint.y)>12) cancelLong();
+    },{passive:true,capture:true});
+    ['touchend','touchcancel'].forEach(type=>svg.addEventListener(type,cancelLong,{passive:true,capture:true}));
+  }
+
+  /* 8-9. 旧同期を出力レベルで無効化し、rAF更新に一本化 */
+  function neutralizeOldMobileUiApis(){
+    try{
+      window.openLongpressMenu=openMobileSheetFromCompat;
+      window.closeLongpressMenu=closeMobileSheet;
+      if(window.MobileOverlayManager){
+        window.MobileOverlayManager.open=(name,opts={})=>{
+          if(name==='longpress') return openMobileSheet(opts.source==='blank'?'blank':'node',opts);
+          if(name==='rename') return openName(opts.nodeId || activeId());
+          if(name==='details') return openDetails(opts.nodeId || activeId());
+          return true;
+        };
+        window.MobileOverlayManager.close=closeMobileSheet;
+        window.MobileOverlayManager.closeAll=closeMobileSheet;
+      }
+    }catch(_e){}
+  }
+
+  /* 10. データタブ開閉時は closeMobileSheet() を先に実行 */
+  function closeDataIfNeededBeforeOverlay(){
+    if(isDataOpen()){
+      try{ if(typeof setIoOpen==='function') setIoOpen(false); }catch(_e){}
+    }
+  }
+  const oldSetIoOpen=typeof setIoOpen==='function' ? setIoOpen : null;
+  if(oldSetIoOpen && !oldSetIoOpen.__mobileOverlayResetWrapped){
+    const wrapped=function(open){
+      if(open) closeMobileSheet('before-data-open');
+      const res=oldSetIoOpen.apply(this,arguments);
+      STATE.dataOpen=!!open;
+      scheduleMobileUiUpdate('data-toggle');
+      return res;
+    };
+    wrapped.__mobileOverlayResetWrapped=true;
+    window.setIoOpen=wrapped;
+    try{ setIoOpen=wrapped; }catch(_e){}
+  }
+  const oldOpenDataKind=window.__mobileLiteRendererFixes?.openDataKind || window.__mobileUltraPerfDataShortcuts?.openDataKind;
+  if(typeof oldOpenDataKind==='function'){
+    const wrapped=function(kind){
+      closeMobileSheet('before-data-kind');
+      cleanupLegacyMobileOverlays();
+      return oldOpenDataKind.apply(this,arguments);
+    };
+    try{
+      if(window.__mobileLiteRendererFixes) window.__mobileLiteRendererFixes.openDataKind=wrapped;
+      if(window.__mobileUltraPerfDataShortcuts) window.__mobileUltraPerfDataShortcuts.openDataKind=wrapped;
+    }catch(_e){}
+  }
+
+  function onTouchStart(){
+    STATE.touching=true;
+  }
+  function onTouchEnd(){
+    STATE.touching=false;
+    scheduleMobileUiUpdate('touchend');
+  }
+  ['touchstart','pointerdown'].forEach(evt=>document.addEventListener(evt,onTouchStart,{passive:true,capture:true}));
+  ['touchend','touchcancel','pointerup','pointercancel'].forEach(evt=>document.addEventListener(evt,onTouchEnd,{passive:true,capture:true}));
+
+  function start(){
+    if(!isMobile()) return;
+    cleanupLegacyMobileOverlays();
+    ensureMobileOverlayLayer();
+    ensureModeChip();
+    neutralizeOldMobileUiApis();
+    bindBottomBar();
+    bindCanvasMobileModes();
+    renderMobileBottomBar();
+    renderModeChip();
+    removeSelfcheck();
+  }
+
+  function removeSelfcheck(){
+    if(!isMobile()) return;
+    ['feature-selfcheck-chip','feature-selfcheck-panel'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.remove();
+    });
+  }
+  const oldRunFeatureSelfCheck=window.runFeatureSelfCheck;
+  window.runFeatureSelfCheck=function(){
+    if(isMobile()){
+      removeSelfcheck();
+      return {skipped:true,reason:'mobile-overlay-reset',summary:{ok:0,warnings:0,errors:0,total:0},features:[],errors:[],warnings:[]};
+    }
+    return typeof oldRunFeatureSelfCheck==='function' ? oldRunFeatureSelfCheck.apply(this,arguments) : null;
+  };
+
+  window.addEventListener('resize',()=>setTimeout(start,80),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(start,160),{passive:true});
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0),{once:true});
+  else setTimeout(start,0);
+  setTimeout(start,500);
+
+  window.cleanupLegacyMobileOverlays=cleanupLegacyMobileOverlays;
+  window.openMobileSheet=openMobileSheet;
+  window.closeMobileSheet=closeMobileSheet;
+  window.renderMobileBottomBar=renderMobileBottomBar;
+  window.MobileOverlayReset={
+    STATE,
+    cleanupLegacyMobileOverlays,
+    openMobileSheet,
+    closeMobileSheet,
+    renderMobileBottomBar,
+    scheduleMobileUiUpdate
+  };
 })();
 </script>
