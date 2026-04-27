@@ -16410,3 +16410,1575 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   };
 })();
 </script>
+
+
+<style id="patch-v1-8-56-mobile-usability-core-style">
+@media (max-width:720px){
+  /* 下部バーを状態別3〜4ボタン前提へ圧縮 */
+  #mobile-actionbar.mobile-smart-actionbar{
+    display:grid !important;
+    grid-template-columns:repeat(var(--mobile-smart-cols,4), minmax(0,1fr)) !important;
+    gap:6px !important;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) !important;
+    align-items:stretch !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar .mobile-actionbar-extra{
+    display:none !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar button{
+    min-width:0 !important;
+    min-height:42px !important;
+    padding:6px 4px !important;
+    border-radius:13px !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar .mobile-btn-main{
+    display:block !important;
+    font-size:12px !important;
+    font-weight:900 !important;
+    line-height:1.1 !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar .mobile-btn-sub{
+    display:block !important;
+    margin-top:2px !important;
+    font-size:9.5px !important;
+    opacity:.72 !important;
+    line-height:1.1 !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar [data-mobile-pro-action="name"]{
+    border-color:rgba(18,198,255,.42) !important;
+    color:#effcff !important;
+    background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98)) !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar [data-mobile-pro-action="details"]{
+    border-color:rgba(132,145,164,.28) !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar [data-mobile-pro-action="delete-selected"]{
+    border-color:rgba(255,107,120,.42) !important;
+    color:#ffe7e9 !important;
+  }
+
+  #mobile-actionbar.mobile-smart-actionbar [data-mobile-pro-action="back-immersive"],
+  #mobile-actionbar.mobile-smart-actionbar [data-mobile-pro-action="connect-two"]{
+    border-color:rgba(255,227,109,.42) !important;
+    color:#fff5c7 !important;
+    background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98)) !important;
+  }
+
+  /* 長押しメニュー */
+  #mobile-longpress-sheet{
+    position:fixed;
+    left:8px;
+    right:8px;
+    bottom:calc(8px + env(safe-area-inset-bottom,0px));
+    z-index:3400;
+    display:none;
+    pointer-events:none;
+  }
+
+  #mobile-longpress-sheet.visible{
+    display:block;
+    pointer-events:auto;
+  }
+
+  #mobile-longpress-sheet .mlp-panel{
+    max-height:min(76dvh, 480px);
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    padding:12px;
+    border-radius:18px;
+    border:1px solid rgba(132,145,164,.24);
+    background:linear-gradient(180deg, rgba(22,28,38,.98), rgba(9,13,18,.99));
+    box-shadow:0 18px 48px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04);
+    color:var(--sf-text-0,#f6f3ed);
+  }
+
+  #mobile-longpress-sheet .mlp-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  #mobile-longpress-sheet .mlp-title{
+    font-size:13px;
+    font-weight:900;
+    line-height:1.35;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  #mobile-longpress-sheet .mlp-sub{
+    margin-top:2px;
+    color:var(--sf-text-2,#9aa8ba);
+    font-size:10.5px;
+    line-height:1.35;
+  }
+
+  #mobile-longpress-sheet .mlp-close{
+    flex:0 0 auto;
+    min-height:30px;
+    padding:5px 9px;
+    border-radius:10px;
+    border:1px solid rgba(132,145,164,.24);
+    background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));
+    color:var(--sf-text-1,#d6dee8);
+    font-size:11px;
+    font-weight:900;
+  }
+
+  #mobile-longpress-sheet .mlp-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+
+  #mobile-longpress-sheet button[data-mlp-action]{
+    min-height:42px;
+    padding:8px 9px;
+    border-radius:13px;
+    border:1px solid rgba(132,145,164,.24);
+    background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96));
+    color:var(--sf-text-0,#f6f3ed);
+    font-size:12px;
+    font-weight:850;
+    text-align:left;
+  }
+
+  #mobile-longpress-sheet button[data-mlp-action="name"]{
+    border-color:rgba(18,198,255,.42);
+    color:#effcff;
+  }
+
+  #mobile-longpress-sheet button[data-mlp-action="delete"]{
+    border-color:rgba(255,107,120,.42);
+    color:#ffe7e9;
+  }
+
+  #mobile-longpress-sheet button[data-mlp-action="immersive"],
+  #mobile-longpress-sheet button[data-mlp-action="back-immersive"]{
+    border-color:rgba(255,227,109,.42);
+    color:#fff5c7;
+  }
+
+  #mobile-longpress-backdrop{
+    position:fixed;
+    inset:0;
+    z-index:3390;
+    display:none;
+    background:rgba(2,6,14,.34);
+  }
+
+  #mobile-longpress-backdrop.visible{
+    display:block;
+  }
+
+  html.mobile-longpress-open #mobile-actionbar,
+  body.mobile-longpress-open #mobile-actionbar{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  @media (max-height:480px){
+    #mobile-longpress-sheet .mlp-panel{
+      max-height:calc(100dvh - 16px);
+      padding:10px;
+      border-radius:16px;
+    }
+    #mobile-longpress-sheet .mlp-grid{
+      gap:6px;
+    }
+    #mobile-longpress-sheet button[data-mlp-action]{
+      min-height:38px;
+      font-size:11.5px;
+      padding:7px 8px;
+    }
+    #mobile-longpress-sheet .mlp-sub{
+      display:none;
+    }
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-56-mobile-usability-core">
+(function(){
+  'use strict';
+  if(window.__MOBILE_USABILITY_CORE_PATCH_APPLIED__) return;
+  window.__MOBILE_USABILITY_CORE_PATCH_APPLIED__=true;
+
+  const LONGPRESS_MS=560;
+  const LONGPRESS_MOVE_TOLERANCE=12;
+  let longPressTimer=0;
+  let longPressStart=null;
+  let longPressConsumed=false;
+
+  function app(){ return document.getElementById('app'); }
+  function isMobileMode(){
+    const a=app();
+    return !!(a && a.classList.contains('mobile-mode'));
+  }
+  function getNode(id){
+    try{ return id && typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function selectedIds(){
+    try{ return [...selectedNodeIds].filter(id=>getNode(id)); }catch(_e){ return []; }
+  }
+  function activeId(){
+    try{ return activeNodeId && getNode(activeNodeId) ? activeNodeId : null; }catch(_e){ return null; }
+  }
+  function isImmersive(){
+    try{ return typeof isImmersiveModeActive==='function' && isImmersiveModeActive(); }catch(_e){ return false; }
+  }
+  function immersiveRootId(){
+    try{ return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null; }catch(_e){ return null; }
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function render(){
+    try{ if(typeof renderNow==='function') renderNow(); else if(typeof draw==='function') draw(); }catch(_e){}
+  }
+  function ensureSelection(id){
+    if(!id || !getNode(id)) return false;
+    try{
+      if(typeof setSingleSelection==='function') setSingleSelection(id);
+      else {
+        selectedNodeIds.clear();
+        selectedNodeIds.add(id);
+        activeNodeId=id;
+        selectedEdgeId=null;
+      }
+      render();
+    }catch(_e){}
+    return true;
+  }
+
+  function createBtn(action,main,sub){
+    return `<button data-mobile-pro-action="${action}" type="button"><span class="mobile-btn-main">${main}</span>${sub?`<span class="mobile-btn-sub">${sub}</span>`:''}</button>`;
+  }
+
+  function getSmartActionbarItems(){
+    const ids=selectedIds();
+    const id=activeId() || (ids.length===1 ? ids[0] : null);
+    const immersive=isImmersive();
+    const root=immersiveRootId();
+
+    if(immersive){
+      return [
+        ['child','子追加','専心'],
+        ['layout-immersive','整える','専心'],
+        ['back-immersive','戻る','親マップ'],
+      ];
+    }
+
+    if(ids.length>=2){
+      const items=[
+        ['layout-selected','整える','選択'],
+      ];
+      if(ids.length===2) items.push(['connect-two','線でつなぐ','2件']);
+      items.push(['delete-selected','削除','選択']);
+      items.push(['more','その他','メニュー']);
+      return items;
+    }
+
+    if(id){
+      return [
+        ['name','名前','変更'],
+        ['details','詳細','編集'],
+        ['child','子追加',''],
+        ['more','その他','長押し'],
+      ];
+    }
+
+    return [
+      ['add-here','追加','中央'],
+      ['fit','全体','表示'],
+      ['more','メニュー',''],
+    ];
+  }
+
+  function renderSmartActionbar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || !isMobileMode()) return;
+    if(document.documentElement.classList.contains('mobile-editor-modal-lock') || document.body.classList.contains('mobile-editor-modal-lock')) return;
+    const items=getSmartActionbarItems();
+    bar.classList.add('mobile-smart-actionbar');
+    bar.style.setProperty('--mobile-smart-cols', String(Math.max(3, Math.min(4, items.length))));
+    bar.innerHTML=items.map(([action,main,sub])=>createBtn(action,main,sub)).join('');
+  }
+
+  function clickNativeMobileAction(action){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return false;
+    let btn=bar.querySelector(`[data-mobile-action="${action}"]`);
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.dataset.mobileAction=action;
+      btn.style.display='none';
+      bar.appendChild(btn);
+      setTimeout(()=>btn.remove(),0);
+    }
+    btn.click();
+    return true;
+  }
+
+  function openNameOnly(id){
+    if(!id || !getNode(id)) return false;
+    ensureSelection(id);
+    // 既存の軽量名前変更フローを使う。詳細編集とは完全分離。
+    return clickNativeMobileAction('edit');
+  }
+
+  function openDetails(id){
+    if(!id || !getNode(id)) return false;
+    ensureSelection(id);
+    closeLongpressMenu();
+    try{
+      if(typeof closeMobileNodeSheet==='function') closeMobileNodeSheet();
+    }catch(_e){}
+    if(typeof openEp==='function') openEp(id);
+    return true;
+  }
+
+  function addChildTo(id){
+    if(!id || !getNode(id)) return false;
+    ensureSelection(id);
+    return clickNativeMobileAction('child');
+  }
+
+  function addStandaloneAtCenter(){
+    try{
+      if(typeof ensureMapTitle==='function' && !ensureMapTitle({toast:true,focus:true})) return false;
+    }catch(_e){}
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    const anchor=(()=>{
+      try{ return typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0}; }catch(_e){ return {x:0,y:0}; }
+    })();
+    const node=(typeof createStandaloneNode==='function') ? createStandaloneNode({label:'',subtext:'',status:'none',fitMode:'shrink',anchor}) : null;
+    if(node){
+      ensureSelection(node.id);
+      render();
+      setTimeout(()=>openNameOnly(node.id),0);
+    }
+    return !!node;
+  }
+
+  function deleteCurrentSelection(){
+    const ids=selectedIds();
+    if(ids.length){
+      try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+      if(typeof deleteNodes==='function') deleteNodes(ids);
+      render();
+      toast('選択ノードを削除しました','warn');
+      return true;
+    }
+    return false;
+  }
+
+  function connectTwoSelected(){
+    const ids=selectedIds();
+    if(ids.length!==2){
+      toast('2つのノードを選択してください','warn');
+      return false;
+    }
+    const from=activeId() && ids.includes(activeId()) ? activeId() : ids[0];
+    const to=ids.find(id=>id!==from);
+    if(!from || !to) return false;
+    if((edges||[]).some(e=>e.from===from && e.to===to)){
+      toast('同じ向きの線はすでにあります','warn');
+      return false;
+    }
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    const edgeId='e'+(nid++);
+    const edge=typeof normalizeEdge==='function'
+      ? normalizeEdge({id:edgeId,from,to,label:''})
+      : {id:edgeId,from,to,label:''};
+    edges.push(edge);
+    try{
+      selectedEdgeId=edge.id;
+      activeNodeId=null;
+      selectedNodeIds.clear();
+    }catch(_e){}
+    render();
+    toast('選択した2つを線でつなぎました');
+    return true;
+  }
+
+  function layoutForCurrent(id,mode='radial'){
+    const target=id || activeId() || immersiveRootId();
+    if(!target || !getNode(target)) return false;
+    if(typeof applyChildDepthAwareLayout==='function') return applyChildDepthAwareLayout(target,mode);
+    return false;
+  }
+
+  function runSmartAction(action){
+    const ids=selectedIds();
+    const id=activeId() || (ids.length===1 ? ids[0] : null) || immersiveRootId();
+
+    if(action==='name') return openNameOnly(id);
+    if(action==='details') return openDetails(id);
+    if(action==='child') return addChildTo(id);
+    if(action==='add-here') return addStandaloneAtCenter();
+    if(action==='fit'){
+      try{ if(typeof fitV==='function') fitV(); toast('全体表示に戻しました'); }catch(_e){}
+      return true;
+    }
+    if(action==='more'){
+      if(id) return openLongpressMenu({nodeId:id,source:'button'});
+      try{ if(typeof toggleMobileMenu==='function') return toggleMobileMenu(); }catch(_e){}
+      return false;
+    }
+    if(action==='layout-selected'){
+      try{
+        if(typeof applySelectionLayout==='function') applySelectionLayout('stack-right');
+        else if(typeof arrangeSelectedNodes==='function') arrangeSelectedNodes('align-left');
+        toast('選択ノードを整えました');
+      }catch(_e){}
+      return true;
+    }
+    if(action==='connect-two') return connectTwoSelected();
+    if(action==='delete-selected') return deleteCurrentSelection();
+    if(action==='layout-immersive') return layoutForCurrent(immersiveRootId(),'radial');
+    if(action==='back-immersive'){
+      try{ if(typeof exitImmersiveMode==='function') return exitImmersiveMode({reason:'mobile-actionbar'}); }catch(_e){}
+      return false;
+    }
+    return false;
+  }
+
+  function interceptSmartActionbarClicks(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || bar.__smartActionbarClickPatched) return;
+    bar.__smartActionbarClickPatched=true;
+    bar.addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-mobile-pro-action]');
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      runSmartAction(btn.dataset.mobileProAction);
+      setTimeout(renderSmartActionbar,0);
+      setTimeout(renderSmartActionbar,160);
+    },true);
+  }
+
+  function ensureLongpressMenu(){
+    let backdrop=document.getElementById('mobile-longpress-backdrop');
+    let sheet=document.getElementById('mobile-longpress-sheet');
+    if(!backdrop){
+      backdrop=document.createElement('div');
+      backdrop.id='mobile-longpress-backdrop';
+      document.body.appendChild(backdrop);
+      backdrop.addEventListener('click',closeLongpressMenu);
+    }
+    if(!sheet){
+      sheet=document.createElement('div');
+      sheet.id='mobile-longpress-sheet';
+      sheet.innerHTML='<div class="mlp-panel"><div class="mlp-head"><div><div class="mlp-title"></div><div class="mlp-sub"></div></div><button class="mlp-close" type="button">閉じる</button></div><div class="mlp-grid"></div></div>';
+      document.body.appendChild(sheet);
+      sheet.querySelector('.mlp-close')?.addEventListener('click',closeLongpressMenu);
+      sheet.addEventListener('click',e=>{
+        const btn=e.target.closest('button[data-mlp-action]');
+        if(!btn) return;
+        const action=btn.dataset.mlpAction;
+        const nodeId=sheet.dataset.nodeId || '';
+        closeLongpressMenu();
+        runLongpressAction(action,nodeId);
+      });
+    }
+    return {backdrop,sheet};
+  }
+
+  function longpressItemsFor(nodeId,source='node'){
+    if(source==='blank'){
+      return [
+        ['add-blank','ここに追加'],
+        ['fit','全体表示'],
+        ['menu','メニュー'],
+      ];
+    }
+    const items=[
+      ['name','名前変更'],
+      ['details','詳細編集'],
+      ['child','子を追加'],
+      ['sibling','同階層を追加'],
+    ];
+    if(typeof enterImmersiveMode==='function') items.push(['immersive', isImmersive() ? '専心を解く' : '専心']);
+    items.push(['layout-radial','子を放射で整える']);
+    items.push(['done','完了切替']);
+    items.push(['delete','削除']);
+    return items;
+  }
+
+  function openLongpressMenu({nodeId=null,source='node'}={}){
+    if(!isMobileMode()) return false;
+    const {backdrop,sheet}=ensureLongpressMenu();
+    const node=nodeId ? getNode(nodeId) : null;
+    if(nodeId && node) ensureSelection(nodeId);
+
+    sheet.dataset.nodeId=nodeId||'';
+    sheet.dataset.source=source;
+    const title=sheet.querySelector('.mlp-title');
+    const sub=sheet.querySelector('.mlp-sub');
+    const grid=sheet.querySelector('.mlp-grid');
+
+    if(title) title.textContent=source==='blank' ? 'キャンバス操作' : (node?.label || 'ノード操作');
+    if(sub) sub.textContent=source==='blank' ? '空白を長押ししました' : '長押しメニュー';
+    if(grid){
+      grid.innerHTML=longpressItemsFor(nodeId,source)
+        .map(([action,label])=>`<button data-mlp-action="${action}" type="button">${label}</button>`)
+        .join('');
+    }
+
+    backdrop.classList.add('visible');
+    sheet.classList.add('visible');
+    document.documentElement.classList.add('mobile-longpress-open');
+    document.body.classList.add('mobile-longpress-open');
+    return true;
+  }
+
+  function closeLongpressMenu(){
+    const backdrop=document.getElementById('mobile-longpress-backdrop');
+    const sheet=document.getElementById('mobile-longpress-sheet');
+    if(backdrop) backdrop.classList.remove('visible');
+    if(sheet) sheet.classList.remove('visible');
+    document.documentElement.classList.remove('mobile-longpress-open');
+    document.body.classList.remove('mobile-longpress-open');
+  }
+
+  function runLongpressAction(action,nodeId){
+    const id=nodeId || activeId();
+    if(action==='name') return openNameOnly(id);
+    if(action==='details') return openDetails(id);
+    if(action==='child') return addChildTo(id);
+    if(action==='sibling'){
+      if(!id || !getNode(id)) return false;
+      try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+      const sibling=(typeof createSiblingNode==='function') ? createSiblingNode(id,{status:'none',fitMode:'shrink'}) : null;
+      if(sibling){
+        ensureSelection(sibling.id);
+        render();
+        setTimeout(()=>openNameOnly(sibling.id),0);
+      }
+      return !!sibling;
+    }
+    if(action==='immersive'){
+      if(isImmersive()){
+        try{ if(typeof exitImmersiveMode==='function') return exitImmersiveMode({reason:'mobile-longpress'}); }catch(_e){}
+        return false;
+      }
+      if(id && getNode(id) && typeof enterImmersiveMode==='function') return enterImmersiveMode(id,{reason:'mobile-longpress'});
+      return false;
+    }
+    if(action==='layout-radial') return layoutForCurrent(id,'radial');
+    if(action==='done'){
+      if(id && typeof toggleNodeDone==='function') toggleNodeDone(id);
+      return true;
+    }
+    if(action==='delete'){
+      if(id && getNode(id)){
+        try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+        if(typeof deleteNodes==='function') deleteNodes([id]);
+        render();
+        toast('ノードを削除しました','warn');
+      }
+      return true;
+    }
+    if(action==='add-blank') return addStandaloneAtCenter();
+    if(action==='fit') return runSmartAction('fit');
+    if(action==='menu') return runSmartAction('more');
+    return false;
+  }
+
+  function cancelLongpressTimer(){
+    if(longPressTimer){
+      clearTimeout(longPressTimer);
+      longPressTimer=0;
+    }
+    longPressStart=null;
+  }
+
+  function setupLongpressListeners(){
+    const svg=document.getElementById('sv');
+    const nl=document.getElementById('NL');
+    if(!svg || svg.__mobileLongpressPatched) return;
+    svg.__mobileLongpressPatched=true;
+
+    svg.addEventListener('touchstart',e=>{
+      if(!isMobileMode() || e.touches.length!==1) return;
+      const touch=e.touches[0];
+      const target=e.target;
+      const g=target.closest?.('[data-id]');
+      const onEdge=target.closest?.('[data-eid]');
+      const nodeId=g?.dataset?.id || null;
+      const source=nodeId ? 'node' : (!onEdge ? 'blank' : null);
+      if(!source) return;
+
+      longPressConsumed=false;
+      longPressStart={x:touch.clientX,y:touch.clientY,nodeId,source};
+      longPressTimer=setTimeout(()=>{
+        longPressTimer=0;
+        longPressConsumed=true;
+        if(nodeId) openLongpressMenu({nodeId,source:'node'});
+        else openLongpressMenu({source:'blank'});
+        try{
+          if(navigator.vibrate) navigator.vibrate(10);
+        }catch(_e){}
+      },LONGPRESS_MS);
+    },{passive:true,capture:true});
+
+    svg.addEventListener('touchmove',e=>{
+      if(!longPressStart || !e.touches.length) return;
+      const touch=e.touches[0];
+      const dist=Math.hypot(touch.clientX-longPressStart.x,touch.clientY-longPressStart.y);
+      if(dist>LONGPRESS_MOVE_TOLERANCE) cancelLongpressTimer();
+    },{passive:true,capture:true});
+
+    ['touchend','touchcancel'].forEach(type=>{
+      svg.addEventListener(type,e=>{
+        const consumed=longPressConsumed;
+        cancelLongpressTimer();
+        if(consumed){
+          e.preventDefault?.();
+          e.stopPropagation?.();
+          if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+          longPressConsumed=false;
+        }
+      },{passive:false,capture:true});
+    });
+
+    svg.addEventListener('contextmenu',e=>{
+      if(!isMobileMode()) return;
+      const g=e.target.closest?.('[data-id]');
+      if(g){
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+        openLongpressMenu({nodeId:g.dataset.id,source:'node'});
+      }
+    },true);
+  }
+
+  function syncSmartUi(){
+    if(!isMobileMode()) return;
+    interceptSmartActionbarClicks();
+    renderSmartActionbar();
+    setupLongpressListeners();
+  }
+
+  const observer=new MutationObserver(()=>setTimeout(syncSmartUi,0));
+  function start(){
+    interceptSmartActionbarClicks();
+    setupLongpressListeners();
+    syncSmartUi();
+    const bar=document.getElementById('mobile-actionbar');
+    if(bar) observer.observe(bar,{childList:true,subtree:false,attributes:true,attributeFilter:['class','style','hidden']});
+    const appEl=app();
+    if(appEl) observer.observe(appEl,{attributes:true,attributeFilter:['class','data-mobile-mode']});
+    setInterval(syncSmartUi,800);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+
+  window.__mobileUsabilityCore={
+    renderSmartActionbar,
+    openLongpressMenu,
+    closeLongpressMenu,
+    openNameOnly,
+    openDetails,
+    runSmartAction
+  };
+})();
+</script>
+
+
+<style id="patch-v1-8-57-mobile-modes-overlay-style">
+@media (max-width:720px){
+  /* Mode indicator */
+  #mobile-mode-indicator{
+    position:fixed;
+    left:10px;
+    right:10px;
+    bottom:calc(var(--mobile-actionbar-h, 70px) + 12px + env(safe-area-inset-bottom,0px));
+    z-index:3350;
+    display:none;
+    pointer-events:none;
+  }
+  #mobile-mode-indicator.visible{
+    display:block;
+  }
+  #mobile-mode-indicator .mmi-chip{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    min-height:34px;
+    padding:7px 10px;
+    border-radius:999px;
+    border:1px solid rgba(18,198,255,.34);
+    background:linear-gradient(180deg, rgba(11,43,55,.94), rgba(10,18,26,.98));
+    color:#effcff;
+    font-size:11px;
+    font-weight:900;
+    box-shadow:0 10px 24px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  #mobile-mode-indicator .mmi-sub{
+    color:#a9d8e8;
+    font-size:10px;
+    font-weight:800;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* Smart mode bar v2 */
+  #mobile-actionbar.mobile-state-actionbar{
+    display:grid !important;
+    grid-template-columns:repeat(var(--mobile-state-cols,4), minmax(0,1fr)) !important;
+    gap:6px !important;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px)) !important;
+    align-items:stretch !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar .mobile-actionbar-extra{
+    display:none !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar button{
+    min-width:0 !important;
+    min-height:42px !important;
+    padding:6px 4px !important;
+    border-radius:13px !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar .mobile-btn-main{
+    display:block !important;
+    font-size:12px !important;
+    font-weight:900 !important;
+    line-height:1.1 !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar .mobile-btn-sub{
+    display:block !important;
+    margin-top:2px !important;
+    font-size:9.5px !important;
+    opacity:.72 !important;
+    line-height:1.1 !important;
+  }
+
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="enter-multi"],
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="finish-multi"]{
+    border-color:rgba(18,198,255,.42) !important;
+    color:#effcff !important;
+    background:linear-gradient(180deg, rgba(11,43,55,.92), rgba(10,18,26,.98)) !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="connect-start"],
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="connect-cancel"],
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="immersive-back"]{
+    border-color:rgba(255,227,109,.42) !important;
+    color:#fff5c7 !important;
+    background:linear-gradient(180deg, rgba(55,35,14,.96), rgba(26,19,10,.98)) !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="delete-selected"],
+  #mobile-actionbar.mobile-state-actionbar [data-mobile-state-action="clear-multi"]{
+    border-color:rgba(255,107,120,.42) !important;
+    color:#ffe7e9 !important;
+  }
+  #mobile-actionbar.mobile-state-actionbar button[disabled]{
+    opacity:.42 !important;
+    pointer-events:none !important;
+  }
+
+  /* Multi/select visual feedback */
+  #app.mobile-mode.mobile-multiselect-active #NL [data-id].sel .nodebox,
+  #app.mobile-mode.mobile-connect-pick-active #NL [data-id].sel .nodebox{
+    filter:drop-shadow(0 0 8px rgba(18,198,255,.26));
+  }
+
+  #app.mobile-mode.mobile-connect-pick-active #NL [data-id]{
+    cursor:crosshair;
+  }
+
+  /* Overlay manager lock classes */
+  html.mobile-overlay-manager-lock,
+  body.mobile-overlay-manager-lock{
+    overflow:hidden !important;
+    overscroll-behavior:none !important;
+  }
+  html.mobile-overlay-manager-lock #mobile-actionbar,
+  body.mobile-overlay-manager-lock #mobile-actionbar{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+
+  /* Longpress menu additions */
+  #mobile-longpress-sheet button[data-mlp-action="multi-select"],
+  #mobile-longpress-sheet button[data-mlp-action="connect-flow"]{
+    border-color:rgba(18,198,255,.42);
+    color:#effcff;
+  }
+
+  #mobile-longpress-sheet button[data-mlp-action="details"]{
+    border-color:rgba(132,145,164,.36);
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-57-mobile-modes-overlay">
+(function(){
+  'use strict';
+  if(window.__MOBILE_MODES_OVERLAY_PATCH_APPLIED__) return;
+  window.__MOBILE_MODES_OVERLAY_PATCH_APPLIED__=true;
+
+  const STATE={
+    mode:'normal',
+    activeOverlay:null,
+    connectFromId:null,
+    longpressNodeId:null,
+    lastReason:'',
+    updatedAt:Date.now()
+  };
+
+  function app(){ return document.getElementById('app'); }
+  function isMobileMode(){
+    const a=app();
+    return !!(a && a.classList.contains('mobile-mode'));
+  }
+  function nodeById(id){
+    try{ return id && typeof nb==='function' ? nb(id) : null; }catch(_e){ return null; }
+  }
+  function edgeById(id){
+    try{ return id && typeof eb==='function' ? eb(id) : null; }catch(_e){ return null; }
+  }
+  function selectedIds(){
+    try{ return [...selectedNodeIds].filter(id=>nodeById(id)); }catch(_e){ return []; }
+  }
+  function selectedCount(){ return selectedIds().length; }
+  function activeId(){
+    try{ return activeNodeId && nodeById(activeNodeId) ? activeNodeId : null; }catch(_e){ return null; }
+  }
+  function setActive(id){
+    if(!id || !nodeById(id)) return false;
+    try{
+      if(typeof setSingleSelection==='function') setSingleSelection(id);
+      else {
+        selectedNodeIds.clear();
+        selectedNodeIds.add(id);
+        activeNodeId=id;
+        selectedEdgeId=null;
+      }
+    }catch(_e){}
+    render();
+    return true;
+  }
+  function toggleSelected(id){
+    if(!id || !nodeById(id)) return false;
+    try{
+      selectedEdgeId=null;
+      if(selectedNodeIds.has(id)){
+        selectedNodeIds.delete(id);
+        if(activeNodeId===id) activeNodeId=[...selectedNodeIds].at(-1) || null;
+      }else{
+        selectedNodeIds.add(id);
+        activeNodeId=id;
+      }
+    }catch(_e){}
+    render();
+    return true;
+  }
+  function clearNodeSelection(){
+    try{
+      if(typeof clearSelection==='function') clearSelection();
+      else {
+        selectedNodeIds.clear();
+        activeNodeId=null;
+        selectedEdgeId=null;
+      }
+    }catch(_e){}
+    render();
+  }
+  function render(){
+    try{ if(typeof renderNow==='function') renderNow(); else if(typeof draw==='function') draw(); }catch(_e){}
+  }
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+  function immersiveActive(){
+    try{ return typeof isImmersiveModeActive==='function' && isImmersiveModeActive(); }catch(_e){ return false; }
+  }
+  function immersiveRootId(){
+    try{ return typeof getImmersiveRootNodeId==='function' ? getImmersiveRootNodeId() : null; }catch(_e){ return null; }
+  }
+  function labelOf(id){
+    const n=nodeById(id);
+    return n ? String(n.label||'無題') : '';
+  }
+
+  function getMobileUiState(){
+    const ids=selectedIds();
+    return {
+      ...STATE,
+      isMobile:isMobileMode(),
+      selectedNodeIds:ids,
+      selectedNodeCount:ids.length,
+      activeNodeId:activeId(),
+      activeNode:nodeById(activeId()),
+      selectedEdgeId:(()=>{try{return selectedEdgeId && edgeById(selectedEdgeId) ? selectedEdgeId : null}catch(_e){return null}})(),
+      isImmersive:immersiveActive(),
+      immersiveRootId:immersiveRootId(),
+      isMultiSelect:STATE.mode==='multiSelect',
+      isConnectPick:STATE.mode==='connectPick',
+      connectFromNode:nodeById(STATE.connectFromId),
+      timestamp:Date.now()
+    };
+  }
+
+  function setMobileUiMode(mode,options={}){
+    STATE.mode=mode || 'normal';
+    STATE.lastReason=options.reason || '';
+    STATE.updatedAt=Date.now();
+    if(mode!=='connectPick') STATE.connectFromId=options.connectFromId || null;
+    if(mode==='connectPick' && options.connectFromId) STATE.connectFromId=options.connectFromId;
+    syncStateClasses();
+    renderStateIndicator();
+    renderStateActionbar();
+  }
+
+  function syncStateClasses(){
+    const a=app();
+    if(!a) return;
+    a.classList.toggle('mobile-multiselect-active',STATE.mode==='multiSelect');
+    a.classList.toggle('mobile-connect-pick-active',STATE.mode==='connectPick');
+    a.dataset.mobileUiState=STATE.mode;
+  }
+
+  function ensureModeIndicator(){
+    let el=document.getElementById('mobile-mode-indicator');
+    if(el) return el;
+    el=document.createElement('div');
+    el.id='mobile-mode-indicator';
+    el.innerHTML='<div class="mmi-chip"><span class="mmi-main"></span><span class="mmi-sub"></span></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function renderStateIndicator(){
+    const el=ensureModeIndicator();
+    const st=getMobileUiState();
+    let main='',sub='';
+    if(st.mode==='multiSelect'){
+      main=`複数選択中：${st.selectedNodeCount}件`;
+      sub='タップで追加/解除';
+    }else if(st.mode==='connectPick'){
+      main='線でつなぐ';
+      sub=st.connectFromId ? `接続先をタップ：${labelOf(st.connectFromId)}` : '始点を選択';
+    }
+    if(main){
+      el.classList.add('visible');
+      el.querySelector('.mmi-main').textContent=main;
+      el.querySelector('.mmi-sub').textContent=sub;
+    }else{
+      el.classList.remove('visible');
+    }
+  }
+
+  const OverlayManager={
+    current:null,
+    closeAll(reason='close-all'){
+      const ids=[
+        'mobile-longpress-sheet',
+        'mobile-longpress-backdrop',
+        'mobile-rename-sheet',
+        'mobile-menu-sheet',
+        'mobile-node-sheet',
+        'mobile-backdrop',
+        'mobile-inline-editor'
+      ];
+      ids.forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        el.classList.remove('visible','open');
+        if(id.includes('backdrop')) el.style.display='none';
+        if(id==='mobile-rename-sheet' || id==='mobile-inline-editor'){
+          el.hidden=true;
+          el.style.display='none';
+        }
+      });
+      document.documentElement.classList.remove('mobile-longpress-open','mobile-rename-sheet-lock','mobile-overlay-manager-lock');
+      document.body.classList.remove('mobile-longpress-open','mobile-rename-sheet-lock','mobile-overlay-manager-lock');
+      const a=app();
+      if(a){
+        a.classList.remove('mobile-rename-open','mobile-sheet-open','mobile-editor-open','mobile-inline-edit-open');
+      }
+      STATE.activeOverlay=null;
+      STATE.updatedAt=Date.now();
+    },
+    open(name,options={}){
+      if(!isMobileMode()) return false;
+      if(options.closeOthers!==false) this.closeAll('before-open-'+name);
+      STATE.activeOverlay=name;
+      STATE.updatedAt=Date.now();
+      if(name==='longpress'){
+        openLongpressMenuV2(options);
+      }else if(name==='rename'){
+        openNameOnly(options.nodeId);
+      }else if(name==='details'){
+        openDetails(options.nodeId);
+      }else if(name==='menu'){
+        try{ if(typeof toggleMobileMenu==='function') toggleMobileMenu(); }catch(_e){}
+      }
+      syncStateClasses();
+      renderStateActionbar();
+      return true;
+    },
+    close(name=null,reason='close'){
+      if(!name || STATE.activeOverlay===name) this.closeAll(reason);
+    }
+  };
+
+  function createStateBtn(action,main,sub='',disabled=false){
+    return `<button data-mobile-state-action="${action}" type="button" ${disabled?'disabled':''}><span class="mobile-btn-main">${main}</span>${sub?`<span class="mobile-btn-sub">${sub}</span>`:''}</button>`;
+  }
+
+  function actionbarItemsForState(){
+    const st=getMobileUiState();
+    const id=st.activeNodeId || (st.selectedNodeCount===1 ? st.selectedNodeIds[0] : null) || st.immersiveRootId;
+
+    if(st.isImmersive){
+      return [
+        ['immersive-child','子追加','専心',false],
+        ['immersive-layout','整える','専心',false],
+        ['immersive-back','戻る','親マップ',false],
+      ];
+    }
+
+    if(st.mode==='connectPick'){
+      return [
+        ['connect-cancel','中止','',false],
+        ['finish-multi','複数選択','戻る',false],
+        ['fit','全体','表示',false],
+      ];
+    }
+
+    if(st.mode==='multiSelect'){
+      const two=st.selectedNodeCount===2;
+      return [
+        ['finish-multi','完了',`${st.selectedNodeCount}件`,false],
+        ['connect-start','線でつなぐ','2件選択',!two],
+        ['clear-multi','全解除','',st.selectedNodeCount===0],
+        ['delete-selected','削除','選択',st.selectedNodeCount===0],
+      ];
+    }
+
+    if(id){
+      return [
+        ['name','名前','変更',false],
+        ['details','詳細','編集',false],
+        ['child','子追加','',false],
+        ['enter-multi','複数','選択',false],
+      ];
+    }
+
+    return [
+      ['add-here','追加','中央',false],
+      ['enter-multi','複数','選択',false],
+      ['fit','全体','表示',false],
+      ['menu','メニュー','',false],
+    ];
+  }
+
+  function renderStateActionbar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || !isMobileMode()) return;
+    if(document.documentElement.classList.contains('mobile-editor-modal-lock') || document.body.classList.contains('mobile-editor-modal-lock')) return;
+    if(STATE.activeOverlay && STATE.activeOverlay!=='none') return;
+
+    const items=actionbarItemsForState();
+    bar.classList.add('mobile-state-actionbar');
+    bar.style.setProperty('--mobile-state-cols',String(Math.max(3,Math.min(4,items.length))));
+    bar.innerHTML=items.map(([a,m,s,d])=>createStateBtn(a,m,s,d)).join('');
+    try{
+      const h=Math.ceil(bar.getBoundingClientRect().height) || 70;
+      app()?.style.setProperty('--mobile-actionbar-h',h+'px');
+    }catch(_e){}
+  }
+
+  function clickNativeAction(action){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar) return false;
+    let btn=bar.querySelector(`[data-mobile-action="${action}"]`);
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.dataset.mobileAction=action;
+      btn.style.display='none';
+      bar.appendChild(btn);
+      setTimeout(()=>btn.remove(),0);
+    }
+    btn.click();
+    return true;
+  }
+
+  function openNameOnly(id){
+    if(!id || !nodeById(id)) return false;
+    setActive(id);
+    STATE.activeOverlay='rename';
+    clickNativeAction('edit');
+    setTimeout(()=>{ STATE.activeOverlay='rename'; renderStateIndicator(); },0);
+    return true;
+  }
+
+  function openDetails(id){
+    if(!id || !nodeById(id)) return false;
+    setActive(id);
+    OverlayManager.closeAll('details-open');
+    STATE.activeOverlay='details';
+    if(typeof openEp==='function') openEp(id);
+    return true;
+  }
+
+  function addChildTo(id){
+    if(!id || !nodeById(id)) return false;
+    setActive(id);
+    return clickNativeAction('child');
+  }
+
+  function addStandalone(){
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    const anchor=(()=>{
+      try{ return typeof getViewportCenterWorld==='function' ? getViewportCenterWorld() : {x:0,y:0}; }catch(_e){ return {x:0,y:0};}
+    })();
+    const node=typeof createStandaloneNode==='function' ? createStandaloneNode({label:'',subtext:'',status:'none',fitMode:'shrink',anchor}) : null;
+    if(node){
+      setActive(node.id);
+      render();
+      setTimeout(()=>openNameOnly(node.id),0);
+    }
+    return !!node;
+  }
+
+  function enterMultiSelect(seedId=null){
+    if(seedId && nodeById(seedId)){
+      try{
+        selectedNodeIds.add(seedId);
+        activeNodeId=seedId;
+        selectedEdgeId=null;
+      }catch(_e){}
+      render();
+    }
+    setMobileUiMode('multiSelect',{reason:'enter-multi'});
+    toast('複数選択モード：ノードをタップで追加/解除');
+    return true;
+  }
+
+  function finishMultiSelect(){
+    setMobileUiMode('normal',{reason:'finish-multi'});
+    toast('複数選択を終了しました');
+    return true;
+  }
+
+  function clearMultiSelect(){
+    clearNodeSelection();
+    setMobileUiMode('multiSelect',{reason:'clear-multi'});
+    return true;
+  }
+
+  function deleteSelected(){
+    const ids=selectedIds();
+    if(!ids.length) return false;
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    if(typeof deleteNodes==='function') deleteNodes(ids);
+    clearNodeSelection();
+    setMobileUiMode('normal',{reason:'delete-selected'});
+    toast('選択ノードを削除しました','warn');
+    return true;
+  }
+
+  function startConnectFlow(){
+    const ids=selectedIds();
+    if(ids.length===2){
+      const from=activeId() && ids.includes(activeId()) ? activeId() : ids[0];
+      const to=ids.find(id=>id!==from);
+      return connectNodes(from,to);
+    }
+    const from=activeId() || ids[0];
+    if(!from || !nodeById(from)){
+      toast('始点にするノードを選択してください','warn');
+      return false;
+    }
+    try{
+      if(!selectedNodeIds.has(from)){
+        selectedNodeIds.clear();
+        selectedNodeIds.add(from);
+      }
+      activeNodeId=from;
+      selectedEdgeId=null;
+    }catch(_e){}
+    STATE.connectFromId=from;
+    setMobileUiMode('connectPick',{connectFromId:from,reason:'start-connect'});
+    toast('接続先のノードをタップしてください');
+    return true;
+  }
+
+  function cancelConnectFlow(){
+    STATE.connectFromId=null;
+    setMobileUiMode('multiSelect',{reason:'cancel-connect'});
+    toast('線つなぎを中止しました');
+    return true;
+  }
+
+  function connectNodes(from,to){
+    if(!from || !to || from===to || !nodeById(from) || !nodeById(to)) return false;
+    if((edges||[]).some(e=>e.from===from && e.to===to)){
+      toast('同じ向きの線はすでにあります','warn');
+      setMobileUiMode('multiSelect',{reason:'connect-duplicate'});
+      return false;
+    }
+    try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+    const edgeId='e'+(nid++);
+    const edge=typeof normalizeEdge==='function'
+      ? normalizeEdge({id:edgeId,from,to,label:''})
+      : {id:edgeId,from,to,label:''};
+    edges.push(edge);
+    try{
+      selectedEdgeId=edge.id;
+      selectedNodeIds.clear();
+      activeNodeId=null;
+    }catch(_e){}
+    STATE.connectFromId=null;
+    setMobileUiMode('normal',{reason:'connected'});
+    render();
+    toast('線でつなぎました');
+    return true;
+  }
+
+  function layoutCurrent(){
+    const id=immersiveRootId() || activeId() || selectedIds()[0];
+    if(id && typeof applyChildDepthAwareLayout==='function') return applyChildDepthAwareLayout(id,'radial');
+    return false;
+  }
+
+  function runStateAction(action){
+    const st=getMobileUiState();
+    const id=st.activeNodeId || (st.selectedNodeCount===1 ? st.selectedNodeIds[0] : null) || st.immersiveRootId;
+
+    if(action==='name') return openNameOnly(id);
+    if(action==='details') return openDetails(id);
+    if(action==='child') return addChildTo(id);
+    if(action==='add-here') return addStandalone();
+    if(action==='enter-multi') return enterMultiSelect(id);
+    if(action==='finish-multi') return finishMultiSelect();
+    if(action==='clear-multi') return clearMultiSelect();
+    if(action==='delete-selected') return deleteSelected();
+    if(action==='connect-start') return startConnectFlow();
+    if(action==='connect-cancel') return cancelConnectFlow();
+    if(action==='immersive-child') return addChildTo(st.immersiveRootId || id);
+    if(action==='immersive-layout') return layoutCurrent();
+    if(action==='immersive-back'){
+      try{ if(typeof exitImmersiveMode==='function') return exitImmersiveMode({reason:'mobile-bottom'}); }catch(_e){}
+      return false;
+    }
+    if(action==='fit'){
+      try{ if(typeof fitV==='function') fitV(); }catch(_e){}
+      return true;
+    }
+    if(action==='menu'){
+      try{ if(typeof toggleMobileMenu==='function') return toggleMobileMenu(); }catch(_e){}
+      return false;
+    }
+    return false;
+  }
+
+  function interceptActionbar(){
+    const bar=document.getElementById('mobile-actionbar');
+    if(!bar || bar.__mobileModesOverlayClickPatched) return;
+    bar.__mobileModesOverlayClickPatched=true;
+    bar.addEventListener('click',e=>{
+      const btn=e.target.closest('button[data-mobile-state-action]');
+      if(!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      runStateAction(btn.dataset.mobileStateAction);
+      setTimeout(()=>{ renderStateIndicator(); renderStateActionbar(); },0);
+      setTimeout(()=>{ renderStateIndicator(); renderStateActionbar(); },160);
+    },true);
+  }
+
+  function ensureLongpressSheet(){
+    let backdrop=document.getElementById('mobile-longpress-backdrop');
+    let sheet=document.getElementById('mobile-longpress-sheet');
+    if(!backdrop){
+      backdrop=document.createElement('div');
+      backdrop.id='mobile-longpress-backdrop';
+      document.body.appendChild(backdrop);
+      backdrop.addEventListener('click',()=>OverlayManager.closeAll('longpress-backdrop'));
+    }
+    if(!sheet){
+      sheet=document.createElement('div');
+      sheet.id='mobile-longpress-sheet';
+      sheet.innerHTML='<div class="mlp-panel"><div class="mlp-head"><div><div class="mlp-title"></div><div class="mlp-sub"></div></div><button class="mlp-close" type="button">閉じる</button></div><div class="mlp-grid"></div></div>';
+      document.body.appendChild(sheet);
+      sheet.querySelector('.mlp-close')?.addEventListener('click',()=>OverlayManager.closeAll('longpress-close'));
+      sheet.addEventListener('click',e=>{
+        const btn=e.target.closest('button[data-mlp-action]');
+        if(!btn) return;
+        const action=btn.dataset.mlpAction;
+        const nodeId=sheet.dataset.nodeId || '';
+        OverlayManager.closeAll('longpress-action');
+        runLongpressAction(action,nodeId);
+      });
+    }
+    return {backdrop,sheet};
+  }
+
+  function longpressItems(nodeId,source){
+    if(source==='blank'){
+      return [
+        ['add-blank','ここに追加'],
+        ['enter-multi','複数選択モード'],
+        ['fit','全体表示'],
+        ['menu','メニュー'],
+      ];
+    }
+    return [
+      ['name','名前変更'],
+      ['details','詳細編集'],
+      ['child','子を追加'],
+      ['multi-select','複数選択モード'],
+      ['connect-flow','線でつなぐ'],
+      ['immersive',immersiveActive()?'専心を解く':'専心'],
+      ['layout-radial','子を放射で整える'],
+      ['delete','削除'],
+    ];
+  }
+
+  function openLongpressMenuV2({nodeId=null,source='node'}={}){
+    const {backdrop,sheet}=ensureLongpressSheet();
+    const node=nodeById(nodeId);
+    if(nodeId && node) setActive(nodeId);
+    STATE.activeOverlay='longpress';
+    STATE.longpressNodeId=nodeId;
+    sheet.dataset.nodeId=nodeId || '';
+    sheet.dataset.source=source;
+
+    sheet.querySelector('.mlp-title').textContent=source==='blank' ? 'キャンバス操作' : (node?.label || 'ノード操作');
+    sheet.querySelector('.mlp-sub').textContent=source==='blank' ? '空白を長押ししました' : '長押しメニュー';
+    sheet.querySelector('.mlp-grid').innerHTML=longpressItems(nodeId,source)
+      .map(([action,label])=>`<button data-mlp-action="${action}" type="button">${label}</button>`)
+      .join('');
+
+    backdrop.classList.add('visible');
+    sheet.classList.add('visible');
+    document.documentElement.classList.add('mobile-longpress-open','mobile-overlay-manager-lock');
+    document.body.classList.add('mobile-longpress-open','mobile-overlay-manager-lock');
+    return true;
+  }
+
+  function runLongpressAction(action,nodeId){
+    if(action==='name') return openNameOnly(nodeId);
+    if(action==='details') return openDetails(nodeId);
+    if(action==='child') return addChildTo(nodeId);
+    if(action==='multi-select') return enterMultiSelect(nodeId);
+    if(action==='connect-flow'){
+      if(nodeId) setActive(nodeId);
+      return startConnectFlow();
+    }
+    if(action==='immersive'){
+      if(immersiveActive()){
+        try{ if(typeof exitImmersiveMode==='function') return exitImmersiveMode({reason:'mobile-longpress'}); }catch(_e){}
+        return false;
+      }
+      if(nodeId && typeof enterImmersiveMode==='function') return enterImmersiveMode(nodeId,{reason:'mobile-longpress'});
+      return false;
+    }
+    if(action==='layout-radial'){
+      if(nodeId && typeof applyChildDepthAwareLayout==='function') return applyChildDepthAwareLayout(nodeId,'radial');
+      return false;
+    }
+    if(action==='delete'){
+      if(nodeId) {
+        try{ if(typeof snapshot==='function') snapshot(); }catch(_e){}
+        if(typeof deleteNodes==='function') deleteNodes([nodeId]);
+        render();
+        toast('ノードを削除しました','warn');
+      }
+      return true;
+    }
+    if(action==='add-blank') return addStandalone();
+    if(action==='enter-multi') return enterMultiSelect();
+    if(action==='fit') return runStateAction('fit');
+    if(action==='menu') return runStateAction('menu');
+  }
+
+  function setupSelectionModeTap(){
+    const svg=document.getElementById('sv');
+    if(!svg || svg.__mobileStateTapPatched) return;
+    svg.__mobileStateTapPatched=true;
+
+    svg.addEventListener('click',e=>{
+      if(!isMobileMode()) return;
+      const st=getMobileUiState();
+      if(st.mode!=='multiSelect' && st.mode!=='connectPick') return;
+      const g=e.target.closest?.('[data-id]');
+      if(!g) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+
+      const id=g.dataset.id;
+      if(st.mode==='multiSelect'){
+        toggleSelected(id);
+        renderStateIndicator();
+        renderStateActionbar();
+        return;
+      }
+      if(st.mode==='connectPick'){
+        if(!STATE.connectFromId){
+          STATE.connectFromId=id;
+          setActive(id);
+          renderStateIndicator();
+          renderStateActionbar();
+          return;
+        }
+        connectNodes(STATE.connectFromId,id);
+        return;
+      }
+    },true);
+
+    svg.addEventListener('touchend',e=>{
+      if(!isMobileMode()) return;
+      const st=getMobileUiState();
+      if(st.mode!=='multiSelect' && st.mode!=='connectPick') return;
+      const g=e.target.closest?.('[data-id]');
+      if(!g) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+      const id=g.dataset.id;
+      if(st.mode==='multiSelect') toggleSelected(id);
+      else if(st.mode==='connectPick') {
+        if(!STATE.connectFromId){ STATE.connectFromId=id; setActive(id); }
+        else connectNodes(STATE.connectFromId,id);
+      }
+      renderStateIndicator();
+      renderStateActionbar();
+    },{passive:false,capture:true});
+  }
+
+  /* Longpress override: reuse existing if present, otherwise add minimal listener */
+  function setupLongpressFallback(){
+    const svg=document.getElementById('sv');
+    if(!svg || svg.__mobileModesLongpressFallbackPatched) return;
+    svg.__mobileModesLongpressFallbackPatched=true;
+
+    let timer=0,start=null;
+    function cancel(){ if(timer) clearTimeout(timer); timer=0; start=null; }
+
+    svg.addEventListener('touchstart',e=>{
+      if(!isMobileMode() || e.touches.length!==1) return;
+      const t=e.touches[0];
+      const g=e.target.closest?.('[data-id]');
+      const edge=e.target.closest?.('[data-eid]');
+      const nodeId=g?.dataset?.id || null;
+      const source=nodeId ? 'node' : (!edge ? 'blank' : null);
+      if(!source) return;
+      start={x:t.clientX,y:t.clientY,nodeId,source};
+      timer=setTimeout(()=>{
+        timer=0;
+        OverlayManager.open('longpress',{nodeId,source});
+        try{ if(navigator.vibrate) navigator.vibrate(10); }catch(_e){}
+      },560);
+    },{passive:true,capture:true});
+
+    svg.addEventListener('touchmove',e=>{
+      if(!start || !e.touches.length) return;
+      const t=e.touches[0];
+      if(Math.hypot(t.clientX-start.x,t.clientY-start.y)>12) cancel();
+    },{passive:true,capture:true});
+
+    ['touchend','touchcancel'].forEach(type=>svg.addEventListener(type,cancel,{passive:true,capture:true}));
+  }
+
+  function patchExistingLongpressApi(){
+    if(window.__mobileUsabilityCore && typeof window.__mobileUsabilityCore.openLongpressMenu==='function'){
+      window.__mobileUsabilityCore.openLongpressMenu=(opts={})=>OverlayManager.open('longpress',opts);
+      window.__mobileUsabilityCore.closeLongpressMenu=()=>OverlayManager.closeAll('longpress-close');
+      window.__mobileUsabilityCore.openNameOnly=openNameOnly;
+      window.__mobileUsabilityCore.openDetails=openDetails;
+      window.__mobileUsabilityCore.renderSmartActionbar=renderStateActionbar;
+      window.__mobileUsabilityCore.runSmartAction=runStateAction;
+    }
+  }
+
+  function sync(){
+    if(!isMobileMode()) return;
+    interceptActionbar();
+    setupSelectionModeTap();
+    setupLongpressFallback();
+    patchExistingLongpressApi();
+    syncStateClasses();
+    renderStateIndicator();
+    if(!STATE.activeOverlay) renderStateActionbar();
+  }
+
+  const observer=new MutationObserver(()=>setTimeout(sync,0));
+  function start(){
+    ensureModeIndicator();
+    ensureLongpressSheet();
+    interceptActionbar();
+    setupSelectionModeTap();
+    setupLongpressFallback();
+    patchExistingLongpressApi();
+    const bar=document.getElementById('mobile-actionbar');
+    if(bar) observer.observe(bar,{childList:true,subtree:false,attributes:true,attributeFilter:['class','style','hidden']});
+    const a=app();
+    if(a) observer.observe(a,{attributes:true,attributeFilter:['class','data-mobile-mode']});
+    sync();
+    setInterval(sync,600);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+
+  window.MobileUIState=STATE;
+  window.getMobileUiState=getMobileUiState;
+  window.setMobileUiMode=setMobileUiMode;
+  window.MobileOverlayManager=OverlayManager;
+  window.__mobileModesOverlay={
+    getMobileUiState,
+    setMobileUiMode,
+    enterMultiSelect,
+    finishMultiSelect,
+    startConnectFlow,
+    cancelConnectFlow,
+    renderStateActionbar,
+    OverlayManager
+  };
+})();
+</script>
