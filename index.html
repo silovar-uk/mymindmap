@@ -21724,3 +21724,292 @@ div.mmi-chip{
   window.purgeLegacyMobileUi = purgeLegacyMobileUi;
 })();
 </script>
+
+
+<style id="patch-v1-8-66-simple-url-share-style">
+/* GZIP表示を完全にやめて、URL直詰め方式にする */
+#b-share-url-hi.simple-share-active{
+  border-color:rgba(132,145,164,.28) !important;
+  background:linear-gradient(180deg, rgba(29,36,48,.92), rgba(14,19,27,.96)) !important;
+  color:var(--sf-text-1,#d6dee8) !important;
+}
+#b-share-url-hi.simple-share-active::after,
+#b-share-url-hi.compressed-share-active::after{
+  content:none !important;
+  display:none !important;
+}
+</style>
+
+
+<script id="patch-v1-8-66-simple-url-share">
+(function(){
+  'use strict';
+  if(window.__SIMPLE_URL_SHARE_PATCH_APPLIED__) return;
+  window.__SIMPLE_URL_SHARE_PATCH_APPLIED__=true;
+
+  const SIMPLE_SHARE_PARAM='mms';
+  const LEGACY_PARAM=(typeof SHARE_URL_PARAM==='string' ? SHARE_URL_PARAM : 'mm');
+  const GZIP_PARAM=(typeof COMPRESSED_SHARE_PARAM==='string' ? COMPRESSED_SHARE_PARAM : 'mmz');
+  const SIMPLE_URL_SAFE_LIMIT=7000;
+  const SIMPLE_URL_WARN_LIMIT=12000;
+
+  function toast(msg,type){
+    try{ if(typeof showToast==='function') showToast(msg,type); }catch(_e){}
+  }
+
+  function stripEmpty(value){
+    if(Array.isArray(value)) return value.map(stripEmpty);
+    if(value && typeof value==='object'){
+      const out={};
+      Object.entries(value).forEach(([k,v])=>{
+        if(v===undefined || v===null || v==='') return;
+        out[k]=stripEmpty(v);
+      });
+      return out;
+    }
+    return value;
+  }
+
+  function toBase64UrlFromString(str){
+    const bytes=new TextEncoder().encode(str);
+    let binary='';
+    const chunk=0x8000;
+    for(let i=0;i<bytes.length;i+=chunk){
+      binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+    }
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  function fromBase64UrlToString(value){
+    const normalized=String(value||'').replace(/-/g,'+').replace(/_/g,'/');
+    const padding=normalized.length%4===0 ? '' : '='.repeat(4-(normalized.length%4));
+    const binary=atob(normalized+padding);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function getNodeUrl(n){
+    try{
+      if(typeof getNodeRelatedUrl==='function') return getNodeRelatedUrl(n);
+    }catch(_e){}
+    return n?.relatedUrl || n?.url || '';
+  }
+
+  function buildSimpleShareObject(){
+    const nodeIds=new Set((nodes||[]).filter(Boolean).map(n=>n.id));
+    const focusSeedId=(()=>{
+      try{ return typeof getFocusSeedNodeId==='function' ? getFocusSeedNodeId() : (meta?.focusNodeId || null); }catch(_e){ return meta?.focusNodeId || null; }
+    })();
+    const focusEnabled=!!meta?.focusMode && focusSeedId && nodeIds.has(focusSeedId);
+
+    return stripEmpty({
+      v:5,
+      z:'plain',
+      slim:1,
+      note:'simple-url-no-gzip',
+      m:{
+        t:meta?.title && meta.title!=='案件マインドマップ' ? meta.title : undefined,
+        l:meta?.layoutMode && meta.layoutMode!=='radial' ? meta.layoutMode : undefined,
+        h:meta?.hideDone ? 1 : undefined,
+        p:meta?.presentationMode ? 1 : undefined,
+        cm:(typeof getNodeColoringMode==='function' && getNodeColoringMode()!=='manual') ? getNodeColoringMode() : undefined,
+        fm:focusEnabled ? 1 : undefined,
+        fi:focusEnabled ? focusSeedId : undefined
+      },
+      n:(nodes||[]).filter(Boolean).map(n=>stripEmpty({
+        i:n.id,
+        l:n.label,
+        s:n.subtext || undefined,
+        u:getNodeUrl(n) || undefined,
+        r:n.status && n.status!=='none' ? n.status : undefined,
+        o:n.order!==1 ? n.order : undefined,
+        k:n.collapsed ? 1 : undefined,
+        w:n.fitMode==='wrap' ? 1 : undefined,
+        f:n.favorite ? 1 : undefined
+      })),
+      e:(edges||[])
+        .filter(e=>e && nodeIds.has(e.from) && nodeIds.has(e.to))
+        .map(e=>e.label ? [e.from,e.to,e.label] : [e.from,e.to])
+    });
+  }
+
+  function expandSimpleShareObject(obj){
+    if(!obj || !Array.isArray(obj.n) || obj.v!==5) return null;
+    const focusSeedId=obj.m?.fi;
+    const hasFocus=!!obj.m?.fm && typeof focusSeedId==='string' && obj.n.some(n=>String(n?.i||'')===focusSeedId);
+    return {
+      schemaVersion:'1.0',
+      meta:{
+        title:obj.m?.t || '案件マインドマップ',
+        layoutMode:obj.m?.l || 'horizontal',
+        hideDone:!!obj.m?.h,
+        focusMode:hasFocus,
+        focusNodeId:hasFocus ? focusSeedId : null,
+        presentationMode:!!obj.m?.p,
+        coloringMode:(obj.m?.cm==='depth' || obj.m?.cm==='branch') ? obj.m.cm : 'manual'
+      },
+      nodes:obj.n.map((n,idx)=>({
+        id:n.i || `n${idx+1}`,
+        label:n.l || '新規案件',
+        subtext:n.s || '',
+        relatedUrl:n.u || '',
+        status:n.r || 'none',
+        collapsed:!!n.k,
+        fitMode:n.w ? 'wrap' : 'shrink',
+        order:Number.isFinite(n.o) ? n.o : 1,
+        favorite:!!n.f,
+        createdAt:null,
+        x:0,
+        y:0,
+        color:(typeof PRESETS!=='undefined' && PRESETS[idx % PRESETS.length]) ? PRESETS[idx % PRESETS.length] : undefined
+      })),
+      edges:(obj.e||[]).map((e,idx)=>({
+        id:`e${idx+1}`,
+        from:Array.isArray(e) ? e[0] : e?.from,
+        to:Array.isArray(e) ? e[1] : e?.to,
+        label:Array.isArray(e) ? (e[2]||'') : (e?.label||'')
+      }))
+    };
+  }
+
+  function buildSimpleShareUrl(){
+    const shareObject=buildSimpleShareObject();
+    const payload=JSON.stringify(shareObject);
+    const encoded=toBase64UrlFromString(payload);
+    const url=new URL(window.location.href);
+    url.searchParams.delete(GZIP_PARAM);
+    url.searchParams.delete(LEGACY_PARAM);
+    url.searchParams.set(SIMPLE_SHARE_PARAM,encoded);
+    return {
+      url:url.toString(),
+      encodedLength:encoded.length,
+      urlLength:url.toString().length,
+      payloadLength:payload.length,
+      nodeCount:shareObject.n.length,
+      edgeCount:shareObject.e.length,
+      compression:'none / JSON → base64url',
+      shareObject
+    };
+  }
+
+  function formatSimpleShareStats(result){
+    return [
+      'URLを生成しました。',
+      `ノード数: ${result.nodeCount}`,
+      `矢印数: ${result.edgeCount}`,
+      `URL文字数: ${result.urlLength}`,
+      `payload文字数: ${result.payloadLength}`,
+      `方式: ${result.compression}`,
+      '除外: x / y / color',
+      result.urlLength>SIMPLE_URL_WARN_LIMIT ? `注意: ${SIMPLE_URL_WARN_LIMIT}文字を超えています。開けない環境があるため、長すぎる場合はJSON共有を使ってください。` :
+      result.urlLength>SIMPLE_URL_SAFE_LIMIT ? `注意: 目安 ${SIMPLE_URL_SAFE_LIMIT}文字を超えています。` : ''
+    ].filter(Boolean).join('\n');
+  }
+
+  async function copySimpleShareUrl(){
+    const btn=document.getElementById('b-share-url-hi');
+    const oldText=btn ? btn.textContent : '';
+    try{
+      if(btn) btn.textContent='URL生成中…';
+      const result=buildSimpleShareUrl();
+      const stats=formatSimpleShareStats(result);
+      if(typeof setIoStatus==='function'){
+        setIoStatus(stats,result.urlLength>SIMPLE_URL_SAFE_LIMIT?'warn':'ok');
+      }
+      const message=result.urlLength>SIMPLE_URL_SAFE_LIMIT
+        ? 'URLでコピーしました。長めのURLです。'
+        : 'URLでコピーしました。';
+      if(typeof copyTextToClipboard==='function'){
+        return await copyTextToClipboard(result.url,{successMessage:message,buttonId:'b-share-url-hi'});
+      }
+      await navigator.clipboard.writeText(result.url);
+      toast(message);
+      return true;
+    }catch(err){
+      console.error('[simple-url-share]',err);
+      if(typeof setIoStatus==='function') setIoStatus('URL生成に失敗しました: '+err.message+'\nJSONコピーを使ってください。','err');
+      toast('URL生成に失敗しました','warn');
+      return false;
+    }finally{
+      if(btn) setTimeout(()=>{ if(btn.textContent==='URL生成中…') btn.textContent=oldText || 'URLでコピー'; },500);
+    }
+  }
+
+  function loadSimpleShareMapFromUrl(){
+    const params=new URLSearchParams(window.location.search);
+    const encoded=params.get(SIMPLE_SHARE_PARAM);
+    if(!encoded) return false;
+    try{
+      const raw=fromBase64UrlToString(encoded);
+      const parsed=expandSimpleShareObject(JSON.parse(raw));
+      if(!parsed || !parsed.nodes?.length) throw new Error('共有URLの内容が空です');
+      if(typeof replaceMapData==='function') replaceMapData(parsed,{toastMessage:'URLから読み込みました',skipHistory:true});
+      else throw new Error('replaceMapData が見つかりません');
+      try{
+        if(typeof applyAutoLayout==='function') applyAutoLayout(parsed.meta?.layoutMode || 'horizontal');
+        if(typeof placeGraphAtViewportCenter==='function') placeGraphAtViewportCenter({resetViewport:true});
+        if(typeof renderNow==='function') renderNow();
+        else if(typeof draw==='function') draw();
+      }catch(_e){}
+      if(typeof setIoStatus==='function') setIoStatus('URLから読み込みました。\n座標・色はURLから除外されているため、自動レイアウトと現行配色で再構成しました。','ok');
+      return true;
+    }catch(err){
+      console.error('[simple-url-share-load]',err);
+      toast('URLの読み込みに失敗しました','warn');
+      if(typeof setIoStatus==='function') setIoStatus('URLの読み込みに失敗しました: '+err.message,'err');
+      return false;
+    }
+  }
+
+  function setupSimpleShareUi(){
+    let btn=document.getElementById('b-share-url-hi');
+    if(!btn) return;
+
+    // 既存のGZIP用click listenerは stopImmediatePropagation してくるため、cloneして完全に剥がす。
+    if(!btn.__simpleShareButton){
+      const clone=btn.cloneNode(true);
+      btn.replaceWith(clone);
+      btn=clone;
+      btn.__simpleShareButton=true;
+    }
+
+    btn.textContent='URLでコピー';
+    btn.classList.remove('compressed-share-active');
+    btn.classList.add('simple-share-active');
+    btn.title='GZIPを使わず、JSONをbase64url化してURLに入れます。座標・色はURLから除外します。';
+
+    if(!btn.__simpleShareBound){
+      btn.__simpleShareBound=true;
+      btn.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+        copySimpleShareUrl();
+      },true);
+    }
+  }
+
+  // 古いGZIP関数名を呼ばれても、シンプルURL方式に流す。
+  window.buildSimpleShareUrl=buildSimpleShareUrl;
+  window.copySimpleShareUrl=copySimpleShareUrl;
+  window.loadSimpleShareMapFromUrl=loadSimpleShareMapFromUrl;
+  window.buildCompressedShareUrl=buildSimpleShareUrl;
+  window.copyCompressedShareUrl=copySimpleShareUrl;
+  window.loadCompressedShareMapFromUrl=loadSimpleShareMapFromUrl;
+
+  function start(){
+    setupSimpleShareUi();
+    loadSimpleShareMapFromUrl();
+    setTimeout(setupSimpleShareUi,100);
+    setTimeout(setupSimpleShareUi,600);
+    setTimeout(setupSimpleShareUi,1600);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+})();
+</script>
