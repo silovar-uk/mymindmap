@@ -21464,3 +21464,263 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   window.purgeOldMmiChips=removeOldMmiChips;
 })();
 </script>
+
+
+<style id="patch-v1-8-65-legacy-mobile-ui-final-purge-style">
+/*
+  FINAL PURGE:
+  旧スマホOverlayの残骸は、画面幅や mobile-mode 判定に依存せず常に無効化する。
+  新UIは #mobile-overlay-layer / #mobile-overlay-mode-chip / mobile-reset-actionbar のみ使用。
+*/
+#mobile-longpress-sheet,
+#mobile-longpress-backdrop,
+#mobile-move-mode-indicator,
+#mobile-mode-indicator{
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+  width:0 !important;
+  height:0 !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  max-width:0 !important;
+  max-height:0 !important;
+  overflow:hidden !important;
+  position:fixed !important;
+  left:-100000px !important;
+  right:auto !important;
+  top:auto !important;
+  bottom:auto !important;
+  transform:none !important;
+  z-index:-1 !important;
+}
+
+#mobile-longpress-sheet *,
+#mobile-longpress-backdrop *,
+#mobile-move-mode-indicator *,
+#mobile-mode-indicator *,
+.mlp-panel,
+.mlp-head,
+.mlp-title,
+.mlp-sub,
+.mlp-grid,
+.mlp-close,
+.mmi-chip,
+.mmi-main,
+.mmi-sub{
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+  width:0 !important;
+  height:0 !important;
+  max-width:0 !important;
+  max-height:0 !important;
+  overflow:hidden !important;
+}
+
+/* 旧クラスがbody/htmlに残っても副作用を持たせない */
+html.mobile-longpress-open,
+body.mobile-longpress-open,
+html.mobile-overlay-manager-lock,
+body.mobile-overlay-manager-lock,
+html.mobile-rename-sheet-lock,
+body.mobile-rename-sheet-lock{
+  overflow:auto !important;
+}
+
+/* 念のため、旧UI由来の固定位置ボタン断片も画面外へ */
+button.mlp-close,
+div.mlp-head,
+div.mlp-panel,
+div.mmi-chip{
+  position:fixed !important;
+  left:-100000px !important;
+  top:auto !important;
+  right:auto !important;
+  bottom:auto !important;
+}
+</style>
+
+
+<script id="patch-v1-8-65-legacy-mobile-ui-final-purge">
+(function(){
+  'use strict';
+  if(window.__LEGACY_MOBILE_UI_FINAL_PURGE_APPLIED__) return;
+  window.__LEGACY_MOBILE_UI_FINAL_PURGE_APPLIED__=true;
+
+  const LEGACY_IDS = [
+    'mobile-longpress-sheet',
+    'mobile-longpress-backdrop',
+    'mobile-move-mode-indicator',
+    'mobile-mode-indicator'
+  ];
+
+  const LEGACY_SELECTORS = [
+    '#mobile-longpress-sheet',
+    '#mobile-longpress-backdrop',
+    '#mobile-move-mode-indicator',
+    '#mobile-mode-indicator',
+    '.mlp-panel',
+    '.mlp-head',
+    '.mlp-title',
+    '.mlp-sub',
+    '.mlp-grid',
+    '.mlp-close',
+    '.mmi-chip',
+    '.mmi-main',
+    '.mmi-sub'
+  ];
+
+  let purgeScheduled = false;
+
+  function removeNodeSafe(el){
+    if(!el || !el.parentNode) return;
+    try{ el.remove(); }catch(_e){
+      try{ el.parentNode.removeChild(el); }catch(_e2){}
+    }
+  }
+
+  function purgeLegacyMobileUi(){
+    purgeScheduled = false;
+
+    // 旧IDは親ごと削除
+    LEGACY_IDS.forEach(id => removeNodeSafe(document.getElementById(id)));
+
+    // IDなしで残る旧クラス断片も削除
+    document.querySelectorAll(LEGACY_SELECTORS.join(',')).forEach(el => {
+      // 新Overlay配下は .mol-* / .momc-* なので、ここに該当するものは旧UIとして削除してよい
+      removeNodeSafe(el);
+    });
+
+    // 旧ロッククラスも掃除
+    document.documentElement.classList.remove(
+      'mobile-longpress-open',
+      'mobile-overlay-manager-lock',
+      'mobile-rename-sheet-lock'
+    );
+    document.body.classList.remove(
+      'mobile-longpress-open',
+      'mobile-overlay-manager-lock',
+      'mobile-rename-sheet-lock'
+    );
+  }
+
+  function schedulePurge(){
+    if(purgeScheduled) return;
+    purgeScheduled = true;
+    requestAnimationFrame(purgeLegacyMobileUi);
+  }
+
+  // 旧APIを新Overlayへ寄せる。旧DOMを再生成させない。
+  function openMobileSheetCompat(opts){
+    try{
+      if(typeof window.openMobileSheet === 'function'){
+        if(opts && opts.source === 'blank') return window.openMobileSheet('blank', opts);
+        return window.openMobileSheet('node', opts || {});
+      }
+    }catch(_e){}
+    schedulePurge();
+    return false;
+  }
+
+  function closeMobileSheetCompat(){
+    try{
+      if(typeof window.closeMobileSheet === 'function') return window.closeMobileSheet('legacy-close');
+    }catch(_e){}
+    schedulePurge();
+    return true;
+  }
+
+  function patchLegacyApis(){
+    try{ window.openLongpressMenu = openMobileSheetCompat; }catch(_e){}
+    try{ window.closeLongpressMenu = closeMobileSheetCompat; }catch(_e){}
+    try{ window.ensureLongpressMenu = function(){ schedulePurge(); return null; }; }catch(_e){}
+    try{ window.ensureModeIndicator = function(){ schedulePurge(); return null; }; }catch(_e){}
+    try{
+      if(window.__mobileUsabilityCore){
+        window.__mobileUsabilityCore.openLongpressMenu = openMobileSheetCompat;
+        window.__mobileUsabilityCore.closeLongpressMenu = closeMobileSheetCompat;
+      }
+      if(window.MobileOverlayManager){
+        window.MobileOverlayManager.open = function(name, opts){
+          if(name === 'longpress') return openMobileSheetCompat(opts);
+          return openMobileSheetCompat(opts);
+        };
+        window.MobileOverlayManager.close = closeMobileSheetCompat;
+        window.MobileOverlayManager.closeAll = closeMobileSheetCompat;
+      }
+    }catch(_e){}
+  }
+
+  // appendChild / insertBefore 経由で旧DOMが追加された瞬間も落とす。
+  const originalAppendChild = Element.prototype.appendChild;
+  if(!originalAppendChild.__legacyMobilePurgeWrapped){
+    const wrappedAppendChild = function(child){
+      const result = originalAppendChild.call(this, child);
+      try{
+        if(child && child.nodeType === 1){
+          const id = child.id || '';
+          const cls = child.className || '';
+          if(
+            LEGACY_IDS.includes(id) ||
+            String(cls).match(/\b(mlp-|mmi-|mlp-close|mmi-chip)\b/)
+          ){
+            schedulePurge();
+          }
+        }
+      }catch(_e){}
+      return result;
+    };
+    wrappedAppendChild.__legacyMobilePurgeWrapped = true;
+    Element.prototype.appendChild = wrappedAppendChild;
+  }
+
+  const originalInsertBefore = Element.prototype.insertBefore;
+  if(!originalInsertBefore.__legacyMobilePurgeWrapped){
+    const wrappedInsertBefore = function(child, ref){
+      const result = originalInsertBefore.call(this, child, ref);
+      try{
+        if(child && child.nodeType === 1){
+          const id = child.id || '';
+          const cls = child.className || '';
+          if(
+            LEGACY_IDS.includes(id) ||
+            String(cls).match(/\b(mlp-|mmi-|mlp-close|mmi-chip)\b/)
+          ){
+            schedulePurge();
+          }
+        }
+      }catch(_e){}
+      return result;
+    };
+    wrappedInsertBefore.__legacyMobilePurgeWrapped = true;
+    Element.prototype.insertBefore = wrappedInsertBefore;
+  }
+
+  const observer = new MutationObserver(schedulePurge);
+
+  function start(){
+    patchLegacyApis();
+    purgeLegacyMobileUi();
+    observer.observe(document.documentElement, {
+      childList:true,
+      subtree:true,
+      attributes:true,
+      attributeFilter:['id','class','style']
+    });
+    setTimeout(purgeLegacyMobileUi, 50);
+    setTimeout(purgeLegacyMobileUi, 250);
+    setTimeout(purgeLegacyMobileUi, 900);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', start, {once:true});
+  }else{
+    start();
+  }
+
+  window.purgeLegacyMobileUi = purgeLegacyMobileUi;
+})();
+</script>
