@@ -21353,3 +21353,114 @@ body.dedication-modal-open,body.focusmap-modal-open,body.focusdoc-modal-open{ove
   };
 })();
 </script>
+
+
+<style id="patch-v1-8-64-mmi-chip-purge-style">
+@media (max-width:720px){
+  /* 旧スマホmode chipの残骸。新UIは #mobile-overlay-mode-chip / .momc-* を使う */
+  .mmi-chip,
+  .mmi-main,
+  .mmi-sub,
+  #mobile-mode-indicator,
+  #mobile-move-mode-indicator{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+    width:0 !important;
+    height:0 !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    max-width:0 !important;
+    max-height:0 !important;
+    overflow:hidden !important;
+    position:absolute !important;
+    left:-99999px !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:auto !important;
+    transform:none !important;
+  }
+
+  #mobile-mode-indicator *,
+  #mobile-move-mode-indicator *,
+  .mmi-chip *{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+}
+</style>
+
+
+<script id="patch-v1-8-64-mmi-chip-purge">
+(function(){
+  'use strict';
+  if(window.__MMI_CHIP_PURGE_PATCH_APPLIED__) return;
+  window.__MMI_CHIP_PURGE_PATCH_APPLIED__=true;
+
+  function app(){
+    return document.getElementById('app');
+  }
+
+  function isMobile(){
+    return !!app()?.classList.contains('mobile-mode') || window.matchMedia('(max-width:720px)').matches;
+  }
+
+  function removeOldMmiChips(){
+    if(!isMobile()) return;
+
+    // 旧IDは親ごと削除
+    ['mobile-mode-indicator','mobile-move-mode-indicator'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.remove();
+    });
+
+    // IDがなくても .mmi-chip が残る/再生成されるケースを潰す
+    document.querySelectorAll('.mmi-chip').forEach(chip=>{
+      const parent=chip.parentElement;
+      if(parent && parent.id && /^mobile-.*indicator$/.test(parent.id)){
+        parent.remove();
+      }else{
+        chip.remove();
+      }
+    });
+
+    document.querySelectorAll('.mmi-main,.mmi-sub').forEach(el=>{
+      const chip=el.closest('.mmi-chip');
+      if(chip) chip.remove();
+      else el.remove();
+    });
+  }
+
+  function schedulePurge(){
+    if(!isMobile()) return;
+    requestAnimationFrame(removeOldMmiChips);
+  }
+
+  const observer=new MutationObserver(schedulePurge);
+
+  function start(){
+    removeOldMmiChips();
+    observer.observe(document.body,{
+      childList:true,
+      subtree:true,
+      attributes:true,
+      attributeFilter:['class','id','style']
+    });
+    window.addEventListener('resize',schedulePurge,{passive:true});
+    window.addEventListener('orientationchange',schedulePurge,{passive:true});
+    setTimeout(removeOldMmiChips,120);
+    setTimeout(removeOldMmiChips,600);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+
+  window.purgeOldMmiChips=removeOldMmiChips;
+})();
+</script>
