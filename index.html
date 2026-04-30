@@ -8690,3 +8690,100 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 window.MmmPocketLitePcImport={open:openImport,close:closeImport,parse:parseInput,import:importFromText};
 })();
 </script>
+
+<style id="patch-v1-9-14-pocket-lite-side-button-style">
+/* Pocket Lite取込は右下固定ではなく、データ / アウトライナーと同じ左サイドタブへ配置する */
+#pocket-lite-import-launcher{display:none !important}
+#b-pocket-lite-side{
+  position:absolute;
+  left:-104px !important;
+  top:82px !important;
+  min-width:104px !important;
+  width:104px !important;
+  padding:8px 12px !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  line-height:1.15 !important;
+  text-align:center !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px !important;
+  cursor:pointer;
+  z-index:18;
+  color:var(--sf-text-0,#f8fafc);
+  border:1px solid rgba(132,145,164,.22);
+  border-right:none;
+  border-radius:10px 0 0 10px;
+  background:linear-gradient(180deg,rgba(20,25,34,.95),rgba(11,15,22,.98));
+  box-shadow:var(--sf-shadow-1,0 4px 12px rgba(0,0,0,.16));
+  font-weight:700;
+}
+#b-pocket-lite-side:hover{
+  border-color:rgba(56,230,255,.34);
+  color:#effcff;
+}
+#b-pocket-lite-side:active{
+  transform:translateY(1px);
+}
+</style>
+<script id="patch-v1-9-14-pocket-lite-side-button">
+(function(){
+  'use strict';
+  if(window.__MMM_POCKET_LITE_SIDE_BUTTON_APPLIED__) return;
+  window.__MMM_POCKET_LITE_SIDE_BUTTON_APPLIED__=true;
+
+  function hideFloatingLauncher(){
+    const launcher=document.getElementById('pocket-lite-import-launcher');
+    if(launcher) launcher.style.setProperty('display','none','important');
+  }
+
+  function openPocketLiteImport(){
+    if(window.MmmPocketLitePcImport && typeof window.MmmPocketLitePcImport.open==='function'){
+      window.MmmPocketLitePcImport.open();
+      hideFloatingLauncher();
+      return;
+    }
+    const fallback=document.getElementById('pocket-lite-import-launcher');
+    if(fallback) fallback.click();
+    hideFloatingLauncher();
+  }
+
+  function ensureSideButton(){
+    const ioWrap=document.getElementById('io-wrap');
+    const outlineBtn=document.getElementById('b-outline-side');
+    if(!ioWrap || !outlineBtn) return false;
+
+    let btn=document.getElementById('b-pocket-lite-side');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.id='b-pocket-lite-side';
+      btn.type='button';
+      btn.setAttribute('aria-label','Pocket Lite JSONの取り込み');
+      btn.textContent='Pocket Lite';
+      outlineBtn.insertAdjacentElement('afterend',btn);
+    }
+
+    if(!btn.__pocketLiteSideBound){
+      btn.__pocketLiteSideBound=true;
+      btn.addEventListener('click',openPocketLiteImport);
+    }
+
+    hideFloatingLauncher();
+    return true;
+  }
+
+  function start(){
+    ensureSideButton();
+    hideFloatingLauncher();
+    setTimeout(ensureSideButton,100);
+    setTimeout(ensureSideButton,600);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start,{once:true});
+  }else{
+    start();
+  }
+})();
+</script>
