@@ -7459,3 +7459,67 @@ setTimeout(fix,100);
 setTimeout(fix,600);
 })();
 </script>
+
+
+<!-- patch: keep desktop notification toast inside viewport -->
+<style id="patch-toast-contained-v1">
+  #toast{
+    position:fixed !important;
+    left:50% !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:max(18px,env(safe-area-inset-bottom,0px)) !important;
+    transform:translateX(-50%) translateY(10px) !important;
+    width:max-content !important;
+    min-width:min(180px,calc(100vw - 32px)) !important;
+    max-width:calc(100vw - 32px) !important;
+    max-height:min(42vh,260px) !important;
+    overflow:auto !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+    white-space:normal !important;
+    text-align:center !important;
+    z-index:9999 !important;
+    box-sizing:border-box !important;
+  }
+  #toast.show{
+    opacity:1 !important;
+    transform:translateX(-50%) translateY(0) !important;
+  }
+  #toast:not(.show){
+    pointer-events:none !important;
+  }
+  @media (max-height:520px){
+    #toast{
+      bottom:10px !important;
+      max-height:32vh !important;
+    }
+  }
+</style>
+<script id="patch-toast-contained-v1-js">
+(function(){
+  const originalShowToast = window.showToast;
+  function keepToastInsideViewport(){
+    const el = document.getElementById('toast');
+    if(!el) return;
+    el.style.left = '50%';
+    el.style.right = 'auto';
+    el.style.top = 'auto';
+    el.style.bottom = 'max(18px, env(safe-area-inset-bottom, 0px))';
+    el.style.maxWidth = 'calc(100vw - 32px)';
+    el.style.maxHeight = 'min(42vh, 260px)';
+  }
+  window.keepToastInsideViewport = keepToastInsideViewport;
+  if(typeof originalShowToast === 'function' && !originalShowToast.__toastContainedPatched){
+    window.showToast = function(){
+      const result = originalShowToast.apply(this, arguments);
+      requestAnimationFrame(keepToastInsideViewport);
+      return result;
+    };
+    window.showToast.__toastContainedPatched = true;
+  }
+  window.addEventListener('resize', keepToastInsideViewport, {passive:true});
+  document.addEventListener('DOMContentLoaded', keepToastInsideViewport, {once:true});
+  keepToastInsideViewport();
+})();
+</script>
