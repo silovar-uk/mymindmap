@@ -6727,7 +6727,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     navLayer=document.createElement('div');
     navLayer.className='viewport-nav-layer';
     navLayer.innerHTML=`
-      <div class="viewport-nav-help"><strong>移動補助</strong><br><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> 視点移動　<kbd>Shift</kbd>で大きく<br><kbd>+</kbd><kbd>-</kbd> ズーム　<kbd>0</kbd> 全体</div>
+      <div class="viewport-nav-help"><strong>移動補助</strong><br>スクロールバーとミニマップで移動できます</div>
       <div class="viewport-minimap" id="viewport-minimap" aria-label="ミニマップ">
         <div class="viewport-minimap-head"><span>MAP</span><span>drag / click</span></div>
         <svg viewBox="0 0 184 132" preserveAspectRatio="none" aria-hidden="true">
@@ -7088,6 +7088,47 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.addEventListener('resize',queueViewportSync,{passive:true});
 })();
 </script>
+
+<!-- patch: save-button-emphasis-and-clean-nav-help v1 -->
+<style id="patch-save-button-emphasis-and-clean-nav-help-v1">
+  #tb .tb-save-restore-group #mmm-browser-save{
+    background:linear-gradient(180deg,#4aa3ff 0%,#1677ff 48%,#075eea 100%) !important;
+    color:#ffffff !important;
+    border-color:rgba(106,183,255,.92) !important;
+    box-shadow:0 0 0 1px rgba(74,163,255,.30),0 12px 26px rgba(7,94,234,.34),inset 0 1px 0 rgba(255,255,255,.26) !important;
+    font-weight:1000 !important;
+    letter-spacing:.01em;
+  }
+  #tb .tb-save-restore-group #mmm-browser-save::before{
+    background:linear-gradient(90deg,rgba(255,255,255,.12),rgba(185,224,255,.95) 34%,rgba(18,198,255,.55) 100%) !important;
+    opacity:.95 !important;
+  }
+  #tb .tb-save-restore-group #mmm-browser-save:hover:not(:disabled){
+    background:linear-gradient(180deg,#65b4ff 0%,#2588ff 48%,#0b67ff 100%) !important;
+    border-color:rgba(181,224,255,.96) !important;
+    box-shadow:0 0 0 1px rgba(106,183,255,.42),0 16px 32px rgba(7,94,234,.42),0 0 18px rgba(74,163,255,.20),inset 0 1px 0 rgba(255,255,255,.30) !important;
+  }
+  #tb .tb-save-restore-group #mmm-browser-save:active{
+    transform:translateY(0) scale(.99) !important;
+  }
+  #mmm-restore-layer .mmm-restore-actions .mmm-restore-btn.primary[data-mmm-action="save"]{
+    background:linear-gradient(180deg,#4aa3ff 0%,#1677ff 52%,#075eea 100%) !important;
+    color:#ffffff !important;
+    border-color:rgba(106,183,255,.92) !important;
+    box-shadow:0 0 0 1px rgba(74,163,255,.28),0 12px 26px rgba(7,94,234,.28),inset 0 1px 0 rgba(255,255,255,.24) !important;
+  }
+  #mmm-restore-layer .mmm-restore-actions .mmm-restore-btn.primary[data-mmm-action="save"]:hover:not(:disabled){
+    background:linear-gradient(180deg,#65b4ff 0%,#2588ff 52%,#0b67ff 100%) !important;
+    border-color:rgba(181,224,255,.96) !important;
+  }
+  .viewport-nav-help{
+    font-size:10.5px !important;
+    line-height:1.45 !important;
+  }
+  .viewport-nav-help kbd{
+    display:none !important;
+  }
+</style>
 </body></html><style id="patch-v1-8-16-ep-ui-style">#ep.panel{scrollbar-width:thin}#ep.panel .epft{position:sticky;bottom:-2px;padding-top:10px;margin-top:4px;background:linear-gradient(180deg,rgba(18,23,32,0),rgba(18,23,32,.92) 42%,rgba(9,13,18,.98) 100%)}#ep.panel label[for],#ep.panel label{letter-spacing:.01em}#ep.panel #ep-url{word-break:break-all}</style><script id="patch-v1-8-16-ep-ui">
 (function(){
 'use strict';
