@@ -6535,6 +6535,559 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
+
+<!-- patch: large-map navigation controls v1 -->
+<style id="patch-large-map-navigation-style-v1">
+  #b-fit{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+  }
+  #qb-fit{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+  }
+  #cw.nav-scrollbars-active{touch-action:none;}
+  .viewport-nav-layer{
+    position:absolute;
+    inset:0;
+    z-index:86;
+    pointer-events:none;
+    font-family:var(--font-ui-ja,"Noto Sans JP",system-ui,sans-serif);
+  }
+  .viewport-scrollbar{
+    position:absolute;
+    pointer-events:auto;
+    border:1px solid rgba(132,145,164,.22);
+    background:linear-gradient(180deg,rgba(10,14,20,.82),rgba(5,8,12,.88));
+    box-shadow:0 10px 24px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+    backdrop-filter:blur(8px);
+    opacity:.88;
+    transition:opacity .16s ease,border-color .16s ease;
+  }
+  .viewport-scrollbar:hover,
+  .viewport-scrollbar.dragging{opacity:1;border-color:rgba(18,198,255,.38);}
+  .viewport-scrollbar-x{
+    left:18px;
+    right:218px;
+    bottom:18px;
+    height:15px;
+    border-radius:999px;
+  }
+  .viewport-scrollbar-y{
+    right:18px;
+    top:78px;
+    bottom:190px;
+    width:15px;
+    border-radius:999px;
+  }
+  .viewport-scrollbar-thumb{
+    position:absolute;
+    border-radius:999px;
+    background:linear-gradient(90deg,rgba(255,111,44,.92),rgba(18,198,255,.78));
+    box-shadow:0 0 14px rgba(18,198,255,.22), inset 0 1px 0 rgba(255,255,255,.20);
+    cursor:grab;
+  }
+  .viewport-scrollbar-x .viewport-scrollbar-thumb{top:2px;bottom:2px;left:0;min-width:38px;}
+  .viewport-scrollbar-y .viewport-scrollbar-thumb{left:2px;right:2px;top:0;min-height:38px;background:linear-gradient(180deg,rgba(255,111,44,.92),rgba(18,198,255,.78));}
+  .viewport-scrollbar-thumb:active{cursor:grabbing;}
+  .viewport-minimap{
+    position:absolute;
+    right:18px;
+    bottom:42px;
+    width:184px;
+    height:132px;
+    pointer-events:auto;
+    border:1px solid rgba(132,145,164,.24);
+    background:radial-gradient(circle at 18% 18%,rgba(255,111,44,.13),transparent 36%),linear-gradient(180deg,rgba(18,23,32,.92),rgba(8,12,17,.96));
+    box-shadow:0 16px 34px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+    clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+    overflow:hidden;
+    backdrop-filter:blur(10px);
+  }
+  .viewport-minimap-head{
+    position:absolute;
+    left:10px;
+    right:10px;
+    top:8px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    color:var(--sf-text-2,#9aa8ba);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    pointer-events:none;
+    z-index:2;
+  }
+  .viewport-minimap-head span:first-child{color:var(--sf-text-1,#d6dee8);}
+  .viewport-minimap svg{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+    background:transparent;
+    cursor:crosshair;
+  }
+  .viewport-minimap .mini-node{fill:rgba(214,222,232,.48);stroke:rgba(246,243,237,.12);stroke-width:.8;}
+  .viewport-minimap .mini-node.favorite{fill:rgba(255,111,44,.68);}
+  .viewport-minimap .mini-node.done{fill:rgba(152,245,123,.45);}
+  .viewport-minimap .mini-view{fill:rgba(18,198,255,.08);stroke:rgba(18,198,255,.88);stroke-width:1.4;stroke-dasharray:4 3;filter:drop-shadow(0 0 7px rgba(18,198,255,.34));}
+  .viewport-nav-help{
+    position:absolute;
+    right:18px;
+    bottom:180px;
+    width:184px;
+    pointer-events:none;
+    padding:7px 9px;
+    border:1px solid rgba(132,145,164,.18);
+    background:linear-gradient(180deg,rgba(20,25,34,.82),rgba(8,12,17,.90));
+    color:var(--sf-text-2,#9aa8ba);
+    box-shadow:0 10px 24px rgba(0,0,0,.24);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    font-size:10px;
+    line-height:1.55;
+    opacity:.82;
+  }
+  .viewport-nav-help strong{color:var(--sf-text-0,#f6f3ed);font-weight:900;}
+  .viewport-nav-help kbd{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:17px;
+    height:17px;
+    padding:0 5px;
+    margin:0 1px;
+    border:1px solid rgba(132,145,164,.25);
+    border-radius:5px;
+    background:rgba(255,255,255,.045);
+    color:var(--sf-text-1,#d6dee8);
+    font-size:9px;
+    font-family:var(--font-ui-en,"Rajdhani",system-ui,sans-serif);
+  }
+  .viewport-scrollbar.is-full .viewport-scrollbar-thumb{opacity:.35;box-shadow:none;background:rgba(214,222,232,.26);}
+  #app.io-open .viewport-scrollbar-x{right:208px;}
+  @media (max-width:900px){
+    .viewport-minimap,.viewport-nav-help{display:none;}
+    .viewport-scrollbar-x{right:22px;bottom:18px;}
+    .viewport-scrollbar-y{right:18px;top:78px;bottom:46px;}
+  }
+  @media (max-width:720px){
+    .viewport-nav-layer{display:none;}
+  }
+</style>
+<script id="patch-large-map-navigation-script-v1">
+(function(){
+  if(window.__largeMapNavigationPatchV1) return;
+  window.__largeMapNavigationPatchV1=true;
+
+  const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+  let navLayer=null, miniSvg=null, miniView=null, miniContent=null;
+  let xTrack=null, yTrack=null, xThumb=null, yThumb=null;
+  let lastBounds=null;
+  let navSyncRaf=0;
+  let dragNav=null;
+
+  function isReady(){
+    return typeof sv!=='undefined' && typeof cw!=='undefined' && typeof applyT==='function';
+  }
+
+  function ensureFitButtons(){
+    ['b-fit','qb-fit'].forEach(id=>{
+      const btn=document.getElementById(id);
+      if(!btn) return;
+      btn.style.setProperty('display','inline-flex','important');
+      btn.removeAttribute('aria-hidden');
+      btn.removeAttribute('tabindex');
+      if(id==='qb-fit' && !btn.__navPatchFitBound){
+        btn.__navPatchFitBound=true;
+        btn.addEventListener('click',ev=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          if(typeof fitV==='function'){
+            fitV();
+            if(typeof showToast==='function') showToast('全体が見える位置に戻しました');
+          }
+        });
+      }
+    });
+  }
+
+  function ensureNavLayer(){
+    if(!isReady()) return;
+    if(navLayer && navLayer.isConnected) return;
+    navLayer=document.createElement('div');
+    navLayer.className='viewport-nav-layer';
+    navLayer.innerHTML=`
+      <div class="viewport-nav-help"><strong>移動補助</strong><br><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> 視点移動　<kbd>Shift</kbd>で大きく<br><kbd>+</kbd><kbd>-</kbd> ズーム　<kbd>0</kbd> 全体</div>
+      <div class="viewport-minimap" id="viewport-minimap" aria-label="ミニマップ">
+        <div class="viewport-minimap-head"><span>MAP</span><span>drag / click</span></div>
+        <svg viewBox="0 0 184 132" preserveAspectRatio="none" aria-hidden="true">
+          <g class="mini-content"></g>
+          <rect class="mini-view" x="0" y="0" width="10" height="10" rx="4" ry="4"></rect>
+        </svg>
+      </div>
+      <div class="viewport-scrollbar viewport-scrollbar-x" id="viewport-scrollbar-x" aria-label="横スクロール"><div class="viewport-scrollbar-thumb"></div></div>
+      <div class="viewport-scrollbar viewport-scrollbar-y" id="viewport-scrollbar-y" aria-label="縦スクロール"><div class="viewport-scrollbar-thumb"></div></div>
+    `;
+    cw.appendChild(navLayer);
+    cw.classList.add('nav-scrollbars-active');
+    miniSvg=navLayer.querySelector('.viewport-minimap svg');
+    miniContent=navLayer.querySelector('.mini-content');
+    miniView=navLayer.querySelector('.mini-view');
+    xTrack=navLayer.querySelector('#viewport-scrollbar-x');
+    yTrack=navLayer.querySelector('#viewport-scrollbar-y');
+    xThumb=xTrack?.querySelector('.viewport-scrollbar-thumb');
+    yThumb=yTrack?.querySelector('.viewport-scrollbar-thumb');
+    bindNavLayerEvents();
+  }
+
+  function getVisibleNodeBounds(){
+    const visible=(typeof getVisibleNodes==='function') ? getVisibleNodes() : (Array.isArray(nodes)?nodes:[]);
+    const numberMap=(typeof getOutlineNumberMap==='function') ? getOutlineNumberMap() : null;
+    const xs=[], ys=[];
+    visible.forEach(n=>{
+      if(!n) return;
+      try{ if(typeof updateNodeMetrics==='function') updateNodeMetrics(n,numberMap); }catch(_e){}
+      const w=Number.isFinite(n.w)?n.w:180;
+      const h=Number.isFinite(n.h)?n.h:72;
+      xs.push(n.x-w/2,n.x+w/2);
+      ys.push(n.y-h/2,n.y+h/2);
+    });
+    if(!xs.length || !ys.length) return null;
+    return {left:Math.min(...xs),right:Math.max(...xs),top:Math.min(...ys),bottom:Math.max(...ys)};
+  }
+
+  function getViewportWorldRect(){
+    const W=sv.clientWidth||800;
+    const H=sv.clientHeight||480;
+    const scale=Math.max(.001,vs||1);
+    return {
+      left:(0-vx)/scale,
+      right:(W-vx)/scale,
+      top:(0-vy)/scale,
+      bottom:(H-vy)/scale,
+      width:W/scale,
+      height:H/scale
+    };
+  }
+
+  function getNavigatorBounds(){
+    if(!isReady()) return null;
+    const nodeBounds=getVisibleNodeBounds();
+    const view=getViewportWorldRect();
+    const pad=Math.max(260,Math.min(900,Math.max(view.width,view.height)*0.32));
+    const raw=nodeBounds || {left:view.left,right:view.right,top:view.top,bottom:view.bottom};
+    let left=Math.min(raw.left-pad,view.left);
+    let right=Math.max(raw.right+pad,view.right);
+    let top=Math.min(raw.top-pad,view.top);
+    let bottom=Math.max(raw.bottom+pad,view.bottom);
+    if(right-left<view.width){ const c=(left+right)/2; left=c-view.width/2; right=c+view.width/2; }
+    if(bottom-top<view.height){ const c=(top+bottom)/2; top=c-view.height/2; bottom=c+view.height/2; }
+    return {left,right,top,bottom,width:right-left,height:bottom-top,view,nodeBounds:raw};
+  }
+
+  function queueViewportSync(){
+    if(navSyncRaf) return;
+    navSyncRaf=requestAnimationFrame(()=>{
+      navSyncRaf=0;
+      syncViewportControls();
+    });
+  }
+
+  function syncViewportControls(){
+    if(!isReady()) return;
+    ensureFitButtons();
+    ensureNavLayer();
+    if(!navLayer) return;
+    lastBounds=getNavigatorBounds();
+    if(!lastBounds) return;
+    renderScrollbars(lastBounds);
+    renderMinimap(lastBounds);
+  }
+
+  function renderScrollbars(bounds){
+    if(!xTrack || !yTrack || !xThumb || !yThumb) return;
+    const view=bounds.view;
+    const xW=xTrack.clientWidth||1;
+    const yH=yTrack.clientHeight||1;
+    const xRange=Math.max(.0001,bounds.width-view.width);
+    const yRange=Math.max(.0001,bounds.height-view.height);
+    const xFull=bounds.width<=view.width+1;
+    const yFull=bounds.height<=view.height+1;
+    const thumbW=xFull ? xW : clamp(xW*(view.width/bounds.width),38,xW);
+    const thumbH=yFull ? yH : clamp(yH*(view.height/bounds.height),38,yH);
+    const xMax=Math.max(0,xW-thumbW);
+    const yMax=Math.max(0,yH-thumbH);
+    const xPos=xFull ? 0 : clamp(((view.left-bounds.left)/xRange)*xMax,0,xMax);
+    const yPos=yFull ? 0 : clamp(((view.top-bounds.top)/yRange)*yMax,0,yMax);
+    xTrack.classList.toggle('is-full',xFull);
+    yTrack.classList.toggle('is-full',yFull);
+    xThumb.style.width=thumbW+'px';
+    xThumb.style.transform=`translateX(${xPos}px)`;
+    yThumb.style.height=thumbH+'px';
+    yThumb.style.transform=`translateY(${yPos}px)`;
+  }
+
+  function renderMinimap(bounds){
+    if(!miniSvg || !miniContent || !miniView) return;
+    const mw=184, mh=132;
+    const padX=10, padTop=28, padBottom=10;
+    const innerW=mw-padX*2, innerH=mh-padTop-padBottom;
+    const scale=Math.min(innerW/Math.max(1,bounds.width),innerH/Math.max(1,bounds.height));
+    const ox=padX+(innerW-bounds.width*scale)/2;
+    const oy=padTop+(innerH-bounds.height*scale)/2;
+    const wx=x=>ox+(x-bounds.left)*scale;
+    const wy=y=>oy+(y-bounds.top)*scale;
+    const visible=(typeof getVisibleNodes==='function') ? getVisibleNodes() : (Array.isArray(nodes)?nodes:[]);
+    const numberMap=(typeof getOutlineNumberMap==='function') ? getOutlineNumberMap() : null;
+    const maxNodes=360;
+    miniContent.innerHTML=visible.slice(0,maxNodes).map(n=>{
+      try{ if(typeof updateNodeMetrics==='function') updateNodeMetrics(n,numberMap); }catch(_e){}
+      const w=Math.max(3,Math.min(32,(Number.isFinite(n.w)?n.w:180)*scale));
+      const h=Math.max(3,Math.min(18,(Number.isFinite(n.h)?n.h:72)*scale));
+      const x=wx(n.x)-w/2;
+      const y=wy(n.y)-h/2;
+      const cls=['mini-node'];
+      if(n.favorite) cls.push('favorite');
+      if(n.status==='done') cls.push('done');
+      return `<rect class="${cls.join(' ')}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" ry="2"></rect>`;
+    }).join('');
+    const view=bounds.view;
+    const rx=wx(view.left), ry=wy(view.top);
+    const rw=Math.max(6,view.width*scale);
+    const rh=Math.max(6,view.height*scale);
+    miniView.setAttribute('x',rx.toFixed(1));
+    miniView.setAttribute('y',ry.toFixed(1));
+    miniView.setAttribute('width',rw.toFixed(1));
+    miniView.setAttribute('height',rh.toFixed(1));
+    miniView.setAttribute('rx','4');
+    miniView.setAttribute('ry','4');
+    miniSvg.__miniTransform={bounds,scale,ox,oy};
+  }
+
+  function setViewportLeftTop(left,top){
+    vx=-(left||0)*(vs||1);
+    vy=-(top||0)*(vs||1);
+    applyT();
+    if(typeof syncViewportUi==='function') syncViewportUi();
+    queueViewportSync();
+  }
+
+  function setViewportCenterWorld(cx,cy){
+    const view=getViewportWorldRect();
+    setViewportLeftTop(cx-view.width/2, cy-view.height/2);
+  }
+
+  function zoomAtCenter(factor){
+    const W=sv.clientWidth||800;
+    const H=sv.clientHeight||480;
+    const mx=W/2, my=H/2;
+    const current=Math.max(.001,vs||1);
+    const ns=clamp(current*factor,.15,3);
+    vx=mx-(mx-vx)*(ns/current);
+    vy=my-(my-vy)*(ns/current);
+    vs=ns;
+    applyT();
+    if(typeof syncViewportUi==='function') syncViewportUi();
+    queueViewportSync();
+  }
+
+  function moveViewportByScreen(dx,dy){
+    vx+=dx;
+    vy+=dy;
+    applyT();
+    if(typeof syncViewportUi==='function') syncViewportUi();
+    queueViewportSync();
+  }
+
+  function bindNavLayerEvents(){
+    if(xTrack && !xTrack.__navBound){
+      xTrack.__navBound=true;
+      xTrack.addEventListener('pointerdown',e=>startScrollbarDrag(e,'x'),{passive:false});
+    }
+    if(yTrack && !yTrack.__navBound){
+      yTrack.__navBound=true;
+      yTrack.addEventListener('pointerdown',e=>startScrollbarDrag(e,'y'),{passive:false});
+    }
+    const mini=navLayer?.querySelector('.viewport-minimap');
+    if(mini && !mini.__navBound){
+      mini.__navBound=true;
+      mini.addEventListener('pointerdown',startMinimapDrag,{passive:false});
+    }
+  }
+
+  function startScrollbarDrag(e,axis){
+    if(!lastBounds) syncViewportControls();
+    if(!lastBounds) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const track=axis==='x'?xTrack:yTrack;
+    const thumb=axis==='x'?xThumb:yThumb;
+    const rect=track.getBoundingClientRect();
+    const thumbRect=thumb.getBoundingClientRect();
+    track.classList.add('dragging');
+    const clickPos=axis==='x' ? e.clientX-rect.left : e.clientY-rect.top;
+    const thumbStart=axis==='x' ? thumbRect.left-rect.left : thumbRect.top-rect.top;
+    const thumbSize=axis==='x' ? thumbRect.width : thumbRect.height;
+    const onThumb=e.target===thumb;
+    const startThumb=onThumb ? thumbStart : clamp(clickPos-thumbSize/2,0,(axis==='x'?rect.width:rect.height)-thumbSize);
+    dragNav={axis,startClient:axis==='x'?e.clientX:e.clientY,startThumb,trackSize:axis==='x'?rect.width:rect.height,thumbSize,bounds:lastBounds};
+    updateScrollbarDrag(axis,startThumb);
+  }
+
+  function updateScrollbarDrag(axis,thumbPos){
+    const d=dragNav;
+    if(!d) return;
+    const bounds=d.bounds;
+    const view=bounds.view;
+    const maxThumb=Math.max(.0001,d.trackSize-d.thumbSize);
+    const ratio=clamp(thumbPos/maxThumb,0,1);
+    if(axis==='x'){
+      const maxLeft=Math.max(0,bounds.width-view.width);
+      const left=bounds.left+ratio*maxLeft;
+      setViewportLeftTop(left,view.top);
+    }else{
+      const maxTop=Math.max(0,bounds.height-view.height);
+      const top=bounds.top+ratio*maxTop;
+      setViewportLeftTop(view.left,top);
+    }
+  }
+
+  function startMinimapDrag(e){
+    if(!miniSvg?.__miniTransform) syncViewportControls();
+    const t=miniSvg?.__miniTransform;
+    if(!t) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragNav={axis:'mini'};
+    moveViewportByMinimapEvent(e);
+  }
+
+  function moveViewportByMinimapEvent(e){
+    const t=miniSvg?.__miniTransform;
+    if(!t) return;
+    const rect=miniSvg.getBoundingClientRect();
+    const sx=184/Math.max(1,rect.width);
+    const sy=132/Math.max(1,rect.height);
+    const mx=(e.clientX-rect.left)*sx;
+    const my=(e.clientY-rect.top)*sy;
+    const wx=t.bounds.left+(mx-t.ox)/t.scale;
+    const wy=t.bounds.top+(my-t.oy)/t.scale;
+    setViewportCenterWorld(wx,wy);
+  }
+
+  window.addEventListener('pointermove',e=>{
+    if(!dragNav) return;
+    e.preventDefault();
+    if(dragNav.axis==='mini'){
+      moveViewportByMinimapEvent(e);
+      return;
+    }
+    const pos=dragNav.axis==='x'?e.clientX:e.clientY;
+    const delta=pos-dragNav.startClient;
+    const maxThumb=Math.max(0,dragNav.trackSize-dragNav.thumbSize);
+    updateScrollbarDrag(dragNav.axis,clamp(dragNav.startThumb+delta,0,maxThumb));
+  },{passive:false});
+
+  window.addEventListener('pointerup',()=>{
+    if(!dragNav) return;
+    xTrack?.classList.remove('dragging');
+    yTrack?.classList.remove('dragging');
+    dragNav=null;
+  },{passive:true});
+
+  document.addEventListener('keydown',e=>{
+    if(!isReady()) return;
+    const active=document.activeElement;
+    const tag=(active?.tagName||'').toUpperCase();
+    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT' || active?.isContentEditable) return;
+    if(document.getElementById('ep')?.style.display==='block' || document.getElementById('eep')?.style.display==='block') return;
+    if(document.querySelector('.modal.open,.panel.open,#mobile-menu-sheet.open,#pocket-lite-import-layer.open')) return;
+    if(e.altKey || e.ctrlKey || e.metaKey) return;
+    const key=e.key;
+    const base=e.shiftKey?260:92;
+    let handled=false;
+    if(key==='ArrowLeft'){ moveViewportByScreen(base,0); handled=true; }
+    else if(key==='ArrowRight'){ moveViewportByScreen(-base,0); handled=true; }
+    else if(key==='ArrowUp'){ moveViewportByScreen(0,base); handled=true; }
+    else if(key==='ArrowDown'){ moveViewportByScreen(0,-base); handled=true; }
+    else if(key==='+' || key==='=' || key==='Add'){ zoomAtCenter(1.12); handled=true; }
+    else if(key==='-' || key==='_' || key==='Subtract'){ zoomAtCenter(0.89); handled=true; }
+    else if(key==='0' || key==='Home'){
+      if(typeof fitV==='function'){
+        fitV();
+        if(typeof showToast==='function') showToast('全体が見える位置に戻しました');
+        handled=true;
+      }
+    }
+    if(handled){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  },true);
+
+  function patchViewportHooks(){
+    if(typeof applyT==='function' && !applyT.__navPatchWrapped){
+      const original=applyT;
+      applyT=function(){
+        const result=original.apply(this,arguments);
+        queueViewportSync();
+        return result;
+      };
+      applyT.__navPatchWrapped=true;
+    }
+    if(typeof draw==='function' && !draw.__navPatchWrapped){
+      const original=draw;
+      draw=function(){
+        const result=original.apply(this,arguments);
+        queueViewportSync();
+        return result;
+      };
+      draw.__navPatchWrapped=true;
+    }
+    if(typeof renderNow==='function' && !renderNow.__navPatchWrapped){
+      const original=renderNow;
+      renderNow=function(){
+        const result=original.apply(this,arguments);
+        queueViewportSync();
+        return result;
+      };
+      renderNow.__navPatchWrapped=true;
+    }
+    if(typeof fitV==='function' && !fitV.__navPatchWrapped){
+      const original=fitV;
+      fitV=function(){
+        const result=original.apply(this,arguments);
+        queueViewportSync();
+        return result;
+      };
+      fitV.__navPatchWrapped=true;
+    }
+  }
+
+  function init(){
+    if(!isReady()) return;
+    patchViewportHooks();
+    ensureFitButtons();
+    ensureNavLayer();
+    queueViewportSync();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
+  setTimeout(init,120);
+  setTimeout(init,700);
+  window.addEventListener('resize',queueViewportSync,{passive:true});
+})();
+</script>
 </body></html><style id="patch-v1-8-16-ep-ui-style">#ep.panel{scrollbar-width:thin}#ep.panel .epft{position:sticky;bottom:-2px;padding-top:10px;margin-top:4px;background:linear-gradient(180deg,rgba(18,23,32,0),rgba(18,23,32,.92) 42%,rgba(9,13,18,.98) 100%)}#ep.panel label[for],#ep.panel label{letter-spacing:.01em}#ep.panel #ep-url{word-break:break-all}</style><script id="patch-v1-8-16-ep-ui">
 (function(){
 'use strict';
