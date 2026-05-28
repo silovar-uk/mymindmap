@@ -7676,7 +7676,9 @@ function makeModal(){
 function openModal(){
   if(typeof ensureMapTitle==='function' && !ensureMapTitle()) return;
   makeModal();
-  el('pem-mode').value=getStored(STORAGE.mode,'single')||'single';
+  // 出力形式は毎回「1枚で出力」を初期選択にする。
+  // 前回分割出力を使っていても、次回起動時に意図せず分割されないようにする。
+  el('pem-mode').value='single';
   el('pem-quality').value=getStored(STORAGE.quality,'1')||'1';
   el('pem-title').checked=(getStored(STORAGE.title,'1'))!=='0';
   refreshPreview();
