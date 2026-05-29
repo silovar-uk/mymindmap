@@ -163,9 +163,18 @@ const hierarchy=getHierarchyMaps(filteredNodes,filteredEdges,options);
 const numbers={};
 function walk(id,prefix){
 numbers[id]=prefix;
-(hierarchy.childMap[id]||[]).forEach((childId,index)=>walk(childId,`${prefix}.${index+1}`));
+(hierarchy.childMap[id]||[]).forEach((childId,index)=>{
+const nextPrefix=prefix ? `${prefix}.${index+1}` : String(index+1);
+walk(childId,nextPrefix);
+});
 }
+if(hierarchy.roots.length===1){
+const rootId=hierarchy.roots[0];
+numbers[rootId]='';
+(hierarchy.childMap[rootId]||[]).forEach((childId,index)=>walk(childId,String(index+1)));
+}else{
 hierarchy.roots.forEach((id,index)=>walk(id,String(index+1)));
+}
 return numbers;
 }
 function getNodeDisplayLabel(node, numberMap=null){
@@ -232,7 +241,7 @@ if(hierarchy.parentMap[edge.to]===edge.from && childMap[edge.from]) childMap[edg
 });
 Object.keys(childMap).forEach(id=>childMap[id].sort((a,b)=>hierarchy.compareIds(a.id,b.id)));
 const roots=hierarchy.roots.map(id=>exportNodeMap.get(id)).filter(Boolean);
-return {nodes:exportNodes.sort((a,b)=>hierarchy.compareIds(a.id,b.id)),edges:exportEdges,childMap,roots,numberMap:getOutlineNumberMap()};
+return {nodes:exportNodes.sort((a,b)=>hierarchy.compareIds(a.id,b.id)),edges:exportEdges,childMap,roots,numberMap:getOutlineNumberMap(exportNodes,exportEdges,options)};
 }
 function centerViewAtZoom(targetZoom=vs){
 const visibleNodes=getVisibleNodes();
