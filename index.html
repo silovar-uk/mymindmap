@@ -7852,3 +7852,199 @@ function init(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
 })();
 </script>
+
+<!-- patch-v1-9-20-selected-node-text-left-and-blue-save -->
+<style id="patch-v1-9-20-blue-browser-save-force">
+/* 後段のCSSに負けないように、ブラウザ保存ボタンを最後に青固定 */
+html body #app #tb button#mmm-browser-save,
+html body #app #tb #mmm-browser-save.primary-action,
+html body #app #tb #mmm-browser-save.mmm-browser-save-blue-force{
+  background:linear-gradient(180deg,#3b8cff 0%,#1764e8 100%) !important;
+  color:#ffffff !important;
+  border-color:rgba(125,183,255,.96) !important;
+  box-shadow:
+    0 0 0 1px rgba(59,140,255,.38),
+    0 10px 22px rgba(23,100,232,.34),
+    inset 0 1px 0 rgba(255,255,255,.24) !important;
+  font-weight:900 !important;
+}
+html body #app #tb button#mmm-browser-save::before,
+html body #app #tb #mmm-browser-save.primary-action::before,
+html body #app #tb #mmm-browser-save.mmm-browser-save-blue-force::before{
+  background:linear-gradient(90deg,rgba(255,255,255,.20),rgba(255,255,255,.82),rgba(18,198,255,.48)) !important;
+  opacity:.98 !important;
+}
+html body #app #tb button#mmm-browser-save:hover:not(:disabled),
+html body #app #tb #mmm-browser-save.primary-action:hover:not(:disabled),
+html body #app #tb #mmm-browser-save.mmm-browser-save-blue-force:hover:not(:disabled){
+  background:linear-gradient(180deg,#5aa0ff 0%,#1f73ff 100%) !important;
+  border-color:rgba(202,231,255,.98) !important;
+  box-shadow:
+    0 0 0 1px rgba(90,160,255,.52),
+    0 14px 26px rgba(31,115,255,.42),
+    inset 0 1px 0 rgba(255,255,255,.30) !important;
+  transform:translateY(-1px);
+}
+html body #app #tb button#mmm-browser-save:active,
+html body #app #tb #mmm-browser-save.primary-action:active,
+html body #app #tb #mmm-browser-save.mmm-browser-save-blue-force:active{
+  transform:translateY(0);
+  box-shadow:
+    0 0 0 1px rgba(90,160,255,.42),
+    0 7px 16px rgba(31,115,255,.32),
+    inset 0 1px 0 rgba(255,255,255,.20) !important;
+}
+</style>
+<script id="patch-v1-9-20-selected-node-text-left-and-blue-save">
+(function(){
+'use strict';
+const TEXT_ALIGN_VALUES=new Set(['left','center','right']);
+function normalizeTextAlign(value){
+  const v=String(value||'left').toLowerCase();
+  return TEXT_ALIGN_VALUES.has(v)?v:'left';
+}
+function getSelectedTextAlignTargetIds(){
+  const ids=[];
+  try{
+    if(typeof selectedNodeIds!=='undefined' && selectedNodeIds && selectedNodeIds.size){
+      selectedNodeIds.forEach(id=>{ if(typeof nb==='function' && nb(id)) ids.push(id); });
+    }
+    if(!ids.length && typeof activeNodeId!=='undefined' && activeNodeId && typeof nb==='function' && nb(activeNodeId)) ids.push(activeNodeId);
+  }catch(_){}
+  return [...new Set(ids)];
+}
+function setSelectedNodeTextAlign(align='left'){
+  const targetIds=getSelectedTextAlignTargetIds();
+  if(!targetIds.length){
+    if(typeof showToast==='function') showToast('ノードを選択してください','warn');
+    return false;
+  }
+  if(typeof snapshot==='function') snapshot();
+  targetIds.forEach(id=>{
+    const node=(typeof nb==='function')?nb(id):null;
+    if(node) node.textAlign=normalizeTextAlign(align);
+  });
+  if(typeof renderNow==='function') renderNow();
+  else if(typeof draw==='function') draw();
+  if(typeof focusCanvasForShortcuts==='function') focusCanvasForShortcuts();
+  if(typeof showToast==='function') showToast('選択ノードの文字を左揃えにしました');
+  return true;
+}
+function applyRenderedNodeTextAlign(){
+  try{
+    if(typeof nodes==='undefined' || !Array.isArray(nodes)) return;
+    const pad=(typeof NODE_INNER_PAD_X==='number')?NODE_INNER_PAD_X:16;
+    nodes.forEach(node=>{
+      if(!node || !node.id) return;
+      const align=normalizeTextAlign(node.textAlign);
+      if(align==='left') return;
+      const group=document.querySelector(`#NL g[data-id="${CSS.escape(String(node.id))}"]`);
+      if(!group) return;
+      const contentGroup=group.querySelector('g[clip-path]');
+      if(!contentGroup) return;
+      const anchor=align==='center'?'middle':'end';
+      const x=align==='center'?0:(Number(node.w||0)/2-pad);
+      contentGroup.querySelectorAll('text').forEach(text=>{
+        const cls=text.getAttribute('class')||'';
+        if(/node-number-text|node-status-text|node-created-at/.test(cls)) return;
+        text.setAttribute('text-anchor',anchor);
+        text.setAttribute('x',String(x));
+      });
+    });
+  }catch(err){
+    console.warn('[text-align patch] render skipped',err);
+  }
+}
+function installBlueSaveClass(){
+  const btn=document.getElementById('mmm-browser-save');
+  if(btn) btn.classList.add('mmm-browser-save-blue-force');
+}
+try{
+  if(typeof normalizeNode==='function' && !normalizeNode.__mmmTextAlignPatched){
+    const originalNormalizeNode=normalizeNode;
+    normalizeNode=function(node){
+      const normalized=originalNormalizeNode(node||{});
+      normalized.textAlign=normalizeTextAlign(node?.textAlign);
+      return normalized;
+    };
+    normalizeNode.__mmmTextAlignPatched=true;
+    if(typeof nodes!=='undefined' && Array.isArray(nodes)){
+      nodes.forEach(node=>{ if(node && !TEXT_ALIGN_VALUES.has(String(node.textAlign||'').toLowerCase())) node.textAlign='left'; });
+    }
+  }
+}catch(err){ console.warn('[text-align patch] normalize patch failed',err); }
+try{
+  if(typeof buildExportObject==='function' && !buildExportObject.__mmmTextAlignPatched){
+    const originalBuildExportObject=buildExportObject;
+    buildExportObject=function(options={}){
+      const data=originalBuildExportObject(options)||{};
+      if(Array.isArray(data.nodes) && typeof nodes!=='undefined' && Array.isArray(nodes)){
+        const alignById=new Map(nodes.map(node=>[node.id,normalizeTextAlign(node.textAlign)]));
+        data.nodes=data.nodes.map(node=>({
+          ...node,
+          textAlign:alignById.get(node.id)||normalizeTextAlign(node.textAlign)
+        }));
+      }
+      return data;
+    };
+    buildExportObject.__mmmTextAlignPatched=true;
+  }
+}catch(err){ console.warn('[text-align patch] export patch failed',err); }
+try{
+  if(typeof draw==='function' && !draw.__mmmTextAlignPatched){
+    const originalDraw=draw;
+    draw=function(){
+      const result=originalDraw.apply(this,arguments);
+      applyRenderedNodeTextAlign();
+      installBlueSaveClass();
+      return result;
+    };
+    draw.__mmmTextAlignPatched=true;
+  }
+}catch(err){ console.warn('[text-align patch] draw patch failed',err); }
+try{
+  if(typeof runQuickbarAction==='function' && !runQuickbarAction.__mmmTextAlignPatched){
+    const originalRunQuickbarAction=runQuickbarAction;
+    runQuickbarAction=function(action){
+      if(action==='text-align-left') return setSelectedNodeTextAlign('left');
+      return originalRunQuickbarAction.apply(this,arguments);
+    };
+    runQuickbarAction.__mmmTextAlignPatched=true;
+  }
+}catch(err){ console.warn('[text-align patch] action patch failed',err); }
+try{
+  if(typeof getQuickbarConfig==='function' && !getQuickbarConfig.__mmmTextAlignPatched){
+    const originalGetQuickbarConfig=getQuickbarConfig;
+    getQuickbarConfig=function(){
+      const config=originalGetQuickbarConfig.apply(this,arguments)||[];
+      const hasSingleNode=(typeof selectedNodeIds!=='undefined' && selectedNodeIds && selectedNodeIds.size===1 && typeof activeNodeId!=='undefined' && activeNodeId && typeof nb==='function' && nb(activeNodeId));
+      if(!hasSingleNode) return config;
+      const exists=config.some(item=>item && item.action==='text-align-left');
+      if(exists) return config;
+      const next=[...config];
+      const deleteIndex=next.findIndex(item=>item && item.id==='qb-delete');
+      const item={id:'qb-align-left',label:'文字左揃え',action:'text-align-left'};
+      if(deleteIndex>=0) next.splice(deleteIndex,0,item);
+      else next.push(item);
+      return next;
+    };
+    getQuickbarConfig.__mmmTextAlignPatched=true;
+  }
+}catch(err){ console.warn('[text-align patch] quickbar patch failed',err); }
+try{
+  window.MmmSelectedNodeTextAlign={
+    left:()=>setSelectedNodeTextAlign('left'),
+    set:setSelectedNodeTextAlign,
+    apply:applyRenderedNodeTextAlign
+  };
+}catch(_){}
+function bootPatch(){
+  installBlueSaveClass();
+  applyRenderedNodeTextAlign();
+  if(typeof updateQuickbar==='function') updateQuickbar();
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bootPatch,{once:true}); else bootPatch();
+const mo=new MutationObserver(()=>installBlueSaveClass());
+try{ mo.observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+})();
+</script>
